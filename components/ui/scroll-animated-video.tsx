@@ -193,7 +193,7 @@ export const HeroScrollVideo: React.FC<HeroScrollVideoProps> = ({
           trigger: triggerEl,
           start: "top top",
           end: "bottom bottom",
-          scrub: 1.1,
+          scrub: 1.8,
         },
       })
 

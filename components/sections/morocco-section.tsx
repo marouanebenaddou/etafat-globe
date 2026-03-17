@@ -18,7 +18,8 @@ export default function MoroccoSection() {
         media="/morocco.mp4"
         initialBoxSize={380}
         targetSize="fullscreen"
-        scrollHeightVh={260}
+        scrollHeightVh={420}
+        overlayRevealDelay={0.18}
         showHeroExitAnimation={true}
         smoothScroll={false}
         overlay={{

@@ -235,18 +235,37 @@ export default function EtherealBeamsHero() {
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
     : { bgColor:"#e8f4ff", diffuseColor:"#cce4ff", lightColor:"#007BFF" }
 
+  const bgColor = isDark ? "#000510" : "#e8f4ff"
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden transition-colors duration-500"
-      style={{ backgroundColor: isDark ? "#000510" : "#e8f4ff" }} id="home">
+      style={{ backgroundColor: bgColor }} id="home">
 
-      {/* 3D beams */}
+      {/* Globe video background */}
       <div className="absolute inset-0 z-0">
-        <Beams beamWidth={2.5} beamHeight={18} beamNumber={14} speed={2} noiseIntensity={1.8} scale={0.18} rotation={35} {...beamCfg}/>
-      </div>
+        <video
+          autoPlay muted loop playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: isDark ? 0.85 : 0.5 }}
+        >
+          <source src="/globe.mp4" type="video/mp4"/>
+        </video>
 
-      {/* Ambient blobs */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl z-0 pointer-events-none" style={{background:isDark?"rgba(0,123,255,0.10)":"rgba(0,123,255,0.12)"}}/>
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl z-0 pointer-events-none" style={{background:isDark?"rgba(0,102,157,0.08)":"rgba(0,102,157,0.10)"}}/>
+        {/* Inward mask — all 4 edges fade into site background */}
+        <div className="absolute inset-0 z-10 pointer-events-none" style={{
+          background: `
+            radial-gradient(ellipse 80% 80% at 50% 50%, transparent 30%, ${bgColor} 100%)
+          `
+        }}/>
+
+        {/* Extra edge masks for clean blending */}
+        <div className="absolute inset-0 z-10 pointer-events-none" style={{
+          background: `
+            linear-gradient(to bottom, ${bgColor} 0%, transparent 18%, transparent 70%, ${bgColor} 100%),
+            linear-gradient(to right,  ${bgColor} 0%, transparent 18%, transparent 82%, ${bgColor} 100%)
+          `
+        }}/>
+      </div>
 
       {/* NAVBAR */}
       <nav className={`relative z-20 w-full border-b transition-colors duration-500 ${isDark?"border-white/5":"border-blue-200/50"}`}>
@@ -285,9 +304,9 @@ export default function EtherealBeamsHero() {
       </nav>
 
       {/* HERO CONTENT */}
-      <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center">
+      <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">
         <div className="mx-auto max-w-7xl px-6 lg:px-8 w-full">
-          <div className="mx-auto max-w-5xl text-center">
+          <div className="mx-auto max-w-4xl text-center">
 
             <div className={`mb-8 inline-flex items-center gap-2 rounded-full backdrop-blur-xl border px-5 py-2 text-sm transition-colors duration-500 ${isDark?"bg-[#007BFF]/10 border-[#007BFF]/20 text-[#4da6ff]":"bg-white/80 border-[#007BFF]/30 text-[#007BFF] shadow-sm"}`}
               style={{animation:"fade-up 0.6s ease 0.2s both"}}>
@@ -328,12 +347,6 @@ export default function EtherealBeamsHero() {
       </div>
 
 
-      {/* Vignette */}
-      <div className="absolute inset-0 z-0 pointer-events-none"
-        style={{background:isDark
-          ?"linear-gradient(to top,#000510,transparent 40%,rgba(0,5,16,0.3))"
-          :"linear-gradient(to top,#e8f4ff,transparent 40%,rgba(232,244,255,0.2))"}}
-      />
     </div>
   )
 }

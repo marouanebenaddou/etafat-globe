@@ -32,10 +32,10 @@ const footerLinks = {
 }
 
 const socialLinks = [
-  { icon: Linkedin, label: "LinkedIn", href: "#", color: "#0077b5" },
-  { icon: Twitter, label: "Twitter", href: "#", color: "#1da1f2" },
+  { icon: Linkedin, label: "LinkedIn", href: "https://www.linkedin.com/company/etafat", color: "#0077b5" },
+  { icon: Twitter, label: "Twitter", href: "https://x.com/etafat_", color: "#1da1f2" },
   { icon: Youtube, label: "YouTube", href: "#", color: "#ff0000" },
-  { icon: Facebook, label: "Facebook", href: "#", color: "#1877f2" },
+  { icon: Facebook, label: "Facebook", href: "https://www.facebook.com/ETAFAT/", color: "#1877f2" },
 ]
 
 export default function FooterSection() {
@@ -108,7 +108,7 @@ export default function FooterSection() {
             {/* Socials */}
             <div className="flex items-center gap-2">
               {socialLinks.map(({ icon: Icon, label, href, color }) => (
-                <a key={label} href={href} aria-label={label}
+                <a key={label} href={href} aria-label={label} target="_blank" rel="noopener noreferrer"
                   className="w-9 h-9 glass rounded-xl flex items-center justify-center hover:scale-110 transition-all duration-300 group">
                   <Icon className="w-4 h-4 t-muted group-hover:text-white transition-colors" style={{ "--hover-color": color } as React.CSSProperties} />
                 </a>

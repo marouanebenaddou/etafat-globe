@@ -119,12 +119,12 @@ export default function ContactSection() {
               <h4 className="t-head font-bold text-sm mb-4">Suivez-nous</h4>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Linkedin, name: "LinkedIn", color: "#0077b5" },
-                  { icon: Twitter, name: "Twitter / X", color: "#1da1f2" },
-                  { icon: Youtube, name: "YouTube", color: "#ff0000" },
-                  { icon: Facebook, name: "Facebook", color: "#1877f2" },
-                ].map(({ icon: Icon, name, color }) => (
-                  <a key={name} href="#"
+                  { icon: Linkedin, name: "LinkedIn", color: "#0077b5", href: "https://www.linkedin.com/company/etafat" },
+                  { icon: Twitter, name: "Twitter / X", color: "#1da1f2", href: "https://x.com/etafat_" },
+                  { icon: Youtube, name: "YouTube", color: "#ff0000", href: "#" },
+                  { icon: Facebook, name: "Facebook", color: "#1877f2", href: "https://www.facebook.com/ETAFAT/" },
+                ].map(({ icon: Icon, name, color, href }) => (
+                  <a key={name} href={href} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 glass rounded-xl px-3 py-2.5 hover:scale-105 transition-all duration-300 group">
                     <Icon className="w-4 h-4 flex-shrink-0 transition-colors duration-300" style={{ color }} />
                     <span className="t-body text-xs group-hover:text-[#007BFF] transition-colors">{name}</span>

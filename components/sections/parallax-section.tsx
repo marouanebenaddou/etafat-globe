@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
 
 const ZoomParallax = dynamic(
   () => import("@/components/ui/zoom-parallax").then(m => m.ZoomParallax),
@@ -55,10 +56,18 @@ const media = [
 
 export default function ParallaxSection() {
   const { ref, isVisible } = useScrollReveal()
+  const { isDark } = useTheme()
+
+  // Always transition into the dark parallax canvas.
+  // In light mode, we pick up from the light section bg (#f0f6ff) and
+  // fade to #07101f so there's no jarring white block.
+  const sectionBg = isDark
+    ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)"
+    : "linear-gradient(to bottom, #f0f6ff 0%, #07101f 65%)"
 
   return (
-    <section id="parallax" className="relative">
-      {/* Header — fades into the dark parallax canvas below */}
+    <section id="parallax" className="relative" style={{ background: sectionBg }}>
+      {/* Header — always on dark-ish gradient, so text is always white */}
       <div className="relative">
         <div
           ref={ref}
@@ -66,15 +75,13 @@ export default function ParallaxSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
+          <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.4)" }}>
             Partout où la précision<br className="hidden sm:block" /> fait la différence
           </h2>
-          <p className="t-body max-w-2xl mx-auto">
+          <p className="text-white/70 max-w-2xl mx-auto">
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
           </p>
         </div>
-        {/* Gradient bridge from page bg → dark parallax */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-gradient-to-b from-transparent to-[#07101f]" />
       </div>
 
       <ZoomParallax images={media} />

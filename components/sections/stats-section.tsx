@@ -80,13 +80,13 @@ export default function StatsSection() {
   const { ref, isVisible } = useScrollReveal()
 
   return (
-    <section className="pt-32 sm:pt-20 pb-10 sm:pb-32 sec-bg-a relative overflow-hidden" id="stats">
+    <section className="pt-32 sm:pt-20 pb-16 sm:pb-32 sec-bg-a relative overflow-hidden" id="stats">
       {/* Background */}
       <div className="absolute inset-0 moroccan-pattern opacity-30" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#007BFF]/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div
           ref={ref}

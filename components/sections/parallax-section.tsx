@@ -75,10 +75,10 @@ export default function ParallaxSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.4)" }}>
+          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-900"}`} style={isDark ? { textShadow: "0 2px 20px rgba(0,0,0,0.4)" } : undefined}>
             Partout où la précision<br className="hidden sm:block" /> fait la différence
           </h2>
-          <p className="text-white/70 max-w-2xl mx-auto">
+          <p className={`max-w-2xl mx-auto ${isDark ? "text-white/70" : "text-slate-600"}`}>
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
           </p>
         </div>

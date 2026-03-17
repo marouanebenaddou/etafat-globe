@@ -13,26 +13,34 @@ interface ZoomParallaxProps {
 }
 
 /**
- * Each tile is positioned relative to the viewport center (50vw, 50vh).
- * `top` / `left` are CSS translate values applied via transform so the tile
- * is offset from the center-anchored flex position.
- * All tiles should remain inside 0-100vw × 0-100vh at scale 1.
+ * Tiles are positioned with:
+ *   top:  calc(50% + dy),  left: calc(50% + dx)
+ *   transform: translate(-50%, -50%)
+ * → the CENTER of each tile lands at (50vw + dx, 50vh + dy).
+ * All values stay inside 0-100vw / 0-100vh at scale 1.
+ *
+ * Scale origin of the motion.div (absolute inset-0 = 100vw×100vh) is
+ * its center = viewport center, so tiles diverge outward as they zoom.
  */
-const TILES = [
-  // idx 0 — center hero (drone video) — largest, zooms to fill screen
-  { offsetX: '0px',    offsetY: '0px',    w: '32vw', h: '38vh', scaleTo: 4 },
-  // idx 1 — top-left wide
-  { offsetX: '-33vw',  offsetY: '-26vh',  w: '26vw', h: '28vh', scaleTo: 5 },
-  // idx 2 — top-right
-  { offsetX: '24vw',   offsetY: '-26vh',  w: '22vw', h: '26vh', scaleTo: 6 },
-  // idx 3 — bottom-left
-  { offsetX: '-30vw',  offsetY: '22vh',   w: '24vw', h: '22vh', scaleTo: 5 },
-  // idx 4 — bottom-right
-  { offsetX: '22vw',   offsetY: '24vh',   w: '22vw', h: '22vh', scaleTo: 6 },
-  // idx 5 — mid-left slim
-  { offsetX: '-38vw',  offsetY: '-3vh',   w: '12vw', h: '20vh', scaleTo: 8 },
-  // idx 6 — top-right small accent
-  { offsetX: '32vw',   offsetY: '-8vh',   w: '12vw', h: '15vh', scaleTo: 9 },
+const TILES: {
+  dx: string; dy: string
+  w: string;  h: string
+  scaleTo: 4 | 5 | 6 | 8 | 9
+}[] = [
+  // 0 — CENTER hero (drone video)
+  { dx: '0vw',    dy: '0vh',    w: '35vw', h: '35vh', scaleTo: 4 },
+  // 1 — top, slightly right  (mirrors template idx1)
+  { dx: '7vw',   dy: '-30vh',  w: '35vw', h: '30vh', scaleTo: 5 },
+  // 2 — left, tall           (mirrors template idx2)
+  { dx: '-25vw', dy: '-10vh',  w: '20vw', h: '45vh', scaleTo: 6 },
+  // 3 — right, center-height (mirrors template idx3)
+  { dx: '28vw',  dy: '0vh',    w: '25vw', h: '25vh', scaleTo: 5 },
+  // 4 — lower-left           (mirrors template idx4)
+  { dx: '5vw',   dy: '28vh',   w: '20vw', h: '25vh', scaleTo: 6 },
+  // 5 — lower, wide-left     (mirrors template idx5)
+  { dx: '-22vw', dy: '28vh',   w: '30vw', h: '25vh', scaleTo: 8 },
+  // 6 — lower-right small    (mirrors template idx6)
+  { dx: '25vw',  dy: '23vh',   w: '15vw', h: '15vh', scaleTo: 9 },
 ]
 
 export function ZoomParallax({ images }: ZoomParallaxProps) {
@@ -42,19 +50,18 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
     offset: ['start start', 'end end'],
   })
 
-  // Build one motion value per unique scaleTo
   const s4 = useTransform(scrollYProgress, [0, 1], [1, 4])
   const s5 = useTransform(scrollYProgress, [0, 1], [1, 5])
   const s6 = useTransform(scrollYProgress, [0, 1], [1, 6])
   const s8 = useTransform(scrollYProgress, [0, 1], [1, 8])
   const s9 = useTransform(scrollYProgress, [0, 1], [1, 9])
-  const scaleMap: Record<number, typeof s4> = { 4: s4, 5: s5, 6: s6, 8: s8, 9: s9 }
+  const scaleMap = { 4: s4, 5: s5, 6: s6, 8: s8, 9: s9 }
 
   return (
-    <div ref={container} className="relative h-[200vh]">
-      {/* sticky viewport */}
+    <div ref={container} className="relative h-[220vh]">
+      {/* sticky fullscreen canvas */}
       <div className="sticky top-0 h-screen overflow-hidden bg-[#07101f]">
-        {images.map(({ src, alt, type = 'image' }, index) => {
+        {images.map(({ src, alt = '', type = 'image' }, index) => {
           const tile = TILES[index % TILES.length]
           const scale = scaleMap[tile.scaleTo]
 
@@ -62,17 +69,17 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
             <motion.div
               key={index}
               style={{ scale }}
-              /* Each layer is a full-viewport flex-centered box.
-                 The inner div is translated to its grid position.
-                 transform-origin defaults to center → zooms from viewport center. */
-              className="absolute inset-0 flex items-center justify-center"
+              /* Fills viewport; scale zooms from this element's center = viewport center */
+              className="absolute inset-0"
             >
               <div
                 style={{
-                  width: tile.w,
+                  position: 'absolute',
+                  top:  `calc(50% + ${tile.dy})`,
+                  left: `calc(50% + ${tile.dx})`,
+                  width:  tile.w,
                   height: tile.h,
-                  transform: `translate(${tile.offsetX}, ${tile.offsetY})`,
-                  flexShrink: 0,
+                  transform: 'translate(-50%, -50%)',
                   overflow: 'hidden',
                 }}
               >
@@ -83,13 +90,13 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
                     muted
                     loop
                     playsInline
-                    className="h-full w-full object-cover"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
                   <img
                     src={src}
-                    alt={alt ?? `Image ${index + 1}`}
-                    className="h-full w-full object-cover"
+                    alt={alt}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 )}
               </div>

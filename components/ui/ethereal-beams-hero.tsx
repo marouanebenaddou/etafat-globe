@@ -1,11 +1,11 @@
 "use client"
 
 import type React from "react"
-import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, type FC, type ReactNode } from "react"
+import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, useState, type FC, type ReactNode } from "react"
 import * as THREE from "three"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { PerspectiveCamera } from "@react-three/drei"
-import { ArrowRight, MapPin } from "lucide-react"
+import { ArrowRight, MapPin, Menu, X } from "lucide-react"
 import { useTheme } from "@/lib/theme-context"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import { useCountUp } from "@/lib/hooks"
@@ -231,6 +231,7 @@ function HeroStats({ isDark }: { isDark: boolean }) {
 // ============================================================================
 export default function EtherealBeamsHero() {
   const { isDark } = useTheme()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
     : { bgColor:"#e8f4ff", diffuseColor:"#cce4ff", lightColor:"#007BFF" }
@@ -298,10 +299,81 @@ export default function EtherealBeamsHero() {
                 className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#007BFF] hover:bg-[#00669D] text-white text-sm font-semibold transition-all duration-300 shadow-lg shadow-[#007BFF]/30 hover:scale-105">
                 Contactez-nous <ArrowRight className="w-4 h-4"/>
               </a>
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={() => setMobileOpen(o => !o)}
+                aria-label="Menu"
+                className={`lg:hidden p-2 rounded-full transition-colors duration-200 ${isDark ? "text-white/80 hover:bg-white/10" : "text-slate-700 hover:bg-black/5"}`}
+              >
+                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
             </div>
           </div>
         </div>
       </nav>
+
+      {/* MOBILE MENU OVERLAY */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden transition-all duration-300 ${mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+        {/* Drawer — slides down from top */}
+        <div
+          className={`absolute top-0 left-0 right-0 transition-transform duration-300 ease-out ${mobileOpen ? "translate-y-0" : "-translate-y-full"} ${isDark ? "bg-[#000510]/95 border-b border-white/10" : "bg-white/95 border-b border-blue-100"} backdrop-blur-2xl`}
+        >
+          {/* Header row */}
+          <div className="flex items-center justify-between px-6 h-20">
+            <a href="#home" onClick={() => setMobileOpen(false)}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+                alt="Etafat"
+                className={`h-10 w-auto object-contain ${isDark ? "brightness-0 invert" : ""}`}
+              />
+            </a>
+            <button
+              onClick={() => setMobileOpen(false)}
+              className={`p-2 rounded-full ${isDark ? "text-white/80 hover:bg-white/10" : "text-slate-700 hover:bg-black/5"}`}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Nav links */}
+          <nav className="px-6 pb-6 flex flex-col gap-1">
+            {[
+              { label: "Accueil",      href: "#home" },
+              { label: "Services",     href: "#services" },
+              { label: "Technologies", href: "#technologies" },
+              { label: "À Propos",     href: "#apropos" },
+              { label: "Académie",     href: "#academie" },
+              { label: "Contact",      href: "#contact" },
+            ].map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center rounded-2xl px-5 py-4 text-base font-medium transition-all duration-200 ${isDark ? "text-white/80 hover:bg-white/8 hover:text-white" : "text-slate-700 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}
+              >
+                {label}
+              </a>
+            ))}
+
+            {/* CTA */}
+            <a
+              href="#contact"
+              onClick={() => setMobileOpen(false)}
+              className="mt-3 flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-[#007BFF] hover:bg-[#00669D] text-white text-base font-semibold transition-all duration-300 shadow-lg shadow-[#007BFF]/30"
+            >
+              Contactez-nous <ArrowRight className="w-4 h-4" />
+            </a>
+          </nav>
+        </div>
+      </div>
 
       {/* HERO CONTENT */}
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">

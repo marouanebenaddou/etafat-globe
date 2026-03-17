@@ -35,6 +35,8 @@ export default function Home() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("is-visible")
+          } else {
+            entry.target.classList.remove("is-visible")
           }
         })
       },
@@ -43,7 +45,7 @@ export default function Home() {
 
     const attach = () => {
       document
-        .querySelectorAll(".reveal:not(.is-visible), .reveal-left:not(.is-visible), .reveal-right:not(.is-visible), .reveal-scale:not(.is-visible)")
+        .querySelectorAll(".reveal, .reveal-left, .reveal-right, .reveal-scale")
         .forEach((el) => observer.observe(el))
     }
 

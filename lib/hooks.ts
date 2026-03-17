@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 
-/** Watches an element and fires when it enters the viewport */
+/** Watches an element — sets isVisible true on enter, resets to false on leave so animation replays */
 export function useScrollReveal(threshold = 0.12) {
   const ref = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(false)
@@ -11,7 +11,7 @@ export function useScrollReveal(threshold = 0.12) {
     const el = ref.current
     if (!el) return
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setIsVisible(true) },
+      ([entry]) => setIsVisible(entry.isIntersecting),
       { threshold },
     )
     observer.observe(el)

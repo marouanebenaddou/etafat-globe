@@ -58,22 +58,23 @@ export default function ParallaxSection() {
 
   return (
     <section id="parallax" className="relative">
-      {/* Header above the parallax */}
-      <div
-        ref={ref}
-        className={`relative z-10 py-20 text-center px-6 transition-all duration-700 ${
-          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
-        <div className="inline-flex items-center gap-2 rounded-full bg-[#007BFF]/10 border border-[#007BFF]/20 px-4 py-1.5 text-xs text-[#007BFF] uppercase tracking-widest mb-4">
-          ETAFAT sur le terrain
+      {/* Header — fades into the dark parallax canvas below */}
+      <div className="relative">
+        <div
+          ref={ref}
+          className={`relative z-10 pt-20 pb-16 text-center px-6 transition-all duration-700 ${
+            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
+        >
+          <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
+            Partout où la précision<br className="hidden sm:block" /> fait la différence
+          </h2>
+          <p className="t-body max-w-2xl mx-auto">
+            Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
+          </p>
         </div>
-        <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
-          Partout où la précision fait la différence
-        </h2>
-        <p className="t-body max-w-2xl mx-auto">
-          Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
-        </p>
+        {/* Gradient bridge from page bg → dark parallax */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-gradient-to-b from-transparent to-[#07101f]" />
       </div>
 
       <ZoomParallax images={media} />

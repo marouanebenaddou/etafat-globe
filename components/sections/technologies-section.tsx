@@ -133,7 +133,6 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
   const touchStartY = useRef(0)
   const isDragging = useRef(false)
   const Icon = tech.icon
-  const { isDark } = useTheme()
 
   useEffect(() => {
     requestAnimationFrame(() => setMounted(true))
@@ -177,16 +176,11 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
     >
       {/* Modal panel */}
       <div
-        className="relative w-full max-w-2xl overflow-hidden"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden"
         style={{
-          background: isDark
-            ? "linear-gradient(135deg, #0a0f1e 0%, #0d1a2e 50%, #0a1020 100%)"
-            : "linear-gradient(135deg, #ffffff 0%, #f0f6ff 50%, #e8f2ff 100%)",
-          border: `1px solid ${tech.color}${isDark ? "40" : "30"}`,
+          border: `1px solid ${tech.color}35`,
           borderRadius: "4px",
-          boxShadow: isDark
-            ? `0 0 0 1px ${tech.color}15, 0 40px 80px rgba(0,0,0,0.8), 0 0 80px ${tech.color}15`
-            : `0 0 0 1px ${tech.color}15, 0 40px 80px rgba(0,60,140,0.15), 0 0 60px ${tech.color}10`,
+          boxShadow: `0 0 0 1px ${tech.color}15, 0 40px 80px rgba(0,0,0,0.6), 0 0 80px ${tech.color}15`,
           transform: mounted
             ? `scale(1) translateY(${dragY}px)`
             : "scale(0.88) translateY(24px)",
@@ -232,12 +226,11 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
             <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
               {tech.category}
             </span>
-            <span className="text-xs font-mono" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,40,100,0.3)" }}>//</span>
-            <span className="text-xs font-mono hidden sm:inline" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,40,100,0.4)" }}>{tech.signal}</span>
+            <span className="modal-header-slash text-xs font-mono">//</span>
+            <span className="modal-header-signal text-xs font-mono hidden sm:inline">{tech.signal}</span>
           </div>
           <button onClick={handleClose}
-            className="w-7 h-7 flex items-center justify-center rounded transition-all"
-            style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,40,100,0.5)" }}>
+            className="modal-close-btn w-7 h-7 flex items-center justify-center rounded transition-all">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -249,7 +242,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
               src={tech.image}
               alt={tech.name}
               className="w-full h-full object-cover"
-              style={{ filter: "brightness(0.75) saturate(1.1)" }}
+              style={{ filter: "brightness(0.85) saturate(1.05)" }}
             />
           ) : (
             /* Styled placeholder — replace with AI-generated image */
@@ -293,8 +286,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
             </div>
           )}
           {/* Gradient fade into body */}
-          <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: isDark ? "linear-gradient(to bottom, transparent, #0a0f1e)" : "linear-gradient(to bottom, transparent, #f0f6ff)" }} />
+          <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
         </div>
 
         {/* ── Body ── */}
@@ -310,25 +302,22 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
               </div>
             </div>
             <div>
-              <h2 className="text-xl font-black mb-1" style={{ color: isDark ? "#fff" : "#001f40" }}>{tech.name}</h2>
-              <p className="text-sm leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "#2a4a66" }}>
+              <h2 className="t-head text-xl font-black mb-1">{tech.name}</h2>
+              <p className="t-muted text-sm leading-relaxed">
                 {tech.description}
               </p>
             </div>
           </div>
 
           {/* Detail paragraph */}
-          <div className="mb-5 p-4 rounded" style={{
-            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,90,200,0.04)",
-            border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,90,200,0.12)",
-          }}>
+          <div className="modal-detail-box mb-5 p-4 rounded">
             <div className="flex items-center gap-2 mb-2">
               <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
               <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
                 Description technique
               </span>
             </div>
-            <p className="text-sm leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.6)" : "#2a4a66" }}>{tech.details}</p>
+            <p className="t-muted text-sm leading-relaxed">{tech.details}</p>
           </div>
 
           {/* Specs chips */}
@@ -346,10 +335,10 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
           </div>
 
           {/* Coordinates row */}
-          <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,90,200,0.12)" }}>
+          <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
             <div className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
-              <span className="text-xs font-mono" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#4a6a85" }}>{tech.coord}</span>
+              <span className="modal-coord-text text-xs font-mono">{tech.coord}</span>
             </div>
             <div className="flex items-center gap-1.5">
               {[...Array(4)].map((_, i) => (

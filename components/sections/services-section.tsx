@@ -158,12 +158,11 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
       onClick={handleClose}
     >
       <div
-        className="relative w-full max-w-2xl overflow-hidden"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, #0a0f1e 0%, #0d1a2e 50%, #0a1020 100%)",
-          border: `1px solid ${service.accent}40`,
+          border: `1px solid ${service.accent}35`,
           borderRadius: "4px",
-          boxShadow: `0 0 0 1px ${service.accent}15, 0 40px 80px rgba(0,0,0,0.8), 0 0 80px ${service.accent}15`,
+          boxShadow: `0 0 0 1px ${service.accent}15, 0 40px 80px rgba(0,0,0,0.6), 0 0 80px ${service.accent}15`,
           transform: mounted
             ? `scale(1) translateY(${dragY}px)`
             : "scale(0.88) translateY(24px)",
@@ -209,12 +208,11 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
             <span className="text-xs font-mono tracking-widest uppercase" style={{ color: service.accent }}>
               {service.abbr}
             </span>
-            <span className="text-xs font-mono text-white/20">//</span>
-            <span className="text-xs font-mono text-white/30 hidden sm:inline">{service.signal}</span>
+            <span className="modal-header-slash text-xs font-mono">//</span>
+            <span className="modal-header-signal text-xs font-mono hidden sm:inline">{service.signal}</span>
           </div>
           <button onClick={handleClose}
-            className="w-7 h-7 flex items-center justify-center rounded transition-all hover:bg-white/10"
-            style={{ color: "rgba(255,255,255,0.4)" }}>
+            className="modal-close-btn w-7 h-7 flex items-center justify-center rounded transition-all">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -226,7 +224,7 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
               src={service.image}
               alt={service.title}
               className="w-full h-full object-cover"
-              style={{ filter: "brightness(0.75) saturate(1.1)" }}
+              style={{ filter: "brightness(0.85) saturate(1.05)" }}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
@@ -248,8 +246,7 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
             </div>
           )}
           {/* Gradient fade into body */}
-          <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent, #0a0f1e)" }} />
+          <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
         </div>
 
         {/* Body */}
@@ -265,25 +262,22 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
               </div>
             </div>
             <div>
-              <h2 className="text-xl font-black text-white mb-1">{service.title}</h2>
-              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <h2 className="t-head text-xl font-black mb-1">{service.title}</h2>
+              <p className="t-muted text-sm leading-relaxed">
                 {service.description}
               </p>
             </div>
           </div>
 
           {/* Detail paragraph */}
-          <div className="mb-5 p-4 rounded" style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.06)",
-          }}>
+          <div className="modal-detail-box mb-5 p-4 rounded">
             <div className="flex items-center gap-2 mb-2">
               <ChevronRight className="w-3 h-3" style={{ color: service.accent }} />
               <span className="text-xs font-mono tracking-widest uppercase" style={{ color: service.accent }}>
                 Description
               </span>
             </div>
-            <p className="text-sm leading-relaxed text-white/60">{service.details}</p>
+            <p className="t-muted text-sm leading-relaxed">{service.details}</p>
           </div>
 
           {/* Features chips */}
@@ -301,10 +295,10 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
           </div>
 
           {/* Coordinates row */}
-          <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
             <div className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5" style={{ color: service.accent }} />
-              <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>{service.coord}</span>
+              <span className="modal-coord-text text-xs font-mono">{service.coord}</span>
             </div>
             <div className="flex items-center gap-1.5">
               {[...Array(4)].map((_, i) => (

@@ -1,10 +1,11 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useScrollReveal } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
+import { Boxes } from "@/components/ui/background-boxes"
 
 const ZoomParallax = dynamic(
   () => import("@/components/ui/zoom-parallax").then(m => m.ZoomParallax),
@@ -78,15 +79,33 @@ export default function ParallaxSection() {
   }
 
   return (
-    <section id="parallax" className="relative" style={{ background: isDark ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)" : "linear-gradient(to bottom, #c5d9ec 0%, #dce8f5 15%, #eef4fb 40%, #f8fbff 70%, #ffffff 100%)" }}>
-      <div className="relative">
+    <section
+      id="parallax"
+      className="relative overflow-x-clip"
+    >
+      {/* Text area with animated boxes background */}
+      <div
+        className="relative overflow-hidden"
+        style={{ background: isDark ? "#07101f" : "#eef4fb" }}
+      >
+        {/* Boxes grid */}
+        <Boxes />
+        {/* Radial mask: fades boxes toward edges, keeps center readable */}
+        <div
+          className="absolute inset-0 z-10 pointer-events-none"
+          style={{
+            background: isDark
+              ? "radial-gradient(ellipse at 50% 50%, transparent 30%, #07101f 75%)"
+              : "radial-gradient(ellipse at 50% 50%, transparent 30%, #eef4fb 75%)",
+          }}
+        />
         <div
           ref={ref}
-          className={`relative z-10 pt-10 sm:pt-20 pb-16 text-center px-6 transition-all duration-700 ${
+          className={`relative z-20 pointer-events-none pt-10 sm:pt-20 pb-16 text-center px-6 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
+          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-800"}`}>
             <span className="block">Partout où</span>
             {/* Animated cycling word — own centered line */}
             <span className="block relative" style={{ height: "1.25em", overflow: "hidden" }}>
@@ -109,7 +128,7 @@ export default function ParallaxSection() {
             </span>
             <span className="block">fait la{" "}<span style={brandGrad}>différence</span></span>
           </h2>
-          <p className={`max-w-2xl mx-auto ${isDark ? "text-white/75" : "text-slate-500"}`}>
+          <p className={`max-w-2xl mx-auto ${isDark ? "text-white/75" : "text-slate-600"}`}>
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
           </p>
         </div>

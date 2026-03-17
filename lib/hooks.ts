@@ -52,6 +52,10 @@ export function useCenterFocus() {
   const [centered, setCentered] = useState(false)
 
   useEffect(() => {
+    // Only activate on touch/mobile devices
+    const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768
+    if (!isMobile) return
+
     const el = ref.current
     if (!el) return
     const observer = new IntersectionObserver(

@@ -296,10 +296,10 @@ export default function EtherealBeamsHero() {
 
             <h1 className={`mb-6 text-5xl font-black tracking-tight sm:text-7xl lg:text-8xl leading-none transition-colors duration-500 ${isDark?"text-white":"text-slate-900"}`}
               style={{animation:"fade-up 0.7s ease 0.4s both"}}>
-              Révélons le <span className="gradient-text">potentiel</span>
+              Révélons le <span className={isDark ? "gradient-text" : "text-[#007BFF]"}>potentiel</span>
               <br/>de vos{" "}
               <span className="relative inline-block">
-                <span className="gradient-text">territoires</span>
+                <span className={isDark ? "gradient-text" : "text-[#007BFF]"}>territoires</span>
                 <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full" style={{background:"linear-gradient(90deg,#007BFF,#00669D)"}}/>
               </span>
             </h1>

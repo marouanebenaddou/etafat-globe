@@ -66,13 +66,13 @@ export default function ParallaxSection() {
         }`}
       >
         <div className="inline-flex items-center gap-2 rounded-full bg-[#007BFF]/10 border border-[#007BFF]/20 px-4 py-1.5 text-xs text-[#007BFF] uppercase tracking-widest mb-4">
-          Notre terrain
+          ETAFAT sur le terrain
         </div>
         <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
-          Le Maroc de bout en bout
+          Partout où la précision fait la différence
         </h2>
-        <p className="t-body max-w-xl mx-auto">
-          Faites défiler pour découvrir notre présence sur l&apos;ensemble du territoire marocain.
+        <p className="t-body max-w-2xl mx-auto">
+          Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
         </p>
       </div>
 

@@ -272,7 +272,7 @@ export default function EtherealBeamsHero() {
       </div>
 
       {/* NAVBAR */}
-      <nav className={`relative z-20 w-full border-b transition-colors duration-500 ${isDark?"border-white/5":"border-blue-200/50"}`}>
+      <nav className={`relative z-20 w-full border-b transition-colors duration-500 ${isDark ? "border-white/5" : "bg-white border-blue-100 shadow-sm"}`}>
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
             {/* Logo */}

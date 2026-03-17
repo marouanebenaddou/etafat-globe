@@ -88,8 +88,10 @@ export default function ParallaxSection() {
         className="relative overflow-hidden"
         style={{ background: isDark ? "#07101f" : "#eef4fb" }}
       >
-        {/* Boxes grid */}
-        <Boxes />
+        {/* Boxes grid — desktop only (too heavy for mobile) */}
+        <div className="hidden sm:block">
+          <Boxes />
+        </div>
         {/* Radial mask: fades boxes toward edges, keeps center readable */}
         <div
           className="absolute inset-0 z-10 pointer-events-none"

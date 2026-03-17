@@ -61,7 +61,7 @@ export default function FooterSection() {
               Contactez nos experts
             </a>
             <a href="#services"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/20 bg-white/5 text-white font-semibold transition-all duration-300 hover:bg-white/10">
+              className={`inline-flex items-center gap-2 px-8 py-4 rounded-full border font-semibold transition-all duration-300 ${isDark ? "border-white/20 bg-white/5 text-white hover:bg-white/10" : "border-[#007BFF]/30 bg-white/60 text-[#00669D] hover:bg-white"}`}>
               Voir nos services
               <ArrowUpRight className="w-4 h-4" />
             </a>

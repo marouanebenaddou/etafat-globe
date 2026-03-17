@@ -103,7 +103,7 @@ export default function ClientsSection() {
               <div key={`rev-${client.name}-${i}`}
                 className="flex-shrink-0 glass rounded-xl px-5 py-3 hover:scale-105 transition-transform duration-300 group"
                 style={{ minWidth: "180px" }}>
-                <div className="text-white font-semibold text-sm">{client.name}</div>
+                <div className="t-head font-semibold text-sm">{client.name}</div>
                 <div className="t-xmuted text-xs">{client.sector}</div>
               </div>
             ))}
@@ -112,7 +112,7 @@ export default function ClientsSection() {
 
         {/* Sector breakdown */}
         <div ref={sectorRef} className={`transition-all duration-700 ${sectorVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <h3 className="text-white font-bold text-center mb-8 text-xl">Répartition par secteur</h3>
+          <h3 className="t-head font-bold text-center mb-8 text-xl">Répartition par secteur</h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {sectors.map((s, i) => (
               <div key={s.name}

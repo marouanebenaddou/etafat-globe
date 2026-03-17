@@ -35,7 +35,7 @@ export default function Home() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("is-visible")
-          } else {
+          } else if (!entry.target.closest("[data-reveal-once]")) {
             entry.target.classList.remove("is-visible")
           }
         })
@@ -67,11 +67,13 @@ export default function Home() {
       <StatsSection />
       <ServicesSection />
       <TechnologiesSection />
-      <AboutSection />
-      <ClientsSection />
-      <AcademySection />
-      <ContactSection />
-      <FooterSection />
+      <div data-reveal-once>
+        <AboutSection />
+        <ClientsSection />
+        <AcademySection />
+        <ContactSection />
+        <FooterSection />
+      </div>
     </main>
   )
 }

@@ -463,7 +463,7 @@ function TechCard({
               opacity: active ? 1 : 0,
             }} />
           <img
-            src={tech.image}
+            src={tech.image ?? undefined}
             alt={tech.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             style={{ filter: isDark ? "brightness(0.7) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}

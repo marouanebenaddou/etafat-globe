@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
 import { GraduationCap, BookOpen, Users, Award, ArrowRight, CheckCircle, Monitor, MapIcon } from "lucide-react"
 
 const programs = [
@@ -48,6 +49,7 @@ const benefits = [
 ]
 
 export default function AcademySection() {
+  const { isDark } = useTheme()
   const { ref: headerRef, isVisible: headerVisible } = useScrollReveal(0.12, true)
   const { ref: cardsRef, isVisible: cardsVisible } = useScrollReveal(0.1, true)
 
@@ -156,8 +158,8 @@ export default function AcademySection() {
               <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-yellow-500/10 rounded-full blur-xl" />
 
               <GraduationCap className="w-10 h-10 text-yellow-400 mb-4" />
-              <h4 className="t-head font-black text-xl mb-2">Inscrivez votre équipe</h4>
-              <p className="t-body text-sm mb-6">
+              <h4 className="text-white font-black text-xl mb-2">Inscrivez votre équipe</h4>
+              <p className="text-white/75 text-sm mb-6">
                 Formations inter et intra-entreprises disponibles. Devis personnalisé sous 48h.
               </p>
               <a href="#contact"

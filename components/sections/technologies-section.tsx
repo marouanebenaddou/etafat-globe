@@ -128,6 +128,7 @@ const technologies = [
 
 // ─── Geomatic Modal ────────────────────────────────────────────────────────────
 function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: () => void }) {
+  const { isDark } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [dragY, setDragY] = useState(0)
   const touchStartY = useRef(0)
@@ -340,15 +341,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
               <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
               <span className="modal-coord-text text-xs font-mono">{tech.coord}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="w-1 rounded-full" style={{
-                  height: `${8 + i * 4}px`,
-                  background: i < 3 ? tech.color : `${tech.color}30`,
-                }} />
-              ))}
-              <span className="text-xs font-mono ml-1" style={{ color: `${tech.color}80` }}>LOCK</span>
-            </div>
+            <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
           </div>
         </div>
       </div>

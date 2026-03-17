@@ -388,7 +388,7 @@ export default function EtherealBeamsHero() {
               <MapPin className="w-4 h-4"/> Maroc &amp; Afrique — Depuis 1983
             </div>
 
-            <h1 className={`mb-6 text-5xl font-black tracking-tight sm:text-7xl lg:text-8xl leading-none transition-colors duration-500 ${isDark?"text-white":"text-slate-900"}`}
+            <h1 className={`mb-6 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl leading-none transition-colors duration-500 ${isDark?"text-white":"text-slate-900"}`}
               style={{animation:"fade-up 0.7s ease 0.4s both"}}>
               Révélons le <span className="gradient-text">potentiel</span>
               <br/>de vos{" "}
@@ -398,7 +398,7 @@ export default function EtherealBeamsHero() {
               </span>
             </h1>
 
-            <p className={`mb-12 text-lg leading-8 sm:text-xl max-w-3xl mx-auto transition-colors duration-500 ${isDark?"text-white/70":"text-slate-600"}`}
+            <p className="mb-12 text-lg leading-8 sm:text-xl max-w-3xl mx-auto text-white/80 transition-colors duration-500"
               style={{animation:"fade-up 0.7s ease 0.6s both"}}>
               Leader en solutions géospatiales, topographie et systèmes d&apos;information géographique.
               Nous transformons les données territoriales en décisions stratégiques.

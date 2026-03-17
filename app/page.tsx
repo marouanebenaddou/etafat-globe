@@ -28,6 +28,14 @@ const EtherealBeamsHero = dynamic(
 )
 
 export default function Home() {
+  // Prevent browser from restoring mid-page scroll on refresh
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      history.scrollRestoration = "manual"
+      window.scrollTo(0, 0)
+    }
+  }, [])
+
   // Global scroll reveal observer
   useEffect(() => {
     const observer = new IntersectionObserver(

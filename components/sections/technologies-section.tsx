@@ -177,7 +177,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
     >
       {/* Modal panel */}
       <div
-        className="modal-surface relative w-full max-w-2xl overflow-hidden"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
         style={{
           border: `1px solid ${tech.color}35`,
           borderRadius: "4px",
@@ -236,112 +236,115 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
           </button>
         </div>
 
-        {/* ── Image slot ── */}
-        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "1 / 1", maxHeight: "320px" }}>
-          {tech.image ? (
-            <img
-              src={tech.image}
-              alt={tech.name}
-              className="w-full h-full object-cover"
-              style={{ filter: "brightness(0.85) saturate(1.05)" }}
-            />
-          ) : (
-            /* Styled placeholder — replace with AI-generated image */
-            <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
-              style={{ background: `linear-gradient(135deg, #050c1a 0%, ${tech.color}18 100%)` }}>
-              {/* Animated concentric rings */}
-              {[0, 1, 2, 3].map(r => (
-                <div key={r} className="absolute rounded-full border"
+        {/* Scrollable content */}
+        <div className="overflow-y-auto overscroll-contain flex-1">
+          {/* ── Image slot ── */}
+          <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
+            {tech.image ? (
+              <img
+                src={tech.image}
+                alt={tech.name}
+                className="w-full h-full object-cover"
+                style={{ filter: "brightness(0.85) saturate(1.05)" }}
+              />
+            ) : (
+              /* Styled placeholder — replace with AI-generated image */
+              <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
+                style={{ background: `linear-gradient(135deg, #050c1a 0%, ${tech.color}18 100%)` }}>
+                {/* Animated concentric rings */}
+                {[0, 1, 2, 3].map(r => (
+                  <div key={r} className="absolute rounded-full border"
+                    style={{
+                      width: `${80 + r * 60}px`, height: `${80 + r * 60}px`,
+                      borderColor: `${tech.color}${["30", "20", "15", "08"][r]}`,
+                      animation: `radar-sweep ${6 + r * 2}s linear infinite`,
+                      animationDelay: `${r * -1.5}s`,
+                    }} />
+                ))}
+                {/* Sweep */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-48 h-48 animate-radar origin-center relative">
+                    <div className="absolute top-1/2 left-1/2 w-24 h-px origin-left"
+                      style={{ background: `linear-gradient(90deg, ${tech.color}90, transparent)` }} />
+                  </div>
+                </div>
+                {/* Center icon */}
+                <div className="relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center"
+                  style={{ background: `${tech.color}18`, border: `1px solid ${tech.color}40`,
+                    boxShadow: `0 0 40px ${tech.color}30` }}>
+                  <Icon className="w-10 h-10" style={{ color: tech.color }} />
+                </div>
+                {/* Grid overlay */}
+                <div className="absolute inset-0 pointer-events-none"
                   style={{
-                    width: `${80 + r * 60}px`, height: `${80 + r * 60}px`,
-                    borderColor: `${tech.color}${["30", "20", "15", "08"][r]}`,
-                    animation: `radar-sweep ${6 + r * 2}s linear infinite`,
-                    animationDelay: `${r * -1.5}s`,
+                    backgroundImage: `linear-gradient(${tech.color}08 1px, transparent 1px), linear-gradient(90deg, ${tech.color}08 1px, transparent 1px)`,
+                    backgroundSize: "30px 30px",
                   }} />
-              ))}
-              {/* Sweep */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-48 h-48 animate-radar origin-center relative">
-                  <div className="absolute top-1/2 left-1/2 w-24 h-px origin-left"
-                    style={{ background: `linear-gradient(90deg, ${tech.color}90, transparent)` }} />
+                {/* Image slot label */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded"
+                  style={{ background: "rgba(0,0,0,0.5)", border: `1px solid ${tech.color}25` }}>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: tech.color }} />
+                  <span className="text-xs font-mono" style={{ color: `${tech.color}80` }}>IMAGE SLOT</span>
                 </div>
               </div>
-              {/* Center icon */}
-              <div className="relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center"
-                style={{ background: `${tech.color}18`, border: `1px solid ${tech.color}40`,
-                  boxShadow: `0 0 40px ${tech.color}30` }}>
-                <Icon className="w-10 h-10" style={{ color: tech.color }} />
-              </div>
-              {/* Grid overlay */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{
-                  backgroundImage: `linear-gradient(${tech.color}08 1px, transparent 1px), linear-gradient(90deg, ${tech.color}08 1px, transparent 1px)`,
-                  backgroundSize: "30px 30px",
-                }} />
-              {/* Image slot label */}
-              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded"
-                style={{ background: "rgba(0,0,0,0.5)", border: `1px solid ${tech.color}25` }}>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: tech.color }} />
-                <span className="text-xs font-mono" style={{ color: `${tech.color}80` }}>IMAGE SLOT</span>
-              </div>
-            </div>
-          )}
-          {/* Gradient fade into body */}
-          <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
-        </div>
-
-        {/* ── Body ── */}
-        <div className="p-6 pt-4">
-          {/* Icon + Title */}
-          <div className="flex items-start gap-4 mb-5">
-            <div className="relative flex-shrink-0">
-              <div className="absolute animate-spin-slow pointer-events-none"
-                style={{ inset: "-6px", border: `1px dashed ${tech.color}30`, borderRadius: "50%" }} />
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: `${tech.color}15`, border: `1px solid ${tech.color}35` }}>
-                <Icon className="w-6 h-6" style={{ color: tech.color }} />
-              </div>
-            </div>
-            <div>
-              <h2 className="t-head text-xl font-black mb-1">{tech.name}</h2>
-              <p className="t-muted text-sm leading-relaxed">
-                {tech.description}
-              </p>
-            </div>
+            )}
+            {/* Gradient fade into body */}
+            <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
           </div>
 
-          {/* Detail paragraph */}
-          <div className="modal-detail-box mb-5 p-4 rounded">
-            <div className="flex items-center gap-2 mb-2">
-              <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
-              <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
-                Description technique
-              </span>
+          {/* ── Body ── */}
+          <div className="p-6 pt-4">
+            {/* Icon + Title */}
+            <div className="flex items-start gap-4 mb-5">
+              <div className="relative flex-shrink-0">
+                <div className="absolute animate-spin-slow pointer-events-none"
+                  style={{ inset: "-6px", border: `1px dashed ${tech.color}30`, borderRadius: "50%" }} />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ background: `${tech.color}15`, border: `1px solid ${tech.color}35` }}>
+                  <Icon className="w-6 h-6" style={{ color: tech.color }} />
+                </div>
+              </div>
+              <div>
+                <h2 className="t-head text-xl font-black mb-1">{tech.name}</h2>
+                <p className="t-muted text-sm leading-relaxed">
+                  {tech.description}
+                </p>
+              </div>
             </div>
-            <p className="t-muted text-sm leading-relaxed">{tech.details}</p>
-          </div>
 
-          {/* Specs chips */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            {tech.specs.map((spec) => (
-              <span key={spec} className="text-xs font-mono px-3 py-1 rounded-full"
-                style={{
-                  background: `${tech.color}12`,
-                  border: `1px solid ${tech.color}30`,
-                  color: `${tech.color}cc`,
-                }}>
-                {spec}
-              </span>
-            ))}
-          </div>
-
-          {/* Coordinates row */}
-          <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
-              <span className="modal-coord-text text-xs font-mono">{tech.coord}</span>
+            {/* Detail paragraph */}
+            <div className="modal-detail-box mb-5 p-4 rounded">
+              <div className="flex items-center gap-2 mb-2">
+                <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
+                <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
+                  Description technique
+                </span>
+              </div>
+              <p className="t-muted text-sm leading-relaxed">{tech.details}</p>
             </div>
-            <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
+
+            {/* Specs chips */}
+            <div className="hidden sm:flex flex-wrap gap-2 mb-5">
+              {tech.specs.map((spec) => (
+                <span key={spec} className="text-xs font-mono px-3 py-1 rounded-full"
+                  style={{
+                    background: `${tech.color}12`,
+                    border: `1px solid ${tech.color}30`,
+                    color: `${tech.color}cc`,
+                  }}>
+                  {spec}
+                </span>
+              ))}
+            </div>
+
+            {/* Coordinates row */}
+            <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
+                <span className="modal-coord-text text-xs font-mono">{tech.coord}</span>
+              </div>
+              <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
+            </div>
           </div>
         </div>
       </div>

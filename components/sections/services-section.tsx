@@ -159,7 +159,7 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
       onClick={handleClose}
     >
       <div
-        className="modal-surface relative w-full max-w-2xl overflow-hidden"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
         style={{
           border: `1px solid ${service.accent}35`,
           borderRadius: "4px",
@@ -218,90 +218,93 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
           </button>
         </div>
 
-        {/* Image slot */}
-        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "1 / 1", maxHeight: "320px" }}>
-          {service.image ? (
-            <img
-              src={service.image}
-              alt={service.title}
-              className="w-full h-full object-cover"
-              style={{ filter: "brightness(0.85) saturate(1.05)" }}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
-              style={{ background: `linear-gradient(135deg, #050c1a 0%, ${service.accent}18 100%)` }}>
-              {[0, 1, 2, 3].map(r => (
-                <div key={r} className="absolute rounded-full border"
+        {/* Scrollable content */}
+        <div className="overflow-y-auto overscroll-contain flex-1">
+          {/* Image slot */}
+          <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
+            {service.image ? (
+              <img
+                src={service.image}
+                alt={service.title}
+                className="w-full h-full object-cover"
+                style={{ filter: "brightness(0.85) saturate(1.05)" }}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
+                style={{ background: `linear-gradient(135deg, #050c1a 0%, ${service.accent}18 100%)` }}>
+                {[0, 1, 2, 3].map(r => (
+                  <div key={r} className="absolute rounded-full border"
+                    style={{
+                      width: `${80 + r * 60}px`, height: `${80 + r * 60}px`,
+                      borderColor: `${service.accent}${["30", "20", "15", "08"][r]}`,
+                      animation: `radar-sweep ${6 + r * 2}s linear infinite`,
+                      animationDelay: `${r * -1.5}s`,
+                    }} />
+                ))}
+                <div className="relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center"
+                  style={{ background: `${service.accent}18`, border: `1px solid ${service.accent}40`,
+                    boxShadow: `0 0 40px ${service.accent}30` }}>
+                  <Icon className="w-10 h-10" style={{ color: service.accent }} />
+                </div>
+              </div>
+            )}
+            {/* Gradient fade into body */}
+            <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
+          </div>
+
+          {/* Body */}
+          <div className="p-6 pt-4">
+            {/* Icon + Title */}
+            <div className="flex items-start gap-4 mb-5">
+              <div className="relative flex-shrink-0">
+                <div className="absolute animate-spin-slow pointer-events-none"
+                  style={{ inset: "-6px", border: `1px dashed ${service.accent}30`, borderRadius: "50%" }} />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ background: `${service.accent}15`, border: `1px solid ${service.accent}35` }}>
+                  <Icon className="w-6 h-6" style={{ color: service.accent }} />
+                </div>
+              </div>
+              <div>
+                <h2 className="t-head text-xl font-black mb-1">{service.title}</h2>
+                <p className="t-muted text-sm leading-relaxed">
+                  {service.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Detail paragraph */}
+            <div className="modal-detail-box mb-5 p-4 rounded">
+              <div className="flex items-center gap-2 mb-2">
+                <ChevronRight className="w-3 h-3" style={{ color: service.accent }} />
+                <span className="text-xs font-mono tracking-widest uppercase" style={{ color: service.accent }}>
+                  Description
+                </span>
+              </div>
+              <p className="t-muted text-sm leading-relaxed">{service.details}</p>
+            </div>
+
+            {/* Features chips */}
+            <div className="hidden sm:flex flex-wrap gap-2 mb-5">
+              {service.features.map((f) => (
+                <span key={f} className="text-xs font-mono px-3 py-1 rounded-full"
                   style={{
-                    width: `${80 + r * 60}px`, height: `${80 + r * 60}px`,
-                    borderColor: `${service.accent}${["30", "20", "15", "08"][r]}`,
-                    animation: `radar-sweep ${6 + r * 2}s linear infinite`,
-                    animationDelay: `${r * -1.5}s`,
-                  }} />
+                    background: `${service.accent}12`,
+                    border: `1px solid ${service.accent}30`,
+                    color: `${service.accent}cc`,
+                  }}>
+                  {f}
+                </span>
               ))}
-              <div className="relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center"
-                style={{ background: `${service.accent}18`, border: `1px solid ${service.accent}40`,
-                  boxShadow: `0 0 40px ${service.accent}30` }}>
-                <Icon className="w-10 h-10" style={{ color: service.accent }} />
+            </div>
+
+            {/* Coordinates row */}
+            <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5" style={{ color: service.accent }} />
+                <span className="modal-coord-text text-xs font-mono">{service.coord}</span>
               </div>
+              <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
             </div>
-          )}
-          {/* Gradient fade into body */}
-          <div className="modal-img-fade absolute bottom-0 left-0 right-0 h-16 pointer-events-none" />
-        </div>
-
-        {/* Body */}
-        <div className="p-6 pt-4">
-          {/* Icon + Title */}
-          <div className="flex items-start gap-4 mb-5">
-            <div className="relative flex-shrink-0">
-              <div className="absolute animate-spin-slow pointer-events-none"
-                style={{ inset: "-6px", border: `1px dashed ${service.accent}30`, borderRadius: "50%" }} />
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: `${service.accent}15`, border: `1px solid ${service.accent}35` }}>
-                <Icon className="w-6 h-6" style={{ color: service.accent }} />
-              </div>
-            </div>
-            <div>
-              <h2 className="t-head text-xl font-black mb-1">{service.title}</h2>
-              <p className="t-muted text-sm leading-relaxed">
-                {service.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Detail paragraph */}
-          <div className="modal-detail-box mb-5 p-4 rounded">
-            <div className="flex items-center gap-2 mb-2">
-              <ChevronRight className="w-3 h-3" style={{ color: service.accent }} />
-              <span className="text-xs font-mono tracking-widest uppercase" style={{ color: service.accent }}>
-                Description
-              </span>
-            </div>
-            <p className="t-muted text-sm leading-relaxed">{service.details}</p>
-          </div>
-
-          {/* Features chips */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            {service.features.map((f) => (
-              <span key={f} className="text-xs font-mono px-3 py-1 rounded-full"
-                style={{
-                  background: `${service.accent}12`,
-                  border: `1px solid ${service.accent}30`,
-                  color: `${service.accent}cc`,
-                }}>
-                {f}
-              </span>
-            ))}
-          </div>
-
-          {/* Coordinates row */}
-          <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5" style={{ color: service.accent }} />
-              <span className="modal-coord-text text-xs font-mono">{service.coord}</span>
-            </div>
-            <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
           </div>
         </div>
       </div>

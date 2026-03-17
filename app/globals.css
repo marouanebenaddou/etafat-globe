@@ -340,15 +340,17 @@
    GRADIENT TEXT — Etafat brand palette
    ============================================================ */
 .gradient-text {
-  background: linear-gradient(135deg, #0066dd 0%, #004d99 100%);
+  background: linear-gradient(135deg, #4FC3F7 0%, #1E88E5 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  filter: drop-shadow(0 0 18px rgba(79,195,247,0.3));
 }
 .dark .gradient-text {
-  background: linear-gradient(135deg, #4da6ff 0%, #33aacc 100%);
+  background: linear-gradient(135deg, #4FC3F7 0%, #1E88E5 100%);
   -webkit-background-clip: text;
   background-clip: text;
+  filter: drop-shadow(0 0 24px rgba(79,195,247,0.45));
 }
 .gradient-text-gold {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);

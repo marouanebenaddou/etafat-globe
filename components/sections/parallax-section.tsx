@@ -89,11 +89,11 @@ export default function ParallaxSection() {
           <h2 className={`text-4xl sm:text-5xl font-black mb-4 leading-tight ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
             Partout où{" "}
             {/* Animated cycling word (article included) */}
-            <span className="relative inline-flex justify-center" style={{ minWidth: "13ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
+            <span className="relative inline-flex" style={{ width: "13ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
               {cyclingWords.map((word, i) => (
                 <motion.span
                   key={word}
-                  className="absolute inset-0 flex items-center justify-center font-black"
+                  className="absolute inset-0 flex items-center justify-start font-black"
                   style={brandGrad}
                   initial={{ opacity: 0, y: 40 }}
                   animate={

@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
 import { Building, Quote } from "lucide-react"
 
 const clients = [
@@ -29,6 +30,8 @@ const sectors = [
 const marqueeClients = [...clients, ...clients]
 
 export default function ClientsSection() {
+  const { isDark } = useTheme()
+  const fadeColor = isDark ? "#000510" : "#e8f0fc"
   const { ref, isVisible } = useScrollReveal(0.12, true)
   const { ref: sectorRef, isVisible: sectorVisible } = useScrollReveal(0.1, true)
 
@@ -65,9 +68,9 @@ export default function ClientsSection() {
         {/* Infinite marquee */}
         <div className="relative mb-12 overflow-hidden">
           {/* Left fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#000510] to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: `linear-gradient(to right, ${fadeColor}, transparent)` }} />
           {/* Right fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#000510] to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: `linear-gradient(to left, ${fadeColor}, transparent)` }} />
 
           <div className="flex animate-marquee gap-4" style={{ width: "max-content" }}>
             {marqueeClients.map((client, i) => (
@@ -93,8 +96,8 @@ export default function ClientsSection() {
 
         {/* Second row — reverse */}
         <div className="relative overflow-hidden mb-16">
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#000510] to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#000510] to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: `linear-gradient(to right, ${fadeColor}, transparent)` }} />
+          <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none" style={{ background: `linear-gradient(to left, ${fadeColor}, transparent)` }} />
           <div className="flex gap-4" style={{ width: "max-content", animation: "marquee 40s linear infinite reverse" }}>
             {[...marqueeClients].reverse().map((client, i) => (
               <div key={`rev-${client.name}-${i}`}

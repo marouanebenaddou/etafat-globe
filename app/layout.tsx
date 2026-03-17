@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Montserrat, Raleway } from "next/font/google";
+import { Inter, Raleway } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme-context";
 import "./globals.css";
 
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark">
-      <body className={`${montserrat.variable} ${raleway.variable} antialiased`}>
+      <body className={`${inter.variable} ${raleway.variable} antialiased`}>
         <ThemeProvider>
           {children}
         </ThemeProvider>

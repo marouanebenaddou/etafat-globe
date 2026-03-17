@@ -1,0 +1,461 @@
+"use client"
+
+import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
+import { useState, useEffect } from "react"
+import { Plane, ScanLine, MapPin, Car, Waves, Radio, Zap, Camera, Crosshair, X, ChevronRight } from "lucide-react"
+
+const technologies = [
+  {
+    icon: Plane,
+    name: "Drones & UAV",
+    category: "Acquisition aérienne",
+    description: "Photogrammétrie et orthophotographies haute résolution. Couverture rapide de grandes surfaces pour cartographie et inspection.",
+    details: "Nos flottes de drones professionnels effectuent des missions de cartographie complètes avec traitement photogrammétrique automatisé. Chaque vol est planifié avec précision pour garantir une couverture optimale et une reconstruction 3D fidèle du terrain.",
+    specs: ["Résolution < 5 cm/px", "Surfaces > 1000 ha/jour", "Vol autonome GPS", "Traitement IA"],
+    coord: "31°09′N 007°59′W",
+    signal: "GNSS RTK · 24 sat",
+    color: "#007BFF",
+    bg: "rgba(0,123,255,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg" as string | null,
+  },
+  {
+    icon: ScanLine,
+    name: "LiDAR",
+    category: "Numérisation 3D",
+    description: "Acquisition de nuages de points 3D haute densité pour la modélisation du terrain et des ouvrages avec une précision centimétrique.",
+    details: "La technologie LiDAR permet d'acquérir des millions de points 3D par seconde avec une précision centimétrique. Idéal pour la modélisation de terrain, l'inspection d'ouvrages, et la création de jumeaux numériques précis.",
+    specs: ["Densité > 100 pts/m²", "Précision ±2 cm", "Portée 300m", "Temps réel"],
+    coord: "33°59′N 006°51′W",
+    signal: "LIDAR · 905nm · Class 1",
+    color: "#22d3ee",
+    bg: "rgba(34,211,238,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/pva_lidar.jpg" as string | null,
+  },
+  {
+    icon: MapPin,
+    name: "GPS / GNSS",
+    category: "Positionnement",
+    description: "Systèmes de positionnement géodésique RTK et réseau de stations permanentes pour une précision millimétrique sur le terrain.",
+    details: "Notre infrastructure GNSS comprend des récepteurs multi-constellation de haute précision et un réseau de stations de référence CORS couvrant le Maroc. La technique RTK assure une précision centimétrique en temps réel sur le terrain.",
+    specs: ["Précision ±1 cm H", "Multi-constellation", "RTK & PPP", "Réseau CORS"],
+    coord: "30°25′N 009°36′W",
+    signal: "GPS+GLONASS+Galileo+BeiDou",
+    color: "#10b981",
+    bg: "rgba(16,185,129,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/gps-1.jpg" as string | null,
+  },
+  {
+    icon: Car,
+    name: "Mobile Mapping",
+    category: "Relevé mobile",
+    description: "Acquisition de données géospatiales depuis des véhicules en mouvement. Cartographie rapide des réseaux linéaires et infrastructures routières.",
+    details: "Les systèmes de Mobile Mapping combinent LiDAR, caméras panoramiques et GNSS embarqués pour cartographier rapidement les corridors routiers, les réseaux urbains et les infrastructures linéaires à grande vitesse.",
+    specs: ["Vitesse 80 km/h", "Précision ±5 cm", "LiDAR + caméras", "Linéaires 100km/j"],
+    coord: "34°01′N 005°00′W",
+    signal: "IMU · LiDAR · 360° CAM",
+    color: "#8b5cf6",
+    bg: "rgba(139,92,246,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/mms-e1609684489385.jpg" as string | null,
+  },
+  {
+    icon: Waves,
+    name: "Bathymétrie",
+    category: "Relevé sous-marin",
+    description: "Cartographie du fond des plans d'eau par sondeur multi-faisceaux. Essentiel pour les projets portuaires, barrages et gestion des ressources en eau.",
+    details: "Nos levés bathymétriques utilisent des sondeurs multi-faisceaux de dernière génération pour cartographier les fonds sous-marins avec une haute résolution. Application aux ports, barrages, lacs et zones côtières.",
+    specs: ["Multi-faisceaux", "Résolution 5 cm", "Intégration GNSS", "Traitement 3D"],
+    coord: "35°46′N 005°48′W",
+    signal: "MBES · 400kHz · SVP",
+    color: "#06b6d4",
+    bg: "rgba(6,182,212,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/bathymetrie.jpg" as string | null,
+  },
+  {
+    icon: Radio,
+    name: "Géoradar GPR",
+    category: "Détection souterraine",
+    description: "Détection et localisation des réseaux enterrés et des cavités souterraines sans fouilles. Technologie non-destructive pour l'investigation du sous-sol.",
+    details: "Le géoradar (Ground Penetrating Radar) émet des impulsions électromagnétiques dans le sol pour détecter et localiser les structures enterrées sans excavation. Réseaux, câbles, cavités, dalles — tout est cartographié avec précision.",
+    specs: ["Profondeur 5m", "Non destructif", "Haute fréquence", "Cartographie 3D"],
+    coord: "32°52′N 009°02′W",
+    signal: "GPR · 250-2600MHz",
+    color: "#f97316",
+    bg: "rgba(249,115,22,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/georadar-1.jpg" as string | null,
+  },
+  {
+    icon: Zap,
+    name: "Détection EM",
+    category: "Électromagnétique",
+    description: "Détection électromagnétique des canalisations et câbles enfouis. Localisation précise des réseaux concessionnaires avant travaux.",
+    details: "La détection électromagnétique (EM) permet de localiser avec précision les canalisations métalliques, câbles électriques et réseaux de télécommunications enfouis. Indispensable avant tout terrassement ou travaux de voirie.",
+    specs: ["Profondeur 3m", "Tous métaux", "Précision ±10cm", "Certification"],
+    coord: "33°35′N 007°35′W",
+    signal: "EM · 50Hz-33kHz",
+    color: "#eab308",
+    bg: "rgba(234,179,8,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/detecteur_electromagnetique.jpg" as string | null,
+  },
+  {
+    icon: Camera,
+    name: "Laser Scanning",
+    category: "Numérisation BIM",
+    description: "Scan 3D haute précision de bâtiments et ouvrages pour la production de plans as-built et maquettes BIM. Idéal pour la rénovation et le patrimoine.",
+    details: "Le scan laser 3D capture des milliards de points avec une précision millimétrique pour numériser des bâtiments, ouvrages d'art et patrimoine historique. Le nuage de points résultant permet la production de plans as-built et de maquettes BIM.",
+    specs: ["Précision 2mm", "360° complet", "Milliards pts", "Scan-to-BIM"],
+    coord: "34°01′N 006°49′W",
+    signal: "TLS · 905nm · 2mm @10m",
+    color: "#f43f5e",
+    bg: "rgba(244,63,94,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/03/scanner2.jpg" as string | null,
+  },
+  {
+    icon: Crosshair,
+    name: "Stations Totales",
+    category: "Topographie classique",
+    description: "Levés topographiques de précision au théodolite et distancemètre. La base de notre expertise depuis 40 ans, toujours indispensable pour les projets complexes.",
+    details: "Les stations totales robotisées constituent le cœur de la topographie traditionnelle. Avec une précision angulaire d'une seconde d'arc et une précision en distance de 1-2mm, elles restent indispensables pour les implantations, les contrôles et les levés de précision.",
+    specs: ["Précision 1\"", "Portée 2km", "Mesure directe", "ISO certifié"],
+    coord: "31°38′N 008°00′W",
+    signal: "EDM · ISO 17123-4",
+    color: "#a78bfa",
+    bg: "rgba(167,139,250,0.08)",
+    image: "https://etafat.ma/wp-content/uploads/2021/01/station_totale.jpg" as string | null,
+  },
+]
+
+// ─── Geomatic Modal ────────────────────────────────────────────────────────────
+function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false)
+  const Icon = tech.icon
+
+  useEffect(() => {
+    requestAnimationFrame(() => setMounted(true))
+  }, [])
+
+  const handleClose = () => {
+    setMounted(false)
+    setTimeout(onClose, 300)
+  }
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose() }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
+      style={{
+        background: mounted ? "rgba(0,0,0,0.82)" : "rgba(0,0,0,0)",
+        backdropFilter: mounted ? "blur(8px)" : "blur(0px)",
+        transition: "background 0.3s ease, backdrop-filter 0.3s ease",
+      }}
+      onClick={handleClose}
+    >
+      {/* Modal panel */}
+      <div
+        className="relative w-full max-w-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #0a0f1e 0%, #0d1a2e 50%, #0a1020 100%)",
+          border: `1px solid ${tech.color}40`,
+          borderRadius: "4px",
+          boxShadow: `0 0 0 1px ${tech.color}15, 0 40px 80px rgba(0,0,0,0.8), 0 0 80px ${tech.color}15`,
+          transform: mounted ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
+          opacity: mounted ? 1 : 0,
+          transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ── Background geo grid ── */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.06 }}>
+          <svg width="100%" height="100%">
+            <defs>
+              <pattern id="geo-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke={tech.color} strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#geo-grid)" />
+          </svg>
+        </div>
+
+        {/* ── Corner brackets ── */}
+        {["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"].map((pos, i) => (
+          <div key={i} className={`absolute ${pos} w-5 h-5 pointer-events-none z-10`}
+            style={{ borderColor: tech.color, opacity: 0.8, borderStyle: "solid",
+              borderWidth: i === 0 ? "2px 0 0 2px" : i === 1 ? "2px 2px 0 0" : i === 2 ? "0 0 2px 2px" : "0 2px 2px 0" }} />
+        ))}
+
+        {/* ── Header bar ── */}
+        <div className="relative flex items-center justify-between px-5 py-3 border-b"
+          style={{ borderColor: `${tech.color}25`, background: `${tech.color}08` }}>
+          <div className="flex items-center gap-3">
+            <div className="relative w-2 h-2">
+              <div className="absolute inset-0 rounded-full animate-ping" style={{ background: tech.color, opacity: 0.4 }} />
+              <div className="w-2 h-2 rounded-full" style={{ background: tech.color }} />
+            </div>
+            <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
+              {tech.category}
+            </span>
+            <span className="text-xs font-mono text-white/20">//</span>
+            <span className="text-xs font-mono text-white/30 hidden sm:inline">{tech.signal}</span>
+          </div>
+          <button onClick={handleClose}
+            className="w-7 h-7 flex items-center justify-center rounded transition-all hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.4)" }}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* ── Image slot ── */}
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "1 / 1", maxHeight: "320px" }}>
+          {tech.image ? (
+            <img
+              src={tech.image}
+              alt={tech.name}
+              className="w-full h-full object-cover"
+              style={{ filter: "brightness(0.75) saturate(1.1)" }}
+            />
+          ) : (
+            /* Styled placeholder — replace with AI-generated image */
+            <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden"
+              style={{ background: `linear-gradient(135deg, #050c1a 0%, ${tech.color}18 100%)` }}>
+              {/* Animated concentric rings */}
+              {[0, 1, 2, 3].map(r => (
+                <div key={r} className="absolute rounded-full border"
+                  style={{
+                    width: `${80 + r * 60}px`, height: `${80 + r * 60}px`,
+                    borderColor: `${tech.color}${["30", "20", "15", "08"][r]}`,
+                    animation: `radar-sweep ${6 + r * 2}s linear infinite`,
+                    animationDelay: `${r * -1.5}s`,
+                  }} />
+              ))}
+              {/* Sweep */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-48 h-48 animate-radar origin-center relative">
+                  <div className="absolute top-1/2 left-1/2 w-24 h-px origin-left"
+                    style={{ background: `linear-gradient(90deg, ${tech.color}90, transparent)` }} />
+                </div>
+              </div>
+              {/* Center icon */}
+              <div className="relative z-10 w-20 h-20 rounded-2xl flex items-center justify-center"
+                style={{ background: `${tech.color}18`, border: `1px solid ${tech.color}40`,
+                  boxShadow: `0 0 40px ${tech.color}30` }}>
+                <Icon className="w-10 h-10" style={{ color: tech.color }} />
+              </div>
+              {/* Grid overlay */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage: `linear-gradient(${tech.color}08 1px, transparent 1px), linear-gradient(90deg, ${tech.color}08 1px, transparent 1px)`,
+                  backgroundSize: "30px 30px",
+                }} />
+              {/* Image slot label */}
+              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded"
+                style={{ background: "rgba(0,0,0,0.5)", border: `1px solid ${tech.color}25` }}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: tech.color }} />
+                <span className="text-xs font-mono" style={{ color: `${tech.color}80` }}>IMAGE SLOT</span>
+              </div>
+            </div>
+          )}
+          {/* Gradient fade into body */}
+          <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: "linear-gradient(to bottom, transparent, #0a0f1e)" }} />
+        </div>
+
+        {/* ── Body ── */}
+        <div className="p-6 pt-4">
+          {/* Icon + Title */}
+          <div className="flex items-start gap-4 mb-5">
+            <div className="relative flex-shrink-0">
+              <div className="absolute animate-spin-slow pointer-events-none"
+                style={{ inset: "-6px", border: `1px dashed ${tech.color}30`, borderRadius: "50%" }} />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: `${tech.color}15`, border: `1px solid ${tech.color}35` }}>
+                <Icon className="w-6 h-6" style={{ color: tech.color }} />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white mb-1">{tech.name}</h2>
+              <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                {tech.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Detail paragraph */}
+          <div className="mb-5 p-4 rounded" style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <div className="flex items-center gap-2 mb-2">
+              <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
+              <span className="text-xs font-mono tracking-widest uppercase" style={{ color: tech.color }}>
+                Description technique
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-white/60">{tech.details}</p>
+          </div>
+
+          {/* Specs chips */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            {tech.specs.map((spec) => (
+              <span key={spec} className="text-xs font-mono px-3 py-1 rounded-full"
+                style={{
+                  background: `${tech.color}12`,
+                  border: `1px solid ${tech.color}30`,
+                  color: `${tech.color}cc`,
+                }}>
+                {spec}
+              </span>
+            ))}
+          </div>
+
+          {/* Coordinates row */}
+          <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
+              <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.35)" }}>{tech.coord}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="w-1 rounded-full" style={{
+                  height: `${8 + i * 4}px`,
+                  background: i < 3 ? tech.color : `${tech.color}30`,
+                }} />
+              ))}
+              <span className="text-xs font-mono ml-1" style={{ color: `${tech.color}80` }}>LOCK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+function TechCard({
+  tech,
+  index,
+  onOpen,
+}: {
+  tech: typeof technologies[0]
+  index: number
+  onOpen: () => void
+}) {
+  const { ref, isVisible } = useScrollReveal(0.1)
+  const [hovered, setHovered] = useState(false)
+  const { isDark } = useTheme()
+  const Icon = tech.icon
+
+  return (
+    <div ref={ref} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
+      <div
+        className="group relative rounded-[5px] p-5 h-full transition-all duration-300 cursor-pointer overflow-hidden"
+        style={{
+          background: hovered ? tech.bg : isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+          border: `1px solid ${hovered ? tech.color + "40" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
+          transform: hovered ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
+          boxShadow: hovered ? `0 16px 40px ${tech.color}22` : "none",
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={onOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === "Enter" && onOpen()}
+      >
+        {hovered && (
+          <>
+            <div className="absolute top-0 left-0 w-4 h-4 pointer-events-none"
+              style={{ borderTop: `2px solid ${tech.color}`, borderLeft: `2px solid ${tech.color}`, borderRadius: "2px 0 0 0" }} />
+            <div className="absolute bottom-0 right-0 w-4 h-4 pointer-events-none"
+              style={{ borderBottom: `2px solid ${tech.color}`, borderRight: `2px solid ${tech.color}`, borderRadius: "0 0 2px 0" }} />
+          </>
+        )}
+
+        <div className="text-xs font-semibold tracking-widest uppercase mb-3 transition-colors duration-300"
+          style={{ color: hovered ? tech.color : isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)" }}>
+          {tech.category}
+        </div>
+
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300"
+            style={{
+              background: hovered ? `${tech.color}20` : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+              border: `1px solid ${hovered ? tech.color + "35" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+            }}>
+            <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: hovered ? tech.color : "#6b7280" }} />
+          </div>
+          <h3 className="t-head font-bold text-sm">{tech.name}</h3>
+        </div>
+
+        <p className="t-muted text-xs leading-relaxed mb-4">{tech.description}</p>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          {tech.specs.map((spec) => (
+            <div key={spec} className="flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full flex-shrink-0 transition-colors duration-300"
+                style={{ background: hovered ? tech.color : "#374151" }} />
+              <span className="text-xs t-xmuted">{spec}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="absolute bottom-3 right-4 flex items-center gap-1 transition-all duration-300"
+          style={{ opacity: hovered ? 0.6 : 0 }}>
+          <span className="text-[10px] font-mono" style={{ color: tech.color }}>voir plus</span>
+          <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Section ──────────────────────────────────────────────────────────────────
+export default function TechnologiesSection() {
+  const { ref, isVisible } = useScrollReveal()
+  const [selected, setSelected] = useState<typeof technologies[0] | null>(null)
+
+  return (
+    <section className="py-24 sec-bg-a relative overflow-hidden" id="technologies">
+      <div className="absolute inset-0 moroccan-pattern opacity-20" />
+
+      <div className="absolute top-1/2 right-16 w-64 h-64 -translate-y-1/2 pointer-events-none opacity-10">
+        <div className="absolute inset-0 rounded-full border border-blue-500/50" />
+        <div className="absolute inset-4 rounded-full border border-cyan-500/40" />
+        <div className="absolute inset-8 rounded-full border border-blue-400/30" />
+        <div className="absolute inset-12 rounded-full border border-cyan-400/20" />
+        <div className="absolute inset-0 rounded-full overflow-hidden animate-radar origin-center">
+          <div className="absolute top-1/2 left-1/2 w-1/2 h-0.5 bg-gradient-to-r from-blue-500/80 to-transparent origin-left" />
+        </div>
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        <div ref={ref} className={`text-center mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-1.5 text-xs text-cyan-400 uppercase tracking-widest mb-4">
+            Technologies de pointe
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
+            L&apos;arsenal technologique{" "}
+            <span className="gradient-text">d&apos;Etafat</span>
+          </h2>
+          <p className="t-body max-w-2xl mx-auto">
+            Nous déployons les instruments les plus avancés du marché pour garantir la précision, la rapidité et la fiabilité de chaque acquisition de données géospatiales.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {technologies.map((tech, i) => (
+            <TechCard key={tech.name} tech={tech} index={i} onOpen={() => setSelected(tech)} />
+          ))}
+        </div>
+      </div>
+
+      {selected && <TechModal tech={selected} onClose={() => setSelected(null)} />}
+
+      <div className="section-divider mt-24" />
+    </section>
+  )
+}

@@ -234,9 +234,11 @@ export default function EtherealBeamsHero() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
-    : { bgColor:"#c2d8f2", diffuseColor:"#a8c8e8", lightColor:"#007BFF" }
+    : { bgColor:"#9ec3de", diffuseColor:"#7aaec8", lightColor:"#007BFF" }
 
-  const bgColor = isDark ? "#000510" : "#c2d8f2"
+  const bgColor = isDark ? "#000510" : "#9ec3de"
+  // In light mode, masks use semi-transparent rgba so the globe bleeds through
+  const m = isDark ? bgColor : "rgba(158,195,222,"  // prefix for rgba helper
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden transition-colors duration-500"
@@ -247,24 +249,25 @@ export default function EtherealBeamsHero() {
         <video
           autoPlay muted loop playsInline
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: isDark ? 0.85 : 0.75 }}
+          style={{ opacity: isDark ? 0.85 : 0.92 }}
         >
           <source src="/globe.mp4" type="video/mp4"/>
         </video>
 
-        {/* Inward mask — all 4 edges fade into site background */}
+        {/* Inward mask — soft vignette, semi-transparent in light mode */}
         <div className="absolute inset-0 z-10 pointer-events-none" style={{
-          background: `
-            radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, ${bgColor} 100%)
-          `
+          background: isDark
+            ? `radial-gradient(ellipse 80% 80% at 50% 50%, transparent 30%, ${bgColor} 100%)`
+            : `radial-gradient(ellipse 80% 80% at 50% 50%, transparent 62%, rgba(158,195,222,0.55) 100%)`
         }}/>
 
-        {/* Extra edge masks for clean blending */}
+        {/* Edge masks — top/sides subtle, bottom solid for section transition */}
         <div className="absolute inset-0 z-10 pointer-events-none" style={{
-          background: `
-            linear-gradient(to bottom, ${bgColor} 0%, transparent 12%, transparent 75%, ${bgColor} 100%),
-            linear-gradient(to right,  ${bgColor} 0%, transparent 14%, transparent 86%, ${bgColor} 100%)
-          `
+          background: isDark
+            ? `linear-gradient(to bottom, ${bgColor} 0%, transparent 18%, transparent 70%, ${bgColor} 100%),
+               linear-gradient(to right,  ${bgColor} 0%, transparent 18%, transparent 82%, ${bgColor} 100%)`
+            : `linear-gradient(to bottom, rgba(158,195,222,0.65) 0%, transparent 10%, transparent 78%, ${bgColor} 100%),
+               linear-gradient(to right,  rgba(158,195,222,0.35) 0%, transparent 12%, transparent 88%, rgba(158,195,222,0.35) 100%)`
         }}/>
       </div>
 

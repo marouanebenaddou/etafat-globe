@@ -88,7 +88,10 @@ export default function ParallaxSection() {
         className="relative overflow-hidden"
         style={{ background: isDark ? "#07101f" : "#eef4fb" }}
       >
-        {/* Boxes grid — desktop only (too heavy for mobile) */}
+        {/* Static grid on mobile, animated on desktop */}
+        <div className="sm:hidden">
+          <Boxes isStatic />
+        </div>
         <div className="hidden sm:block">
           <Boxes />
         </div>

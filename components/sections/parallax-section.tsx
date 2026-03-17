@@ -9,47 +9,50 @@ const ZoomParallax = dynamic(
 )
 
 const media = [
-  // index 0 — center, zooms deepest: drone video of Morocco/Rabat
+  // index 0 — CENTER (unchanged): Morocco/Rabat aerial drone
   {
     type: "video" as const,
     src: "/morocco.mp4",
     alt: "Vue aérienne du Maroc",
   },
-  // index 1 — top-left wide: drone in flight over terrain
+  // index 1 — top, right: Africa drone flyover
   {
-    type: "image" as const,
-    src: "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=900&h=600&fit=crop&auto=format&q=80",
-    alt: "Drone en vol",
+    type: "video" as const,
+    src: "/africa-drone.mp4",
+    alt: "Survol drone Afrique",
   },
-  // index 2 — top-left tall: GPS surveying in the field
+  // index 2 — left tall: Etafat operator scanning historic site
+  // TODO: replace with real photo once saved → /etafat-scan.jpg
   {
     type: "image" as const,
     src: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=600&h=900&fit=crop&auto=format&q=80",
-    alt: "Relevé topographique GPS",
+    alt: "Scan patrimoine",
   },
-  // index 3 — center-right: Morocco aerial city view
+  // index 3 — right center: Rabat aerial city
   {
-    type: "image" as const,
-    src: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=900&h=600&fit=crop&auto=format&q=80",
-    alt: "Vue aérienne Marrakech",
+    type: "video" as const,
+    src: "/rabat-aerial.mp4",
+    alt: "Vue aérienne Rabat",
   },
-  // index 4 — bottom-left: field surveying team
+  // index 4 — lower left: Etafat team GPR survey
+  // TODO: replace with real photo once saved → /etafat-gpr.jpg
   {
     type: "image" as const,
     src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=700&h=500&fit=crop&auto=format&q=80",
-    alt: "Équipe de terrain",
+    alt: "Équipe terrain GPR",
   },
-  // index 5 — bottom wide: atlas mountains Morocco
+  // index 5 — lower wide: field survey / construction footage
   {
-    type: "image" as const,
-    src: "https://images.unsplash.com/photo-1553603227-2358aabe821e?w=900&h=500&fit=crop&auto=format&q=80",
-    alt: "Montagne Atlas Maroc",
+    type: "video" as const,
+    src: "/survey-field.mp4",
+    alt: "Relevé terrain",
   },
-  // index 6 — bottom-right small: technical engineering
+  // index 6 — lower right small: Etafat plane / wind turbine
+  // TODO: replace with real photo once saved → /etafat-plane.jpg
   {
     type: "image" as const,
     src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&auto=format&q=80",
-    alt: "Ingénierie géospatiale",
+    alt: "Avion ETAFAT",
   },
 ]
 

@@ -1,7 +1,7 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useEffect } from "react"
-import EtafatHero from "@/components/ui/etafat-hero"
 import StatsSection from "@/components/sections/stats-section"
 import ServicesSection from "@/components/sections/services-section"
 import TechnologiesSection from "@/components/sections/technologies-section"
@@ -10,6 +10,21 @@ import ClientsSection from "@/components/sections/clients-section"
 import AcademySection from "@/components/sections/academy-section"
 import ContactSection from "@/components/sections/contact-section"
 import FooterSection from "@/components/sections/footer-section"
+
+const EtherealBeamsHero = dynamic(
+  () => import("@/components/ui/ethereal-beams-hero"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-screen bg-[#000510] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-2 border-[#007BFF]/30 border-t-[#007BFF] rounded-full animate-spin" />
+          <span className="text-white/40 text-sm tracking-widest">ETAFAT</span>
+        </div>
+      </div>
+    ),
+  }
+)
 
 export default function Home() {
   // Global scroll reveal observer
@@ -44,7 +59,7 @@ export default function Home() {
 
   return (
     <main className="overflow-x-hidden">
-      <EtafatHero />
+      <EtherealBeamsHero />
 <StatsSection />
       <ServicesSection />
       <TechnologiesSection />

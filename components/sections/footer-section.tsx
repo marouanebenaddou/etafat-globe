@@ -34,7 +34,7 @@ const footerLinks = {
 const socialLinks = [
   { icon: Linkedin, label: "LinkedIn", href: "https://www.linkedin.com/company/etafat", color: "#0077b5" },
   { icon: Twitter, label: "Twitter", href: "https://x.com/etafat_", color: "#1da1f2" },
-  { icon: Youtube, label: "YouTube", href: "#", color: "#ff0000" },
+  { icon: Youtube, label: "YouTube", href: "https://www.youtube.com/channel/UCob5A6P_5yGGfr0-AY_3WSA/featured", color: "#ff0000" },
   { icon: Facebook, label: "Facebook", href: "https://www.facebook.com/ETAFAT/", color: "#1877f2" },
 ]
 

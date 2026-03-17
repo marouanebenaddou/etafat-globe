@@ -121,7 +121,7 @@ export default function ContactSection() {
                 {[
                   { icon: Linkedin, name: "LinkedIn", color: "#0077b5", href: "https://www.linkedin.com/company/etafat" },
                   { icon: Twitter, name: "Twitter / X", color: "#1da1f2", href: "https://x.com/etafat_" },
-                  { icon: Youtube, name: "YouTube", color: "#ff0000", href: "#" },
+                  { icon: Youtube, name: "YouTube", color: "#ff0000", href: "https://www.youtube.com/channel/UCob5A6P_5yGGfr0-AY_3WSA/featured" },
                   { icon: Facebook, name: "Facebook", color: "#1877f2", href: "https://www.facebook.com/ETAFAT/" },
                 ].map(({ icon: Icon, name, color, href }) => (
                   <a key={name} href={href} target="_blank" rel="noopener noreferrer"

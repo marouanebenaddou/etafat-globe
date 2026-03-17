@@ -234,15 +234,43 @@ export default function EtherealBeamsHero() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [navHidden, setNavHidden] = useState(false)
   const lastScrollY = useRef(0)
+  const scrolledDown = useRef(false)
+  const mouseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY
-      setNavHidden(y > 80 && y > lastScrollY.current)
+      scrolledDown.current = y > 80
+      if (y <= 80 || y < lastScrollY.current) {
+        // At top or scrolling up — show immediately
+        if (mouseTimer.current) clearTimeout(mouseTimer.current)
+        setNavHidden(false)
+      } else {
+        // Scrolling down past threshold — hide
+        setNavHidden(true)
+      }
       lastScrollY.current = y
     }
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (e.clientY < 80) {
+        // Mouse near top — show nav, cancel any pending hide timer
+        if (mouseTimer.current) clearTimeout(mouseTimer.current)
+        setNavHidden(false)
+      } else if (scrolledDown.current) {
+        // Mouse left top zone while scrolled down — hide after 3s
+        if (mouseTimer.current) clearTimeout(mouseTimer.current)
+        mouseTimer.current = setTimeout(() => setNavHidden(true), 3000)
+      }
+    }
+
     window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
+    window.addEventListener("mousemove", onMouseMove)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("mousemove", onMouseMove)
+      if (mouseTimer.current) clearTimeout(mouseTimer.current)
+    }
   }, [])
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }

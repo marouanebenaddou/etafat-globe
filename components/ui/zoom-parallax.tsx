@@ -13,26 +13,26 @@ interface ZoomParallaxProps {
 }
 
 /**
- * Each tile is positioned relative to the viewport center (50vw, 50vh).
- * `top` / `left` are CSS translate values applied via transform so the tile
- * is offset from the center-anchored flex position.
- * All tiles should remain inside 0-100vw × 0-100vh at scale 1.
+ * Each tile is anchored to the viewport center (50vw, 50vh) then shifted by dx/dy.
+ * dx/dy are CSS calc-compatible strings (e.g. "0px", "-30vw").
+ * The tile's own size is subtracted via -50% so the center of each tile
+ * sits exactly at (50% + dx, 50% + dy).
  */
 const TILES = [
-  // idx 0 — center hero (drone video) — largest, zooms to fill screen
-  { offsetX: '0px',    offsetY: '0px',    w: '32vw', h: '38vh', scaleTo: 4 },
-  // idx 1 — top-left wide
-  { offsetX: '-33vw',  offsetY: '-26vh',  w: '26vw', h: '28vh', scaleTo: 5 },
-  // idx 2 — top-right
-  { offsetX: '24vw',   offsetY: '-26vh',  w: '22vw', h: '26vh', scaleTo: 6 },
-  // idx 3 — bottom-left
-  { offsetX: '-30vw',  offsetY: '22vh',   w: '24vw', h: '22vh', scaleTo: 5 },
-  // idx 4 — bottom-right
-  { offsetX: '22vw',   offsetY: '24vh',   w: '22vw', h: '22vh', scaleTo: 6 },
-  // idx 5 — mid-left slim
-  { offsetX: '-38vw',  offsetY: '-3vh',   w: '12vw', h: '20vh', scaleTo: 8 },
-  // idx 6 — top-right small accent
-  { offsetX: '32vw',   offsetY: '-8vh',   w: '12vw', h: '15vh', scaleTo: 9 },
+  // 0 – center hero (drone video)
+  { dx: '0px',    dy: '0px',    w: '30vw', h: '36vh', scaleTo: 4 },
+  // 1 – top-left
+  { dx: '-30vw',  dy: '-24vh',  w: '24vw', h: '26vh', scaleTo: 5 },
+  // 2 – top-right
+  { dx: '22vw',   dy: '-24vh',  w: '22vw', h: '24vh', scaleTo: 6 },
+  // 3 – bottom-left
+  { dx: '-28vw',  dy: '22vh',   w: '24vw', h: '22vh', scaleTo: 5 },
+  // 4 – bottom-right
+  { dx: '20vw',   dy: '22vh',   w: '22vw', h: '22vh', scaleTo: 6 },
+  // 5 – mid-left slim
+  { dx: '-38vw',  dy: '-2vh',   w: '12vw', h: '20vh', scaleTo: 8 },
+  // 6 – top-right accent
+  { dx: '34vw',   dy: '-8vh',   w: '12vw', h: '16vh', scaleTo: 9 },
 ]
 
 export function ZoomParallax({ images }: ZoomParallaxProps) {
@@ -42,7 +42,6 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
     offset: ['start start', 'end end'],
   })
 
-  // Build one motion value per unique scaleTo
   const s4 = useTransform(scrollYProgress, [0, 1], [1, 4])
   const s5 = useTransform(scrollYProgress, [0, 1], [1, 5])
   const s6 = useTransform(scrollYProgress, [0, 1], [1, 6])
@@ -52,7 +51,7 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
 
   return (
     <div ref={container} className="relative h-[200vh]">
-      {/* sticky viewport */}
+      {/* sticky fullscreen canvas */}
       <div className="sticky top-0 h-screen overflow-hidden bg-[#07101f]">
         {images.map(({ src, alt, type = 'image' }, index) => {
           const tile = TILES[index % TILES.length]
@@ -62,17 +61,18 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
             <motion.div
               key={index}
               style={{ scale }}
-              /* Each layer is a full-viewport flex-centered box.
-                 The inner div is translated to its grid position.
-                 transform-origin defaults to center → zooms from viewport center. */
-              className="absolute inset-0 flex items-center justify-center"
+              /* Fills the viewport; scale zooms from the element center = viewport center */
+              className="absolute inset-0"
             >
+              {/* Anchored to (50% + dx, 50% + dy), own center via -50% */}
               <div
                 style={{
+                  position: 'absolute',
+                  top: `calc(50% + ${tile.dy})`,
+                  left: `calc(50% + ${tile.dx})`,
                   width: tile.w,
                   height: tile.h,
-                  transform: `translate(${tile.offsetX}, ${tile.offsetY})`,
-                  flexShrink: 0,
+                  transform: 'translate(-50%, -50%)',
                   overflow: 'hidden',
                 }}
               >

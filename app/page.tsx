@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import { useEffect } from "react"
 import StatsSection from "@/components/sections/stats-section"
+import ParallaxSection from "@/components/sections/parallax-section"
 import ServicesSection from "@/components/sections/services-section"
 import TechnologiesSection from "@/components/sections/technologies-section"
 import AboutSection from "@/components/sections/about-section"
@@ -60,6 +61,7 @@ export default function Home() {
   return (
     <main className="overflow-x-hidden">
       <EtherealBeamsHero />
+      <ParallaxSection />
       <StatsSection />
       <ServicesSection />
       <TechnologiesSection />

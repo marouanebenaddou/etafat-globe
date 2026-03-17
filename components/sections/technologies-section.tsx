@@ -177,7 +177,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
     >
       {/* Modal panel */}
       <div
-        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-none sm:block"
         style={{
           border: `1px solid ${tech.color}35`,
           borderRadius: "4px",
@@ -236,8 +236,8 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
           </button>
         </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto overscroll-contain flex-1">
+        {/* Scrollable content — mobile only */}
+        <div className="overflow-y-auto sm:overflow-visible overscroll-contain flex-1 sm:flex-none">
           {/* ── Image slot ── */}
           <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
             {tech.image ? (

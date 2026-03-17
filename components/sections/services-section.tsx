@@ -159,7 +159,7 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
       onClick={handleClose}
     >
       <div
-        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-none sm:block"
         style={{
           border: `1px solid ${service.accent}35`,
           borderRadius: "4px",
@@ -218,8 +218,8 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
           </button>
         </div>
 
-        {/* Scrollable content */}
-        <div className="overflow-y-auto overscroll-contain flex-1">
+        {/* Scrollable content — mobile only */}
+        <div className="overflow-y-auto sm:overflow-visible overscroll-contain flex-1 sm:flex-none">
           {/* Image slot */}
           <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
             {service.image ? (

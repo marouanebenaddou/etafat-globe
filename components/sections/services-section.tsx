@@ -342,10 +342,12 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden"
         style={{
           background: active
-            ? `linear-gradient(135deg, rgba(0,5,16,0.9), rgba(0,5,16,0.7))`
-            : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-          border: `1px solid ${active ? service.accent + "50" : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
-          boxShadow: active ? `0 20px 60px ${service.glow}` : "none",
+            ? isDark
+              ? `linear-gradient(135deg, rgba(0,5,16,0.9), rgba(0,5,16,0.7))`
+              : `linear-gradient(135deg, rgba(255,255,255,1), ${service.accent}0d)`
+            : isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.97)",
+          border: `1px solid ${active ? service.accent + (isDark ? "50" : "40") : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,90,200,0.18)"}`,
+          boxShadow: active ? `0 20px 60px ${service.glow}` : isDark ? "none" : "0 4px 20px rgba(0,80,180,0.1)",
           transform: active ? "translateY(-6px)" : "translateY(0)",
         }}
         onMouseEnter={() => setHovered(true)}
@@ -389,14 +391,14 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         <div
           className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-all duration-300"
           style={{
-            background: hovered
+            background: active
               ? `linear-gradient(135deg, ${service.accent}30, ${service.accent}15)`
-              : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-            border: `1px solid ${active ? service.accent + "40" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+              : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,90,200,0.06)",
+            border: `1px solid ${active ? service.accent + "40" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,90,200,0.15)"}`,
           }}
         >
           <Icon className="w-6 h-6 transition-colors duration-300"
-            style={{ color: active ? service.accent : "#94a3b8" }} />
+            style={{ color: active ? service.accent : isDark ? "#94a3b8" : "#4a6a85" }} />
         </div>
 
         {/* Title */}
@@ -410,7 +412,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
           {service.features.map((f) => (
             <li key={f} className="flex items-center gap-2 text-xs t-muted">
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-300"
-                style={{ background: active ? service.accent : "#4b5563" }} />
+                style={{ background: active ? service.accent : isDark ? "#4b5563" : "#94a3b8" }} />
               {f}
             </li>
           ))}

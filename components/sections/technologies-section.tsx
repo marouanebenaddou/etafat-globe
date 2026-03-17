@@ -389,10 +389,12 @@ function TechCard({
       <div
         className="group relative rounded-[5px] p-5 h-full transition-all duration-300 cursor-pointer overflow-hidden"
         style={{
-          background: active ? tech.bg : isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
-          border: `1px solid ${active ? tech.color + "40" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
+          background: active
+            ? isDark ? tech.bg : `linear-gradient(135deg, rgba(255,255,255,1), ${tech.color}0d)`
+            : isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.97)",
+          border: `1px solid ${active ? tech.color + "40" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,90,200,0.18)"}`,
           transform: active ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
-          boxShadow: active ? `0 16px 40px ${tech.color}22` : "none",
+          boxShadow: active ? `0 16px 40px ${tech.color}22` : isDark ? "none" : "0 4px 20px rgba(0,80,180,0.1)",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -420,17 +422,17 @@ function TechCard({
         )}
 
         <div className="text-xs font-semibold tracking-widest uppercase mb-3 transition-colors duration-300"
-          style={{ color: active ? tech.color : isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)" }}>
+          style={{ color: active ? tech.color : isDark ? "rgba(255,255,255,0.25)" : "rgba(0,60,140,0.4)" }}>
           {tech.category}
         </div>
 
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300"
             style={{
-              background: hovered ? `${tech.color}20` : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-              border: `1px solid ${active ? tech.color + "35" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+              background: active ? `${tech.color}20` : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,90,200,0.07)",
+              border: `1px solid ${active ? tech.color + "35" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,90,200,0.15)"}`,
             }}>
-            <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: active ? tech.color : "#6b7280" }} />
+            <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: active ? tech.color : isDark ? "#6b7280" : "#4a6a85" }} />
           </div>
           <h3 className="t-head font-bold text-sm">{tech.name}</h3>
         </div>

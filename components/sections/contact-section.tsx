@@ -2,9 +2,7 @@
 
 import { useScrollReveal } from "@/lib/hooks"
 import { useState } from "react"
-import { Mail, Phone, MapPin, Send, Linkedin, Twitter, Youtube, Facebook, ArrowRight, CheckCircle } from "lucide-react"
-import { LampContainer } from "@/components/ui/lamp"
-import { motion } from "framer-motion"
+import { Mail, Phone, Send, Linkedin, Twitter, Youtube, Facebook, ArrowRight, CheckCircle } from "lucide-react"
 
 const offices = [
   {
@@ -56,14 +54,11 @@ export default function ContactSection() {
 
   return (
     <section className="sec-bg-a relative overflow-hidden" id="contact">
-      {/* Lamp header */}
-      <LampContainer className="min-h-[32rem] pt-8">
-        <motion.div
-          initial={{ opacity: 0.5, y: 80 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8, ease: "easeInOut" }}
-          className="text-center"
-        >
+      <div className="absolute inset-0 moroccan-pattern opacity-10 pointer-events-none" />
+
+      {/* Header */}
+      <div ref={ref} className="relative pt-24 pb-16 text-center px-6">
+        <div className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
           <div className="inline-flex items-center gap-2 rounded-full bg-[#007BFF]/20 border border-[#007BFF]/30 px-4 py-1.5 text-xs text-[#4da6ff] uppercase tracking-widest mb-5">
             <Mail className="w-3.5 h-3.5" />
             Contactez-nous
@@ -75,16 +70,14 @@ export default function ContactSection() {
           <p className="text-white/60 max-w-2xl mx-auto text-lg">
             Notre équipe d&apos;experts est disponible pour étudier vos besoins et vous proposer la solution géospatiale adaptée à vos enjeux.
           </p>
-        </motion.div>
-      </LampContainer>
-
-      <div className="absolute inset-0 moroccan-pattern opacity-10 pointer-events-none" />
+        </div>
+      </div>
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8 pb-24">
 
         <div className="grid lg:grid-cols-5 gap-10">
           {/* Left: Contact info */}
-          <div className={`lg:col-span-2 transition-all duration-800 ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-12"}`}>
+          <div className={`lg:col-span-2 transition-all duration-800 ${formVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-12"}`}>
             {/* Offices */}
             <div className="space-y-4 mb-8">
               {offices.map((o, i) => (

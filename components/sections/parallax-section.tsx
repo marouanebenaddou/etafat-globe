@@ -66,7 +66,7 @@ export default function ParallaxSection() {
   const blueSpan = { background: "linear-gradient(135deg,#4FC3F7,#1E88E5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", filter: "drop-shadow(0 0 18px rgba(79,195,247,0.45))" }
 
   return (
-    <section id="parallax" className="relative" style={{ background: isDark ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)" : "#ffffff" }}>
+    <section id="parallax" className="relative" style={{ background: isDark ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)" : "linear-gradient(to bottom, #c5d9ec 0%, #dce8f5 15%, #eef4fb 40%, #f8fbff 70%, #ffffff 100%)" }}>
       <div className="relative">
         <div
           ref={ref}

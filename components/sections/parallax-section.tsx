@@ -82,7 +82,7 @@ export default function ParallaxSection() {
       <div className="relative">
         <div
           ref={ref}
-          className={`relative z-10 pt-20 pb-16 text-center px-6 transition-all duration-700 ${
+          className={`relative z-10 pt-10 sm:pt-20 pb-16 text-center px-6 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >

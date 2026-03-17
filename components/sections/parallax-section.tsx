@@ -61,13 +61,14 @@ export default function ParallaxSection() {
   // Always transition into the dark parallax canvas.
   // In light mode, we pick up from the light section bg (#f0f6ff) and
   // fade to #07101f so there's no jarring white block.
+  // Light mode: fast dip from page-bg → rich ocean blue → parallax dark
+  // so white text is always on a deep enough background.
   const sectionBg = isDark
     ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)"
-    : "linear-gradient(to bottom, #f0f6ff 0%, #07101f 65%)"
+    : "linear-gradient(to bottom, #e8f0fc 0%, #3a6d96 12%, #1a3d5c 40%, #07101f 70%)"
 
   return (
     <section id="parallax" className="relative" style={{ background: sectionBg }}>
-      {/* Header — always on dark-ish gradient, so text is always white */}
       <div className="relative">
         <div
           ref={ref}
@@ -75,10 +76,10 @@ export default function ParallaxSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-900"}`} style={isDark ? { textShadow: "0 2px 20px rgba(0,0,0,0.4)" } : undefined}>
+          <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ textShadow: "0 2px 24px rgba(0,0,0,0.5)" }}>
             Partout où la précision<br className="hidden sm:block" /> fait la différence
           </h2>
-          <p className={`max-w-2xl mx-auto ${isDark ? "text-white/70" : "text-slate-600"}`}>
+          <p className="text-white/75 max-w-2xl mx-auto">
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.
           </p>
         </div>

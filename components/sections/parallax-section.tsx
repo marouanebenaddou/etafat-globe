@@ -86,14 +86,14 @@ export default function ParallaxSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className={`text-4xl sm:text-5xl font-black mb-4 leading-tight ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
-            Partout où{" "}
-            {/* Animated cycling word (article included) */}
-            <span className="relative inline-flex" style={{ width: "13ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
+          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
+            <span className="block">Partout où</span>
+            {/* Animated cycling word — own centered line */}
+            <span className="block relative" style={{ height: "1.25em", overflow: "hidden" }}>
               {cyclingWords.map((word, i) => (
                 <motion.span
                   key={word}
-                  className="absolute inset-0 flex items-center justify-start font-black"
+                  className="absolute inset-0 flex items-center justify-center font-black"
                   style={brandGrad}
                   initial={{ opacity: 0, y: 40 }}
                   animate={
@@ -107,9 +107,7 @@ export default function ParallaxSection() {
                 </motion.span>
               ))}
             </span>
-            <br className="hidden sm:block" />
-            fait la{" "}
-            <span style={brandGrad}>différence</span>
+            <span className="block">fait la{" "}<span style={brandGrad}>différence</span></span>
           </h2>
           <p className={`max-w-2xl mx-auto ${isDark ? "text-white/75" : "text-slate-500"}`}>
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.

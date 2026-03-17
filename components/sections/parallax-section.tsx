@@ -1,6 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useEffect, useMemo, useState } from "react"
+import { motion } from "framer-motion"
 import { useScrollReveal } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
 
@@ -54,16 +56,26 @@ const media = [
   },
 ]
 
+const cyclingWords = ["précision", "fiabilité", "innovation", "expertise"]
+
 export default function ParallaxSection() {
   const { ref, isVisible } = useScrollReveal()
   const { isDark } = useTheme()
+  const [wordIndex, setWordIndex] = useState(0)
 
-  // Always transition into the dark parallax canvas.
-  // In light mode, we pick up from the light section bg (#f0f6ff) and
-  // fade to #07101f so there's no jarring white block.
-  // Light mode: fast dip from page-bg → rich ocean blue → parallax dark
-  // so white text is always on a deep enough background.
-  const blueSpan = { background: "linear-gradient(135deg,#4FC3F7,#1E88E5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", filter: "drop-shadow(0 0 18px rgba(79,195,247,0.45))" }
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setWordIndex(i => (i + 1) % cyclingWords.length)
+    }, 2200)
+    return () => clearTimeout(id)
+  }, [wordIndex])
+
+  const brandGrad = {
+    background: "linear-gradient(135deg,#007BFF,#00669D)",
+    WebkitBackgroundClip: "text" as const,
+    WebkitTextFillColor: "transparent" as const,
+    backgroundClip: "text" as const,
+  }
 
   return (
     <section id="parallax" className="relative" style={{ background: isDark ? "linear-gradient(to bottom, transparent 0%, #07101f 55%)" : "linear-gradient(to bottom, #c5d9ec 0%, #dce8f5 15%, #eef4fb 40%, #f8fbff 70%, #ffffff 100%)" }}>
@@ -74,11 +86,30 @@ export default function ParallaxSection() {
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <h2 className={`text-4xl sm:text-5xl font-black mb-4 ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
+          <h2 className={`text-4xl sm:text-5xl font-black mb-4 leading-tight ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
             Partout où la{" "}
-            <span style={blueSpan}>précision</span>
-            <br className="hidden sm:block" /> fait la{" "}
-            <span style={blueSpan}>différence</span>
+            {/* Animated cycling word */}
+            <span className="relative inline-flex justify-center" style={{ minWidth: "10ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
+              {cyclingWords.map((word, i) => (
+                <motion.span
+                  key={word}
+                  className="absolute inset-0 flex items-center justify-center font-black"
+                  style={brandGrad}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={
+                    wordIndex === i
+                      ? { opacity: 1, y: 0 }
+                      : { opacity: 0, y: wordIndex > i ? -40 : 40 }
+                  }
+                  transition={{ type: "spring", stiffness: 80, damping: 18 }}
+                >
+                  {word}
+                </motion.span>
+              ))}
+            </span>
+            <br className="hidden sm:block" />
+            fait la{" "}
+            <span style={brandGrad}>différence</span>
           </h2>
           <p className={`max-w-2xl mx-auto ${isDark ? "text-white/75" : "text-slate-500"}`}>
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.

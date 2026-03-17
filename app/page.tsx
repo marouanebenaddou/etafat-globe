@@ -59,7 +59,7 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="overflow-x-hidden">
+    <main className="[overflow-x:clip]">
       <EtherealBeamsHero />
       <ParallaxSection />
       <StatsSection />

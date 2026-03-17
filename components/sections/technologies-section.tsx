@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal, useCenterFocus } from "@/lib/hooks"
+import { GlowingEffect } from "@/components/ui/glowing-effect"
 import { useTheme } from "@/lib/theme-context"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Plane, ScanLine, MapPin, Car, Waves, Radio, Zap, Camera, Crosshair, X, ChevronRight } from "lucide-react"
@@ -400,6 +401,15 @@ function TechCard({
         tabIndex={0}
         onKeyDown={e => e.key === "Enter" && onOpen()}
       >
+        <GlowingEffect
+          spread={40}
+          glow={false}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={2}
+          variant="blue"
+        />
         {active && (
           <>
             <div className="absolute top-0 left-0 w-4 h-4 pointer-events-none"

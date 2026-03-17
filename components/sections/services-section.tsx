@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal, useCenterFocus } from "@/lib/hooks"
+import { GlowingEffect } from "@/components/ui/glowing-effect"
 import { useTheme } from "@/lib/theme-context"
 import { useState, useEffect, useRef, useCallback } from "react"
 import {
@@ -354,6 +355,15 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         tabIndex={0}
         onKeyDown={e => e.key === "Enter" && onOpen()}
       >
+        <GlowingEffect
+          spread={40}
+          glow={false}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+          borderWidth={2}
+          variant="blue"
+        />
         {/* Corner brackets on hover/focus */}
         {active && (
           <>

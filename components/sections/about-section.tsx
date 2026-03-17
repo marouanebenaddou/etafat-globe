@@ -29,9 +29,9 @@ const units = [
 ]
 
 export default function AboutSection() {
-  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal()
-  const { ref: leftRef, isVisible: leftVisible } = useScrollReveal(0.1)
-  const { ref: rightRef, isVisible: rightVisible } = useScrollReveal(0.1)
+  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal(0.12, true)
+  const { ref: leftRef, isVisible: leftVisible } = useScrollReveal(0.1, true)
+  const { ref: rightRef, isVisible: rightVisible } = useScrollReveal(0.1, true)
 
   return (
     <section className="py-24 sec-bg-b relative overflow-hidden" id="about">

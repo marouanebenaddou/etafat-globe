@@ -42,8 +42,8 @@ const subjects = [
 ]
 
 export default function ContactSection() {
-  const { ref, isVisible } = useScrollReveal()
-  const { ref: formRef, isVisible: formVisible } = useScrollReveal(0.1)
+  const { ref, isVisible } = useScrollReveal(0.12, true)
+  const { ref: formRef, isVisible: formVisible } = useScrollReveal(0.1, true)
   const [submitted, setSubmitted] = useState(false)
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" })
 

@@ -29,8 +29,8 @@ const sectors = [
 const marqueeClients = [...clients, ...clients]
 
 export default function ClientsSection() {
-  const { ref, isVisible } = useScrollReveal()
-  const { ref: sectorRef, isVisible: sectorVisible } = useScrollReveal(0.1)
+  const { ref, isVisible } = useScrollReveal(0.12, true)
+  const { ref: sectorRef, isVisible: sectorVisible } = useScrollReveal(0.1, true)
 
   return (
     <section className="py-24 sec-bg-a relative overflow-hidden" id="clients">

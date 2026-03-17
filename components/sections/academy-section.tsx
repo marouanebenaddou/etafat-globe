@@ -48,8 +48,8 @@ const benefits = [
 ]
 
 export default function AcademySection() {
-  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal()
-  const { ref: cardsRef, isVisible: cardsVisible } = useScrollReveal(0.1)
+  const { ref: headerRef, isVisible: headerVisible } = useScrollReveal(0.12, true)
+  const { ref: cardsRef, isVisible: cardsVisible } = useScrollReveal(0.1, true)
 
   return (
     <section className="py-24 sec-bg-b relative overflow-hidden" id="académie">

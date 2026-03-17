@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 
-/** Watches an element — sets isVisible true on enter, resets to false on leave so animation replays */
-export function useScrollReveal(threshold = 0.12) {
+/** Watches an element — sets isVisible true on enter, resets to false on leave so animation replays.
+ *  Pass `once = true` to play the animation only once and never reset it. */
+export function useScrollReveal(threshold = 0.12, once = false) {
   const ref = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -11,12 +12,19 @@ export function useScrollReveal(threshold = 0.12) {
     const el = ref.current
     if (!el) return
     const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          if (once) observer.disconnect()
+        } else if (!once) {
+          setIsVisible(false)
+        }
+      },
       { threshold },
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [threshold])
+  }, [threshold, once])
 
   return { ref, isVisible }
 }

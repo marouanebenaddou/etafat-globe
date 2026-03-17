@@ -232,6 +232,18 @@ function HeroStats({ isDark }: { isDark: boolean }) {
 export default function EtherealBeamsHero() {
   const { isDark } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [navHidden, setNavHidden] = useState(false)
+  const lastScrollY = useRef(0)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      setNavHidden(y > 80 && y > lastScrollY.current)
+      lastScrollY.current = y
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
     : { bgColor:"#9ec3de", diffuseColor:"#7aaec8", lightColor:"#007BFF" }
@@ -241,7 +253,7 @@ export default function EtherealBeamsHero() {
   const m = isDark ? bgColor : "rgba(158,195,222,"  // prefix for rgba helper
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden transition-colors duration-500"
+    <div className="relative min-h-screen w-full overflow-hidden transition-colors duration-500 pt-20"
       style={{ backgroundColor: bgColor }} id="home">
 
       {/* Globe video background */}
@@ -272,7 +284,7 @@ export default function EtherealBeamsHero() {
       </div>
 
       {/* NAVBAR */}
-      <nav className={`relative z-20 w-full border-b transition-colors duration-500 ${isDark ? "border-white/5" : "bg-white border-blue-100 shadow-sm"}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 w-full border-b transition-transform duration-300 ease-in-out ${navHidden ? "-translate-y-full" : "translate-y-0"} ${isDark ? "border-white/5 bg-[#000510]/80 backdrop-blur-xl" : "bg-white/90 border-blue-100 shadow-sm backdrop-blur-xl"}`}>
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
             {/* Logo */}

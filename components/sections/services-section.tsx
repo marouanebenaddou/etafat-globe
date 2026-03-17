@@ -2,7 +2,7 @@
 
 import { useScrollReveal } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Map, Layers, Database, Settings, Eye, Building2, GraduationCap, ArrowRight, Sparkles, X, ChevronRight, MapPin
 } from "lucide-react"
@@ -111,6 +111,9 @@ const services = [
 // ─── Service Modal ─────────────────────────────────────────────────────────────
 function ServiceModal({ service, onClose }: { service: typeof services[0]; onClose: () => void }) {
   const [mounted, setMounted] = useState(false)
+  const [dragY, setDragY] = useState(0)
+  const touchStartY = useRef(0)
+  const isDragging = useRef(false)
   const Icon = service.icon
 
   useEffect(() => {
@@ -127,6 +130,21 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [])
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    isDragging.current = true
+  }
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return
+    const delta = e.touches[0].clientY - touchStartY.current
+    if (delta > 0) setDragY(delta)
+  }
+  const onTouchEnd = () => {
+    isDragging.current = false
+    if (dragY > 80) handleClose()
+    else setDragY(0)
+  }
 
   return (
     <div
@@ -145,12 +163,21 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
           border: `1px solid ${service.accent}40`,
           borderRadius: "4px",
           boxShadow: `0 0 0 1px ${service.accent}15, 0 40px 80px rgba(0,0,0,0.8), 0 0 80px ${service.accent}15`,
-          transform: mounted ? "scale(1) translateY(0)" : "scale(0.88) translateY(24px)",
-          opacity: mounted ? 1 : 0,
-          transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
+          transform: mounted
+            ? `scale(1) translateY(${dragY}px)`
+            : "scale(0.88) translateY(24px)",
+          opacity: mounted ? Math.max(0, 1 - dragY / 200) : 0,
+          transition: dragY > 0 ? "none" : "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
         }}
         onClick={e => e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="w-10 h-1 rounded-full" style={{ background: `${service.accent}60` }} />
+        </div>
         {/* Background geo grid */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.06 }}>
           <svg width="100%" height="100%">

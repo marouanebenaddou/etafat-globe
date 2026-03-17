@@ -313,13 +313,31 @@ export default function EtherealBeamsHero() {
               <MapPin className="w-4 h-4"/> Maroc &amp; Afrique — Depuis 1983
             </div>
 
-            <h1 className={`mb-6 text-5xl font-black tracking-tight sm:text-7xl lg:text-8xl leading-none transition-colors duration-500 ${isDark?"text-white":"text-slate-900"}`}
-              style={{animation:"fade-up 0.7s ease 0.4s both"}}>
-              Révélons le <span className={isDark ? "gradient-text" : "text-[#007BFF]"}>potentiel</span>
+            <h1
+              className={`mb-6 text-5xl font-black tracking-tight sm:text-7xl lg:text-8xl leading-none transition-colors duration-500 ${isDark ? "text-white" : "text-slate-900"}`}
+              style={{
+                animation: "fade-up 0.7s ease 0.4s both",
+                textShadow: isDark ? "0 2px 24px rgba(0,0,0,0.7), 0 1px 4px rgba(0,0,0,0.9)" : "none",
+              }}>
+              Révélons le{" "}
+              <span style={{
+                background: "linear-gradient(135deg, #ffffff 0%, #a8d8ff 50%, #60b8ff 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                filter: isDark ? "drop-shadow(0 0 20px rgba(96,184,255,0.5))" : "none",
+              }}>potentiel</span>
               <br/>de vos{" "}
               <span className="relative inline-block">
-                <span className={isDark ? "gradient-text" : "text-[#007BFF]"}>territoires</span>
-                <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full" style={{background:"linear-gradient(90deg,#007BFF,#00669D)"}}/>
+                <span style={{
+                  background: "linear-gradient(135deg, #ffffff 0%, #a8d8ff 50%, #60b8ff 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  filter: isDark ? "drop-shadow(0 0 20px rgba(96,184,255,0.5))" : "none",
+                }}>territoires</span>
+                <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full"
+                  style={{background: "linear-gradient(90deg, rgba(255,255,255,0.8), #60b8ff, rgba(255,255,255,0.2))"}}/>
               </span>
             </h1>
 

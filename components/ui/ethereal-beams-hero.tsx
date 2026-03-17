@@ -247,7 +247,6 @@ export default function EtherealBeamsHero() {
           autoPlay muted loop playsInline
           className="absolute inset-0 w-full h-full object-cover"
           style={{ opacity: isDark ? 0.85 : 0.5 }}
-          ref={(el) => { if (el) el.playbackRate = 0.4 }}
         >
           <source src="/globe.mp4" type="video/mp4"/>
         </video>

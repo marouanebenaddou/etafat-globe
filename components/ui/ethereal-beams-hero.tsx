@@ -234,9 +234,9 @@ export default function EtherealBeamsHero() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
-    : { bgColor:"#e8f4ff", diffuseColor:"#cce4ff", lightColor:"#007BFF" }
+    : { bgColor:"#c2d8f2", diffuseColor:"#a8c8e8", lightColor:"#007BFF" }
 
-  const bgColor = isDark ? "#000510" : "#e8f4ff"
+  const bgColor = isDark ? "#000510" : "#c2d8f2"
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden transition-colors duration-500"
@@ -247,7 +247,7 @@ export default function EtherealBeamsHero() {
         <video
           autoPlay muted loop playsInline
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: isDark ? 0.85 : 0.5 }}
+          style={{ opacity: isDark ? 0.85 : 0.75 }}
         >
           <source src="/globe.mp4" type="video/mp4"/>
         </video>
@@ -255,15 +255,15 @@ export default function EtherealBeamsHero() {
         {/* Inward mask — all 4 edges fade into site background */}
         <div className="absolute inset-0 z-10 pointer-events-none" style={{
           background: `
-            radial-gradient(ellipse 80% 80% at 50% 50%, transparent 30%, ${bgColor} 100%)
+            radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, ${bgColor} 100%)
           `
         }}/>
 
         {/* Extra edge masks for clean blending */}
         <div className="absolute inset-0 z-10 pointer-events-none" style={{
           background: `
-            linear-gradient(to bottom, ${bgColor} 0%, transparent 18%, transparent 70%, ${bgColor} 100%),
-            linear-gradient(to right,  ${bgColor} 0%, transparent 18%, transparent 82%, ${bgColor} 100%)
+            linear-gradient(to bottom, ${bgColor} 0%, transparent 12%, transparent 75%, ${bgColor} 100%),
+            linear-gradient(to right,  ${bgColor} 0%, transparent 14%, transparent 86%, ${bgColor} 100%)
           `
         }}/>
       </div>

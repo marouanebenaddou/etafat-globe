@@ -90,14 +90,14 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  --sec-a:    #f1f5f9;
-  --sec-b:    #ffffff;
-  --t-head:   #00669D;
-  --t-body:   #334155;
-  --t-muted:  #64748b;
-  --t-xmuted: #94a3b8;
-  --bd:       rgba(0,0,0,0.07);
-  --card-surface: rgba(255,255,255,0.85);
+  --sec-a:    #eef4ff;
+  --sec-b:    #f8fbff;
+  --t-head:   #003d6b;
+  --t-body:   #1a2e44;
+  --t-muted:  #3d5a75;
+  --t-xmuted: #6b8aA0;
+  --bd:       rgba(0,100,200,0.12);
+  --card-surface: rgba(255,255,255,0.95);
 }
 
 .dark {
@@ -177,10 +177,10 @@
    GLASS CARDS — theme-aware
    ============================================================ */
 .glass {
-  background: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.92);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(0,0,0,0.07);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,100,200,0.13);
+  box-shadow: 0 4px 24px rgba(0,80,180,0.08), 0 1px 4px rgba(0,0,0,0.06);
 }
 .dark .glass {
   background: rgba(255,255,255,0.04);
@@ -189,9 +189,10 @@
 }
 
 .glass-blue {
-  background: rgba(0,123,255,0.05);
+  background: rgba(0,123,255,0.07);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(0,123,255,0.14);
+  border: 1px solid rgba(0,123,255,0.2);
+  box-shadow: 0 2px 16px rgba(0,100,200,0.08);
 }
 .dark .glass-blue {
   background: rgba(0,123,255,0.08);
@@ -325,7 +326,7 @@
    ============================================================ */
 .section-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,123,255,0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0,123,255,0.4), transparent);
 }
 .dark .section-divider {
   background: linear-gradient(90deg, transparent, rgba(0,123,255,0.5), transparent);

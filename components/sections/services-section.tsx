@@ -419,10 +419,33 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         </ul>
 
         {/* CTA */}
-        <div className="flex items-center gap-1.5 text-xs font-semibold transition-all duration-300"
-          style={{ color: active ? service.accent : "rgba(255,255,255,0.3)" }}>
+        <div className="flex items-center gap-1.5 text-xs font-semibold transition-all duration-300 mb-4"
+          style={{ color: active ? service.accent : isDark ? "rgba(255,255,255,0.3)" : "rgba(0,60,140,0.4)" }}>
           En savoir plus
           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+        </div>
+
+        {/* Preview image */}
+        <div className="relative w-full overflow-hidden rounded-xl"
+          style={{ height: "140px" }}>
+          <div className="absolute inset-0 z-10 rounded-xl"
+            style={{
+              background: isDark
+                ? `linear-gradient(to bottom, rgba(0,5,16,0.3) 0%, rgba(0,5,16,0) 30%, rgba(0,5,16,0) 60%, rgba(0,5,16,0.7) 100%)`
+                : `linear-gradient(to bottom, rgba(240,246,255,0.2) 0%, rgba(240,246,255,0) 30%, rgba(240,246,255,0) 60%, rgba(240,246,255,0.6) 100%)`,
+            }} />
+          {/* Accent tint on hover */}
+          <div className="absolute inset-0 z-10 rounded-xl transition-opacity duration-300"
+            style={{
+              background: `linear-gradient(135deg, ${service.accent}18, transparent)`,
+              opacity: active ? 1 : 0,
+            }} />
+          <img
+            src={service.image}
+            alt={service.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            style={{ filter: isDark ? "brightness(0.75) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+          />
         </div>
       </div>
     </div>

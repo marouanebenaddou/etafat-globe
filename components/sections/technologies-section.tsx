@@ -449,6 +449,27 @@ function TechCard({
           ))}
         </div>
 
+        {/* Preview image */}
+        <div className="relative w-full overflow-hidden rounded-lg mt-4" style={{ height: "110px" }}>
+          <div className="absolute inset-0 z-10 rounded-lg"
+            style={{
+              background: isDark
+                ? `linear-gradient(to bottom, rgba(0,5,16,0.2) 0%, rgba(0,5,16,0) 40%, rgba(0,5,16,0.65) 100%)`
+                : `linear-gradient(to bottom, rgba(240,246,255,0.1) 0%, rgba(240,246,255,0) 40%, rgba(240,246,255,0.5) 100%)`,
+            }} />
+          <div className="absolute inset-0 z-10 rounded-lg transition-opacity duration-300"
+            style={{
+              background: `linear-gradient(135deg, ${tech.color}18, transparent)`,
+              opacity: active ? 1 : 0,
+            }} />
+          <img
+            src={tech.image}
+            alt={tech.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            style={{ filter: isDark ? "brightness(0.7) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+          />
+        </div>
+
         <div className="absolute bottom-3 right-4 flex items-center gap-1 transition-all duration-300"
           style={{ opacity: active ? 0.6 : 0 }}>
           <span className="text-[10px] font-mono" style={{ color: tech.color }}>voir plus</span>

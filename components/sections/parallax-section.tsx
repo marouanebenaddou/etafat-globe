@@ -77,7 +77,10 @@ export default function ParallaxSection() {
           }`}
         >
           <h2 className="text-4xl sm:text-5xl font-black text-white mb-4" style={{ textShadow: "0 2px 24px rgba(0,0,0,0.5)" }}>
-            Partout où la <span className="gradient-text">précision</span><br className="hidden sm:block" /> fait la <span className="gradient-text">différence</span>
+            Partout où la{" "}
+            <span style={{ background: "linear-gradient(135deg,#4FC3F7,#1E88E5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", filter: "drop-shadow(0 0 18px rgba(79,195,247,0.45))" }}>précision</span>
+            <br className="hidden sm:block" /> fait la{" "}
+            <span style={{ background: "linear-gradient(135deg,#4FC3F7,#1E88E5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", filter: "drop-shadow(0 0 18px rgba(79,195,247,0.45))" }}>différence</span>
           </h2>
           <p className="text-white/75 max-w-2xl mx-auto">
             Topographie, drone, scan 3D, GPR — nos ingénieurs déploient les technologies géospatiales les plus avancées sur chaque type de terrain pour transformer vos projets en données fiables et exploitables.

@@ -321,7 +321,7 @@ export default function EtherealBeamsHero() {
               }}>
               Révélons le{" "}
               <span style={{
-                background: "linear-gradient(135deg, #c8e4ff 0%, #4da6ff 50%, #0066cc 100%)",
+                background: "linear-gradient(135deg, #ffffff 0%, #5bb8ff 40%, #2288ee 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -330,14 +330,14 @@ export default function EtherealBeamsHero() {
               <br/>de vos{" "}
               <span className="relative inline-block">
                 <span style={{
-                  background: "linear-gradient(135deg, #c8e4ff 0%, #4da6ff 50%, #0066cc 100%)",
+                  background: "linear-gradient(135deg, #ffffff 0%, #5bb8ff 40%, #2288ee 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
                   filter: isDark ? "drop-shadow(0 0 20px rgba(0,102,204,0.6))" : "none",
                 }}>territoires</span>
                 <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full"
-                  style={{background: "linear-gradient(90deg, rgba(200,228,255,0.6), #0066cc, rgba(200,228,255,0.1))"}}/>
+                  style={{background: "linear-gradient(90deg, rgba(255,255,255,0.5), #2288ee, rgba(91,184,255,0.2))"}}/>
               </span>
             </h1>
 

@@ -388,13 +388,14 @@ export default function EtherealBeamsHero() {
               <MapPin className="w-4 h-4"/> Maroc &amp; Afrique — Depuis 1983
             </div>
 
-            <h1 className={`mb-6 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl leading-none transition-colors duration-500 ${isDark?"text-white":"text-slate-900"}`}
+            <h1 className="mb-6 text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl leading-none text-white"
               style={{animation:"fade-up 0.7s ease 0.4s both"}}>
-              Révélons le <span className="gradient-text">potentiel</span>
+              Révélons le{" "}
+              <span style={{background:"linear-gradient(135deg,#007BFF,#00669D)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>potentiel</span>
               <br/>de vos{" "}
               <span className="relative inline-block">
-                <span className="gradient-text">territoires</span>
-                <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full" style={{background:"linear-gradient(90deg,#4FC3F7,#1E88E5)"}}/>
+                <span style={{background:"linear-gradient(135deg,#007BFF,#00669D)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>territoires</span>
+                <span className="absolute -bottom-2 left-0 right-0 h-0.5 rounded-full" style={{background:"linear-gradient(90deg,#007BFF,#00669D)"}}/>
               </span>
             </h1>
 

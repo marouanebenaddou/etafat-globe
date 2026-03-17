@@ -79,7 +79,7 @@ export default function AcademySection() {
 
           {/* Left: Programs */}
           <div ref={cardsRef} className="lg:col-span-3">
-            <h3 className="text-white font-bold text-lg mb-6 flex items-center gap-2">
+            <h3 className="t-head font-bold text-lg mb-6 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-yellow-400" />
               Programmes de formation
             </h3>
@@ -134,7 +134,7 @@ export default function AcademySection() {
           {/* Right: Benefits + CTA */}
           <div className="lg:col-span-2">
             <div className={`glass-blue rounded-2xl p-8 mb-6 transition-all duration-800 delay-300 ${headerVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"}`}>
-              <h3 className="text-white font-bold text-lg mb-5">Pourquoi choisir Etafat Académie ?</h3>
+              <h3 className="t-head font-bold text-lg mb-5">Pourquoi choisir Etafat Académie ?</h3>
               <ul className="space-y-3">
                 {benefits.map((b, i) => (
                   <li key={i} className="flex items-start gap-2.5">

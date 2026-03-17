@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
 import { CheckCircle2, Globe, Users, Award, TrendingUp } from "lucide-react"
 
 const milestones = [
@@ -29,6 +30,7 @@ const units = [
 ]
 
 export default function AboutSection() {
+  const { isDark } = useTheme()
   const { ref: headerRef, isVisible: headerVisible } = useScrollReveal(0.12, true)
   const { ref: leftRef, isVisible: leftVisible } = useScrollReveal(0.1, true)
   const { ref: rightRef, isVisible: rightVisible } = useScrollReveal(0.1, true)
@@ -68,7 +70,7 @@ export default function AboutSection() {
                   <Globe className="w-6 h-6 text-[#007BFF]" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-xl mb-2">Notre mission</h3>
+                  <h3 className="t-head font-bold text-xl mb-2">Notre mission</h3>
                   <p className="t-body text-sm leading-relaxed">
                     Révéler le potentiel des territoires africains grâce à des solutions géospatiales de précision, contribuant ainsi au développement durable du continent.
                   </p>
@@ -108,7 +110,7 @@ export default function AboutSection() {
                     className={`reveal glass rounded-xl p-3 hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
                     style={{ transitionDelay: `${i * 100 + 400}ms` }}>
                     <div className="text-2xl mb-1">{u.flag}</div>
-                    <div className="text-white font-bold text-xs">{u.name}</div>
+                    <div className="t-head font-bold text-xs">{u.name}</div>
                     <div className="t-xmuted text-xs">{u.desc}</div>
                     <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
                   </div>

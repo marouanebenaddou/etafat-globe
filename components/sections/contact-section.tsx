@@ -1,6 +1,7 @@
 "use client"
 
 import { useScrollReveal } from "@/lib/hooks"
+import { useTheme } from "@/lib/theme-context"
 import { useState } from "react"
 import { Mail, Phone, Send, Linkedin, Twitter, Youtube, Facebook, ArrowRight, CheckCircle } from "lucide-react"
 
@@ -42,6 +43,7 @@ const subjects = [
 ]
 
 export default function ContactSection() {
+  const { isDark } = useTheme()
   const { ref, isVisible } = useScrollReveal(0.12, true)
   const { ref: formRef, isVisible: formVisible } = useScrollReveal(0.1, true)
   const [submitted, setSubmitted] = useState(false)
@@ -63,11 +65,11 @@ export default function ContactSection() {
             <Mail className="w-3.5 h-3.5" />
             Contactez-nous
           </div>
-          <h2 className="text-4xl sm:text-6xl font-black text-white mb-4 leading-tight">
+          <h2 className={`text-4xl sm:text-6xl font-black mb-4 leading-tight ${isDark ? "text-white" : "text-slate-900"}`}>
             Parlons de votre{" "}
             <span className="text-[#4da6ff]">projet</span>
           </h2>
-          <p className="text-white/60 max-w-2xl mx-auto text-lg">
+          <p className={`max-w-2xl mx-auto text-lg ${isDark ? "text-white/60" : "text-slate-500"}`}>
             Notre équipe d&apos;experts est disponible pour étudier vos besoins et vous proposer la solution géospatiale adaptée à vos enjeux.
           </p>
         </div>
@@ -125,7 +127,7 @@ export default function ContactSection() {
                   <a key={name} href="#"
                     className="flex items-center gap-2 glass rounded-xl px-3 py-2.5 hover:scale-105 transition-all duration-300 group">
                     <Icon className="w-4 h-4 flex-shrink-0 transition-colors duration-300" style={{ color }} />
-                    <span className="t-body text-xs group-hover:text-white transition-colors">{name}</span>
+                    <span className="t-body text-xs group-hover:text-[#007BFF] transition-colors">{name}</span>
                   </a>
                 ))}
               </div>
@@ -139,16 +141,16 @@ export default function ContactSection() {
                 <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-6 border border-green-500/30">
                   <CheckCircle className="w-8 h-8 text-green-400" />
                 </div>
-                <h3 className="text-white font-black text-2xl mb-3">Message envoyé !</h3>
+                <h3 className="t-head font-black text-2xl mb-3">Message envoyé !</h3>
                 <p className="t-body mb-6">Notre équipe vous répondra dans les 24 heures.</p>
                 <button onClick={() => setSubmitted(false)}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/20 t-body hover:text-white hover:border-white/40 text-sm transition-all">
+                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-full border t-body hover:text-white hover:border-white/40 text-sm transition-all ${isDark ? "border-white/20" : "border-slate-300"}`}>
                   Envoyer un autre message
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
-                <h3 className="text-white font-bold text-lg mb-6">Envoyez-nous un message</h3>
+                <h3 className="t-head font-bold text-lg mb-6">Envoyez-nous un message</h3>
 
                 {/* Name + Email */}
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -164,7 +166,7 @@ export default function ContactSection() {
                         required={key !== "phone"}
                         value={form[key as keyof typeof form]}
                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200"
+                        className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 ${isDark ? "bg-white/5 border border-white/10 text-white placeholder-white/30" : "bg-white border border-slate-200 text-slate-800 placeholder-slate-400"}`}
                       />
                     </div>
                   ))}
@@ -180,7 +182,7 @@ export default function ContactSection() {
                       placeholder="+212 6 XX XX XX XX"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200"
+                      className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 ${isDark ? "bg-white/5 border border-white/10 text-white placeholder-white/30" : "bg-white border border-slate-200 text-slate-800 placeholder-slate-400"}`}
                     />
                   </div>
                 </div>
@@ -192,7 +194,7 @@ export default function ContactSection() {
                     required
                     value={form.subject}
                     onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 appearance-none cursor-pointer"
+                    className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 appearance-none cursor-pointer ${isDark ? "bg-white/5 border border-white/10 text-white" : "bg-white border border-slate-200 text-slate-800"}`}
                     style={{ colorScheme: "dark" }}>
                     <option value="" className="bg-[#000a1a]">Sélectionnez un sujet</option>
                     {subjects.map((s) => <option key={s} value={s} className="bg-[#000a1a]">{s}</option>)}
@@ -208,7 +210,7 @@ export default function ContactSection() {
                     placeholder="Décrivez votre projet ou votre besoin..."
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/30 focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 resize-none"
+                    className={`w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#007BFF]/50 focus:bg-blue-500/5 transition-all duration-200 resize-none ${isDark ? "bg-white/5 border border-white/10 text-white placeholder-white/30" : "bg-white border border-slate-200 text-slate-800 placeholder-slate-400"}`}
                   />
                 </div>
 

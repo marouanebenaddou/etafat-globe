@@ -50,15 +50,15 @@ export function ZoomParallax({ images }: ZoomParallaxProps) {
     offset: ['start start', 'end end'],
   })
 
-  const s4 = useTransform(scrollYProgress, [0, 1], [1, 4])
-  const s5 = useTransform(scrollYProgress, [0, 1], [1, 5])
-  const s6 = useTransform(scrollYProgress, [0, 1], [1, 6])
-  const s8 = useTransform(scrollYProgress, [0, 1], [1, 8])
-  const s9 = useTransform(scrollYProgress, [0, 1], [1, 9])
+  const s4 = useTransform(scrollYProgress, [0, 1], [1, 2.2])
+  const s5 = useTransform(scrollYProgress, [0, 1], [1, 2.6])
+  const s6 = useTransform(scrollYProgress, [0, 1], [1, 3.0])
+  const s8 = useTransform(scrollYProgress, [0, 1], [1, 3.5])
+  const s9 = useTransform(scrollYProgress, [0, 1], [1, 4.0])
   const scaleMap = { 4: s4, 5: s5, 6: s6, 8: s8, 9: s9 }
 
   return (
-    <div ref={container} className="relative h-[220vh]">
+    <div ref={container} className="relative h-[170vh]">
       {/* sticky fullscreen canvas */}
       <div className="sticky top-0 h-screen overflow-hidden bg-[#07101f]">
         {images.map(({ src, alt = '', type = 'image' }, index) => {

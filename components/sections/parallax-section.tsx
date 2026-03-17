@@ -56,7 +56,7 @@ const media = [
   },
 ]
 
-const cyclingWords = ["précision", "fiabilité", "innovation", "expertise"]
+const cyclingWords = ["la précision", "la fiabilité", "l'innovation", "l'expertise"]
 
 export default function ParallaxSection() {
   const { ref, isVisible } = useScrollReveal()
@@ -87,9 +87,9 @@ export default function ParallaxSection() {
           }`}
         >
           <h2 className={`text-4xl sm:text-5xl font-black mb-4 leading-tight ${isDark ? "text-white" : "text-slate-800"}`} style={isDark ? { textShadow: "0 2px 24px rgba(0,0,0,0.5)" } : undefined}>
-            Partout où la{" "}
-            {/* Animated cycling word */}
-            <span className="relative inline-flex justify-center" style={{ minWidth: "10ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
+            Partout où{" "}
+            {/* Animated cycling word (article included) */}
+            <span className="relative inline-flex justify-center" style={{ minWidth: "13ch", verticalAlign: "bottom", overflow: "hidden", height: "1.2em", display: "inline-block" }}>
               {cyclingWords.map((word, i) => (
                 <motion.span
                   key={word}

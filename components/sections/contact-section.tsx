@@ -3,6 +3,8 @@
 import { useScrollReveal } from "@/lib/hooks"
 import { useState } from "react"
 import { Mail, Phone, MapPin, Send, Linkedin, Twitter, Youtube, Facebook, ArrowRight, CheckCircle } from "lucide-react"
+import { LampContainer } from "@/components/ui/lamp"
+import { motion } from "framer-motion"
 
 const offices = [
   {
@@ -53,25 +55,32 @@ export default function ContactSection() {
   }
 
   return (
-    <section className="py-24 sec-bg-a relative overflow-hidden" id="contact">
-      <div className="absolute inset-0 moroccan-pattern opacity-20" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-900/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
-        {/* Header */}
-        <div ref={ref} className={`text-center mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#007BFF]/10 border border-[#007BFF]/20 px-4 py-1.5 text-xs text-[#007BFF] uppercase tracking-widest mb-4">
+    <section className="sec-bg-a relative overflow-hidden" id="contact">
+      {/* Lamp header */}
+      <LampContainer className="min-h-[32rem] pt-8">
+        <motion.div
+          initial={{ opacity: 0.5, y: 80 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.8, ease: "easeInOut" }}
+          className="text-center"
+        >
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#007BFF]/20 border border-[#007BFF]/30 px-4 py-1.5 text-xs text-[#4da6ff] uppercase tracking-widest mb-5">
             <Mail className="w-3.5 h-3.5" />
             Contactez-nous
           </div>
-          <h2 className="text-4xl sm:text-5xl font-black t-head mb-4">
+          <h2 className="text-4xl sm:text-6xl font-black text-white mb-4 leading-tight">
             Parlons de votre{" "}
-            <span className="gradient-text">projet</span>
+            <span className="text-[#4da6ff]">projet</span>
           </h2>
-          <p className="t-body max-w-2xl mx-auto">
+          <p className="text-white/60 max-w-2xl mx-auto text-lg">
             Notre équipe d&apos;experts est disponible pour étudier vos besoins et vous proposer la solution géospatiale adaptée à vos enjeux.
           </p>
-        </div>
+        </motion.div>
+      </LampContainer>
+
+      <div className="absolute inset-0 moroccan-pattern opacity-10 pointer-events-none" />
+
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8 pb-24">
 
         <div className="grid lg:grid-cols-5 gap-10">
           {/* Left: Contact info */}

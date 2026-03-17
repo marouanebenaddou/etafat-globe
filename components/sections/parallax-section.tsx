@@ -21,12 +21,11 @@ const media = [
     src: "/africa-drone.mp4",
     alt: "Survol drone Afrique",
   },
-  // index 2 — left tall: Etafat operator scanning historic site
-  // TODO: replace with real photo once saved → /etafat-scan.jpg
+  // index 2 — left tall: Etafat operator scanning historic Moroccan site
   {
     type: "image" as const,
-    src: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=600&h=900&fit=crop&auto=format&q=80",
-    alt: "Scan patrimoine",
+    src: "/etafat-scan.jpg",
+    alt: "Scan patrimoine historique",
   },
   // index 3 — right center: Rabat aerial city
   {
@@ -34,12 +33,11 @@ const media = [
     src: "/rabat-aerial.mp4",
     alt: "Vue aérienne Rabat",
   },
-  // index 4 — lower left: Etafat team GPR survey
-  // TODO: replace with real photo once saved → /etafat-gpr.jpg
+  // index 4 — lower left: Etafat GPS survey near wind turbines
   {
     type: "image" as const,
-    src: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=700&h=500&fit=crop&auto=format&q=80",
-    alt: "Équipe terrain GPR",
+    src: "/etafat-wind.jpg",
+    alt: "Relevé GPS éolien",
   },
   // index 5 — lower wide: field survey / construction footage
   {
@@ -47,11 +45,10 @@ const media = [
     src: "/survey-field.mp4",
     alt: "Relevé terrain",
   },
-  // index 6 — lower right small: Etafat plane / wind turbine
-  // TODO: replace with real photo once saved → /etafat-plane.jpg
+  // index 6 — lower right small: ETAFAT branded plane at airport
   {
     type: "image" as const,
-    src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&auto=format&q=80",
+    src: "/etafat-plane.jpg",
     alt: "Avion ETAFAT",
   },
 ]

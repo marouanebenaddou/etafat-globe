@@ -1,8 +1,8 @@
 "use client"
 
-import { useScrollReveal } from "@/lib/hooks"
+import { useScrollReveal, useCenterFocus } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Plane, ScanLine, MapPin, Car, Waves, Radio, Zap, Camera, Crosshair, X, ChevronRight } from "lucide-react"
 
 const technologies = [
@@ -371,20 +371,27 @@ function TechCard({
   index: number
   onOpen: () => void
 }) {
-  const { ref, isVisible } = useScrollReveal(0.1)
+  const { ref: revealRef, isVisible } = useScrollReveal(0.1)
+  const { ref: focusRef, centered } = useCenterFocus()
   const [hovered, setHovered] = useState(false)
   const { isDark } = useTheme()
   const Icon = tech.icon
+  const active = hovered || centered
+
+  const setRefs = useCallback((el: HTMLDivElement | null) => {
+    ;(revealRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+    ;(focusRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+  }, [])
 
   return (
-    <div ref={ref} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
+    <div ref={setRefs} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
       <div
         className="group relative rounded-[5px] p-5 h-full transition-all duration-300 cursor-pointer overflow-hidden"
         style={{
-          background: hovered ? tech.bg : isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
-          border: `1px solid ${hovered ? tech.color + "40" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
-          transform: hovered ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
-          boxShadow: hovered ? `0 16px 40px ${tech.color}22` : "none",
+          background: active ? tech.bg : isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+          border: `1px solid ${active ? tech.color + "40" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
+          transform: active ? "translateY(-4px) scale(1.01)" : "translateY(0) scale(1)",
+          boxShadow: active ? `0 16px 40px ${tech.color}22` : "none",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -393,7 +400,7 @@ function TechCard({
         tabIndex={0}
         onKeyDown={e => e.key === "Enter" && onOpen()}
       >
-        {hovered && (
+        {active && (
           <>
             <div className="absolute top-0 left-0 w-4 h-4 pointer-events-none"
               style={{ borderTop: `2px solid ${tech.color}`, borderLeft: `2px solid ${tech.color}`, borderRadius: "2px 0 0 0" }} />
@@ -403,7 +410,7 @@ function TechCard({
         )}
 
         <div className="text-xs font-semibold tracking-widest uppercase mb-3 transition-colors duration-300"
-          style={{ color: hovered ? tech.color : isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)" }}>
+          style={{ color: active ? tech.color : isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)" }}>
           {tech.category}
         </div>
 
@@ -411,9 +418,9 @@ function TechCard({
           <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300"
             style={{
               background: hovered ? `${tech.color}20` : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-              border: `1px solid ${hovered ? tech.color + "35" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+              border: `1px solid ${active ? tech.color + "35" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
             }}>
-            <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: hovered ? tech.color : "#6b7280" }} />
+            <Icon className="w-5 h-5 transition-colors duration-300" style={{ color: active ? tech.color : "#6b7280" }} />
           </div>
           <h3 className="t-head font-bold text-sm">{tech.name}</h3>
         </div>
@@ -424,14 +431,14 @@ function TechCard({
           {tech.specs.map((spec) => (
             <div key={spec} className="flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full flex-shrink-0 transition-colors duration-300"
-                style={{ background: hovered ? tech.color : "#374151" }} />
+                style={{ background: active ? tech.color : "#374151" }} />
               <span className="text-xs t-xmuted">{spec}</span>
             </div>
           ))}
         </div>
 
         <div className="absolute bottom-3 right-4 flex items-center gap-1 transition-all duration-300"
-          style={{ opacity: hovered ? 0.6 : 0 }}>
+          style={{ opacity: active ? 0.6 : 0 }}>
           <span className="text-[10px] font-mono" style={{ color: tech.color }}>voir plus</span>
           <ChevronRight className="w-3 h-3" style={{ color: tech.color }} />
         </div>

@@ -43,6 +43,28 @@ export function useCountUp(target: number, duration = 2000, active = false) {
   return count
 }
 
+/**
+ * Returns true when the element is centered in the viewport (mobile-scroll glow).
+ * Uses a tight rootMargin so only the middle ~30% of the screen triggers it.
+ */
+export function useCenterFocus() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [centered, setCentered] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setCentered(entry.isIntersecting),
+      { rootMargin: "-35% 0px -35% 0px", threshold: 0 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return { ref, centered }
+}
+
 /** Returns true once the window has been scrolled past `offset` px */
 export function useScrolled(offset = 60) {
   const [scrolled, setScrolled] = useState(false)

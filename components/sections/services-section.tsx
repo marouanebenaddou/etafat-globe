@@ -1,8 +1,8 @@
 "use client"
 
-import { useScrollReveal } from "@/lib/hooks"
+import { useScrollReveal, useCenterFocus } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   Map, Layers, Database, Settings, Eye, Building2, GraduationCap, ArrowRight, Sparkles, X, ChevronRight, MapPin
 } from "lucide-react"
@@ -323,22 +323,29 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
 
 // ─── Card ──────────────────────────────────────────────────────────────────────
 function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; index: number; onOpen: () => void }) {
-  const { ref, isVisible } = useScrollReveal(0.1)
+  const { ref: revealRef, isVisible } = useScrollReveal(0.1)
+  const { ref: focusRef, centered } = useCenterFocus()
   const [hovered, setHovered] = useState(false)
   const { isDark } = useTheme()
   const Icon = service.icon
+  const active = hovered || centered
+
+  const setRefs = useCallback((el: HTMLDivElement | null) => {
+    ;(revealRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+    ;(focusRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+  }, [])
 
   return (
-    <div ref={ref} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
+    <div ref={setRefs} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
       <div
         className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden"
         style={{
-          background: hovered
+          background: active
             ? `linear-gradient(135deg, rgba(0,5,16,0.9), rgba(0,5,16,0.7))`
             : isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-          border: `1px solid ${hovered ? service.accent + "50" : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
-          boxShadow: hovered ? `0 20px 60px ${service.glow}` : "none",
-          transform: hovered ? "translateY(-6px)" : "translateY(0)",
+          border: `1px solid ${active ? service.accent + "50" : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+          boxShadow: active ? `0 20px 60px ${service.glow}` : "none",
+          transform: active ? "translateY(-6px)" : "translateY(0)",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -347,8 +354,8 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         tabIndex={0}
         onKeyDown={e => e.key === "Enter" && onOpen()}
       >
-        {/* Corner brackets on hover */}
-        {hovered && (
+        {/* Corner brackets on hover/focus */}
+        {active && (
           <>
             <div className="absolute top-0 left-0 w-4 h-4 pointer-events-none"
               style={{ borderTop: `2px solid ${service.accent}`, borderLeft: `2px solid ${service.accent}`, borderRadius: "2px 0 0 0" }} />
@@ -375,11 +382,11 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
             background: hovered
               ? `linear-gradient(135deg, ${service.accent}30, ${service.accent}15)`
               : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-            border: `1px solid ${hovered ? service.accent + "40" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+            border: `1px solid ${active ? service.accent + "40" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
           }}
         >
           <Icon className="w-6 h-6 transition-colors duration-300"
-            style={{ color: hovered ? service.accent : "#94a3b8" }} />
+            style={{ color: active ? service.accent : "#94a3b8" }} />
         </div>
 
         {/* Title */}
@@ -393,7 +400,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
           {service.features.map((f) => (
             <li key={f} className="flex items-center gap-2 text-xs t-muted">
               <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-300"
-                style={{ background: hovered ? service.accent : "#4b5563" }} />
+                style={{ background: active ? service.accent : "#4b5563" }} />
               {f}
             </li>
           ))}
@@ -401,7 +408,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
 
         {/* CTA */}
         <div className="flex items-center gap-1.5 text-xs font-semibold transition-all duration-300"
-          style={{ color: hovered ? service.accent : "rgba(255,255,255,0.3)" }}>
+          style={{ color: active ? service.accent : "rgba(255,255,255,0.3)" }}>
           En savoir plus
           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
         </div>

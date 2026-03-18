@@ -70,7 +70,7 @@ const marches: AccordionItemData[] = [
     id: 5,
     title: "Cartographie",
     subtitle: "Orthophotos, MNT, BIM, 3D",
-    imageUrl: "https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1600&auto=format&fit=crop",
+    imageUrl: "/images/cartographie.jpg",
     details: "Production cartographique complète adaptée aux besoins des clients : orthophotoplans, modèles numériques de terrain, jumeaux numériques et animation 3D.",
     services: [
       "Orthophotoplans haute résolution",

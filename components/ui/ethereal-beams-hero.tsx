@@ -237,6 +237,15 @@ export default function EtherealBeamsHero() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
+  const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const openMenu = (label: string) => {
+    if (dropdownTimer.current) clearTimeout(dropdownTimer.current)
+    setOpenDropdown(label)
+  }
+  const closeMenu = () => {
+    dropdownTimer.current = setTimeout(() => setOpenDropdown(null), 150)
+  }
 
   const navItems = [
     { label: "Accueil",      href: "#home" },
@@ -382,8 +391,8 @@ export default function EtherealBeamsHero() {
             <div className={`hidden lg:flex items-center space-x-1 rounded-full p-1 backdrop-blur-xl border transition-colors duration-500 ${isDark?"bg-white/5 border-white/10":"bg-white/70 border-blue-100 shadow-sm"}`}>
               {navItems.map(item => (
                 <div key={item.label} className="relative"
-                  onMouseEnter={() => item.children && setOpenDropdown(item.label)}
-                  onMouseLeave={() => setOpenDropdown(null)}
+                  onMouseEnter={() => item.children && openMenu(item.label)}
+                  onMouseLeave={closeMenu}
                 >
                   <a href={item.href}
                     className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${isDark?"text-white/80 hover:bg-white/10 hover:text-white":"text-slate-600 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}>
@@ -394,7 +403,10 @@ export default function EtherealBeamsHero() {
                   </a>
                   {/* Dropdown — pt-2 bridges the gap so mouse doesn't leave the hover zone */}
                   {item.children && openDropdown === item.label && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50"
+                      onMouseEnter={() => { if (dropdownTimer.current) clearTimeout(dropdownTimer.current) }}
+                      onMouseLeave={closeMenu}
+                    >
                       <div className={`w-56 rounded-2xl border shadow-xl overflow-hidden ${isDark ? "bg-[#000c1e]/95 border-white/10 backdrop-blur-xl" : "bg-white/95 border-blue-100 backdrop-blur-xl shadow-blue-100/40"}`}>
                         <div className="py-2">
                           {item.children.map(child => (

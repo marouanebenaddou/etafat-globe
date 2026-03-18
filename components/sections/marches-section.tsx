@@ -11,30 +11,75 @@ const marches: AccordionItemData[] = [
     title: "Infrastructures",
     subtitle: "Routes, ouvrages d'art, aéroports",
     imageUrl: "https://images.unsplash.com/photo-1545296664-39db72996ca6?q=80&w=1600&auto=format&fit=crop",
+    details: "ETAFAT accompagne les maîtres d'ouvrage dans tous les projets d'infrastructure : routes, autoroutes, ponts, tunnels et aéroports, de la phase étude jusqu'à la réception.",
+    services: [
+      "Études topographiques et relevés de terrain",
+      "Assistance à maîtrise d'ouvrage (AMO)",
+      "Inspection par drones et LiDAR",
+      "Modélisation BIM des ouvrages d'art",
+      "Cartographie aéronautique (ETOD / AMDB)",
+      "Contrôle géométrique et implantation",
+    ],
   },
   {
     id: 2,
     title: "Aménagement du Territoire",
     subtitle: "Urbanisme, patrimoine, foncier",
     imageUrl: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1600&auto=format&fit=crop",
+    details: "De l'urbanisme à la gestion foncière, ETAFAT apporte son expertise géomatique pour planifier, modéliser et gérer les territoires urbains et ruraux.",
+    services: [
+      "Bornage, morcellement et gestion foncière",
+      "SIG pour la planification urbaine",
+      "Préservation numérique du patrimoine",
+      "Modélisation 3D du bâti et des espaces publics",
+      "VRD et études de viabilisation",
+      "Expertise en valorisation foncière",
+    ],
   },
   {
     id: 3,
     title: "Énergie & Mines",
     subtitle: "Carrières, énergies renouvelables",
     imageUrl: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?q=80&w=1600&auto=format&fit=crop",
+    details: "Suivi de carrières, calcul de volumes, sécurité sur site et accompagnement des projets d'énergies renouvelables grâce à nos technologies aériennes et terrestres.",
+    services: [
+      "Cartographie et suivi de carrières",
+      "Calcul de volumes par drones",
+      "Études d'accès et de débroussaillement",
+      "Support aux projets solaires et éoliens",
+      "Politique de sécurité des sites",
+      "Modélisation 3D des gisements",
+    ],
   },
   {
     id: 4,
     title: "Agriculture",
     subtitle: "Agriculture de précision, télédétection",
     imageUrl: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?q=80&w=1600&auto=format&fit=crop",
+    details: "Depuis 2016, ETAFAT accompagne les agriculteurs avec des solutions de télédétection et d'agriculture de précision pour optimiser les rendements et réduire les coûts.",
+    services: [
+      "Surveillance aérienne des cultures",
+      "Indices de végétation (NDVI, NDRE)",
+      "Prévision des récoltes",
+      "Cartographie parcellaire précise",
+      "Optimisation des intrants",
+      "Gestion durable des ressources hydriques",
+    ],
   },
   {
     id: 5,
     title: "Cartographie",
     subtitle: "Orthophotos, MNT, BIM, 3D",
     imageUrl: "https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1600&auto=format&fit=crop",
+    details: "Production cartographique complète adaptée aux besoins des clients : orthophotoplans, modèles numériques de terrain, jumeaux numériques et animation 3D.",
+    services: [
+      "Orthophotoplans haute résolution",
+      "MNT, MNS et MNH",
+      "Modèles BIM et jumeaux numériques",
+      "Cartographie bathymétrique",
+      "Réalité virtuelle et rendu 3D",
+      "SIG thématiques et bases de données géospatiales",
+    ],
   },
 ]
 
@@ -44,15 +89,11 @@ export default function MarchesSection() {
 
   return (
     <section className="py-24 sec-bg-b relative overflow-hidden" id="marches">
-      {/* Background pattern */}
       <div className="absolute inset-0 moroccan-pattern opacity-10" />
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         {/* Header */}
-        <div
-          ref={ref}
-          className={`reveal text-center mb-14 ${isVisible ? "visible" : ""}`}
-        >
+        <div ref={ref} className={`reveal text-center mb-14 ${isVisible ? "visible" : ""}`}>
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-widest uppercase mb-4 border"
             style={{
@@ -93,7 +134,7 @@ export default function MarchesSection() {
         </div>
 
         {/* CTA */}
-        <div className="text-center mt-10 reveal" style={{ transitionDelay: "250ms" }}>
+        <div className="text-center mt-12 reveal" style={{ transitionDelay: "250ms" }}>
           <a
             href="#contact"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-300 hover:gap-3"

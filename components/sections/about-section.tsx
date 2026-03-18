@@ -146,7 +146,7 @@ export default function AboutSection() {
               <div className="space-y-6">
                 {milestones.map((m, i) => (
                   <div key={m.year}
-                    className={`reveal flex items-start gap-5 ${rightVisible ? "is-visible" : ""}`}
+                    className={`reveal flex items-center gap-5 ${rightVisible ? "is-visible" : ""}`}
                     style={{ transitionDelay: `${i * 100 + 100}ms` }}>
                     {/* Dot */}
                     <div className="relative flex-shrink-0">

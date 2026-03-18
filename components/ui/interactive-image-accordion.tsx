@@ -78,6 +78,7 @@ const DesktopItem = ({ item, isActive, isExpanded, onHover, onToggleExpand, acce
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           onClick={e => e.stopPropagation()}
+          onMouseLeave={onToggleExpand}
         >
           <button
             className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"

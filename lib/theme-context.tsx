@@ -13,10 +13,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(true)
   const [mounted, setMounted] = useState(false)
 
-  // Load preference from localStorage after mount
+  // Always open in dark mode
   useEffect(() => {
-    const saved = localStorage.getItem("etafat-theme")
-    if (saved !== null) setIsDark(saved === "dark")
+    setIsDark(true)
     setMounted(true)
   }, [])
 

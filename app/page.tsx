@@ -14,14 +14,15 @@ function MobileGap() {
 }
 import StatsSection from "@/components/sections/stats-section"
 import ParallaxSection from "@/components/sections/parallax-section"
-import ServicesSection from "@/components/sections/services-section"
-import TechnologiesSection from "@/components/sections/technologies-section"
-import MarchesSection from "@/components/sections/marches-section"
-import AboutSection from "@/components/sections/about-section"
-import ClientsSection from "@/components/sections/clients-section"
-import AcademySection from "@/components/sections/academy-section"
-import ContactSection from "@/components/sections/contact-section"
-import FooterSection from "@/components/sections/footer-section"
+
+const ServicesSection    = dynamic(() => import("@/components/sections/services-section"),    { ssr: false })
+const TechnologiesSection = dynamic(() => import("@/components/sections/technologies-section"), { ssr: false })
+const MarchesSection     = dynamic(() => import("@/components/sections/marches-section"),     { ssr: false })
+const AboutSection       = dynamic(() => import("@/components/sections/about-section"),       { ssr: false })
+const ClientsSection     = dynamic(() => import("@/components/sections/clients-section"),     { ssr: false })
+const AcademySection     = dynamic(() => import("@/components/sections/academy-section"),     { ssr: false })
+const ContactSection     = dynamic(() => import("@/components/sections/contact-section"),     { ssr: false })
+const FooterSection      = dynamic(() => import("@/components/sections/footer-section"),      { ssr: false })
 
 const EtherealBeamsHero = dynamic(
   () => import("@/components/ui/ethereal-beams-hero"),

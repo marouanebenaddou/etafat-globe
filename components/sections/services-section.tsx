@@ -342,7 +342,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
     <div ref={setRefs} id={`service-${service.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
       <div
         data-open-id={`service-${service.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`}
-        className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden"
+        className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden flex flex-col"
         style={{
           background: active
             ? isDark
@@ -429,7 +429,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
         </div>
 
         {/* Preview image */}
-        <div className="relative w-full overflow-hidden rounded-xl"
+        <div className="relative w-full overflow-hidden rounded-xl mt-auto"
           style={{ height: "140px" }}>
           <div className="absolute inset-0 z-10 rounded-xl"
             style={{

@@ -554,7 +554,7 @@ export default function TechnologiesSection() {
 
       {selected && <TechModal tech={selected} onClose={() => setSelected(null)} />}
 
-      <div className="section-divider mt-24" />
+      <div className="section-divider mt-8" />
     </section>
   )
 }

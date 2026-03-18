@@ -328,6 +328,31 @@ function ServiceModal({ service, onClose, origin }: { service: typeof services[0
               </div>
               <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
             </div>
+
+            {/* Contact CTA */}
+            <div className="flex justify-center pt-5 pb-1">
+              <button
+                onClick={() => {
+                  handleClose()
+                  setTimeout(() => {
+                    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
+                  }, 350)
+                }}
+                className="group relative inline-flex items-center gap-2.5 px-7 py-3 rounded-full text-sm font-semibold overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg"
+                style={{
+                  background: `linear-gradient(135deg, ${service.accent}, ${service.accent}bb)`,
+                  boxShadow: `0 4px 20px ${service.accent}40`,
+                  color: "#fff",
+                }}
+              >
+                <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: `linear-gradient(135deg, ${service.accent}dd, ${service.accent}99)` }} />
+                <svg xmlns="http://www.w3.org/2000/svg" className="relative z-10 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 5.55 5.55l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 15.5v1.42z"/>
+                </svg>
+                <span className="relative z-10">Nous contacter</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ function MobileGap() {
     </>
   )
 }
+import SplashScreen from "@/components/ui/splash-screen"
 import StatsSection from "@/components/sections/stats-section"
 import ParallaxSection from "@/components/sections/parallax-section"
 import ServicesSection from "@/components/sections/services-section"
@@ -81,6 +82,7 @@ export default function Home() {
 
   return (
     <main className="[overflow-x:clip]">
+      <SplashScreen />
       <EtherealBeamsHero />
       <ParallaxSection />
       <StatsSection />

@@ -392,18 +392,25 @@ export default function EtherealBeamsHero() {
                       <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${openDropdown === item.label ? "rotate-180" : ""}`} />
                     )}
                   </a>
-                  {/* Dropdown */}
+                  {/* Dropdown — pt-2 bridges the gap so mouse doesn't leave the hover zone */}
                   {item.children && openDropdown === item.label && (
-                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 rounded-2xl border shadow-xl overflow-hidden z-50 ${isDark ? "bg-[#000c1e]/95 border-white/10 backdrop-blur-xl" : "bg-white/95 border-blue-100 backdrop-blur-xl shadow-blue-100/40"}`}>
-                      <div className="py-2">
-                        {item.children.map(child => (
-                          <a key={child.label} href={child.href}
-                            onClick={() => setOpenDropdown(null)}
-                            className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-all duration-150 ${isDark ? "text-white/70 hover:text-white hover:bg-white/8" : "text-slate-600 hover:text-[#007BFF] hover:bg-[#007BFF]/5"}`}>
-                            <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
-                            {child.label}
-                          </a>
-                        ))}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
+                      <div className={`w-56 rounded-2xl border shadow-xl overflow-hidden ${isDark ? "bg-[#000c1e]/95 border-white/10 backdrop-blur-xl" : "bg-white/95 border-blue-100 backdrop-blur-xl shadow-blue-100/40"}`}>
+                        <div className="py-2">
+                          {item.children.map(child => (
+                            <a key={child.label} href={child.href}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setOpenDropdown(null)
+                                const el = document.querySelector(child.href)
+                                el?.scrollIntoView({ behavior: "smooth", block: "start" })
+                              }}
+                              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-all duration-150 cursor-pointer ${isDark ? "text-white/70 hover:text-white hover:bg-white/8" : "text-slate-600 hover:text-[#007BFF] hover:bg-[#007BFF]/5"}`}>
+                              <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
+                              {child.label}
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -489,7 +496,14 @@ export default function EtherealBeamsHero() {
                       <div className={`mx-4 mb-1 rounded-xl overflow-hidden ${isDark ? "bg-white/5" : "bg-[#007BFF]/4"}`}>
                         {children.map(child => (
                           <a key={child.label} href={child.href}
-                            onClick={() => { setMobileOpen(false); setMobileExpanded(null) }}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setMobileOpen(false)
+                              setMobileExpanded(null)
+                              setTimeout(() => {
+                                document.querySelector(child.href)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                              }, 300)
+                            }}
                             className={`flex items-center gap-2.5 px-5 py-3 text-sm transition-all duration-150 ${isDark ? "text-white/60 hover:text-white" : "text-slate-500 hover:text-[#007BFF]"}`}>
                             <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
                             {child.label}

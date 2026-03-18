@@ -24,10 +24,10 @@ const strengths = [
 ]
 
 const units = [
-  { name: "ETAFAT", desc: "Géomatique & topographie", flag: "🇲🇦", color: "#007BFF" },
-  { name: "ETAFAT ING", desc: "Ingénierie & conseil", flag: "🏗️", color: "#00669D" },
-  { name: "ETAFAT AFRIQUE", desc: "Côte d'Ivoire & Afrique", flag: "🇨🇮", color: "#10b981" },
-  { name: "ETAFAT SÉNÉGAL", desc: "Sénégal & Afrique de l'Ouest", flag: "🇸🇳", color: "#f97316" },
+  { name: "ETAFAT", desc: "Géomatique & topographie", banner: "/images/flag-morocco.png", color: "#007BFF" },
+  { name: "ETAFAT ING", desc: "Ingénierie & conseil", banner: "/images/banner-ing.png", color: "#00669D" },
+  { name: "ETAFAT AFRIQUE", desc: "Côte d'Ivoire & Afrique", banner: "/images/flag-ivory-coast.png", color: "#10b981" },
+  { name: "ETAFAT SÉNÉGAL", desc: "Sénégal & Afrique de l'Ouest", banner: "/images/flag-senegal.png", color: "#f97316" },
 ]
 
 export default function AboutSection() {
@@ -108,12 +108,14 @@ export default function AboutSection() {
               <div className="grid grid-cols-2 gap-3">
                 {units.map((u, i) => (
                   <div key={u.name}
-                    className={`reveal glass rounded-xl p-3 hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
+                    className={`reveal glass rounded-xl overflow-hidden hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
                     style={{ transitionDelay: `${i * 100 + 400}ms` }}>
-                    <div className="text-2xl mb-1">{u.flag}</div>
-                    <div className="t-head font-bold text-xs">{u.name}</div>
-                    <div className="t-xmuted text-xs">{u.desc}</div>
-                    <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
+                    <img src={u.banner} alt={u.name} className="w-full h-12 object-cover" />
+                    <div className="p-3">
+                      <div className="t-head font-bold text-xs">{u.name}</div>
+                      <div className="t-xmuted text-xs">{u.desc}</div>
+                      <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
+                    </div>
                   </div>
                 ))}
               </div>

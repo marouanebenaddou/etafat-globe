@@ -3,6 +3,7 @@
 import { useScrollReveal } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
 import { CheckCircle2, Globe, Users, Award, TrendingUp } from "lucide-react"
+import { useState, useEffect } from "react"
 
 const milestones = [
   { year: "1983", title: "Fondation", desc: "Création d'Etafat à Rabat par des ingénieurs topographes visionnaires", color: "#007BFF" },
@@ -24,10 +25,10 @@ const strengths = [
 ]
 
 const units = [
-  { name: "ETAFAT", desc: "Géomatique & topographie", banner: "/images/flag-morocco.png", color: "#007BFF" },
-  { name: "ETAFAT ING", desc: "Ingénierie & conseil", banner: "/images/banner-ing.png", color: "#00669D" },
-  { name: "ETAFAT AFRIQUE", desc: "Côte d'Ivoire & Afrique", banner: "/images/flag-ivory-coast.png", color: "#10b981" },
-  { name: "ETAFAT SÉNÉGAL", desc: "Sénégal & Afrique de l'Ouest", banner: "/images/flag-senegal.png", color: "#f97316" },
+  { name: "ETAFAT", desc: "Géomatique & topographie", flag: "🇲🇦", color: "#007BFF" },
+  { name: "ETAFAT ING", desc: "Ingénierie & conseil", flag: "🏗️", color: "#00669D" },
+  { name: "ETAFAT AFRIQUE", desc: "Côte d'Ivoire & Afrique", flag: "🇨🇮", color: "#10b981" },
+  { name: "ETAFAT SÉNÉGAL", desc: "Sénégal & Afrique de l'Ouest", flag: "🇸🇳", color: "#f97316" },
 ]
 
 export default function AboutSection() {
@@ -35,6 +36,14 @@ export default function AboutSection() {
   const { ref: headerRef, isVisible: headerVisible } = useScrollReveal(0.12, true)
   const { ref: leftRef, isVisible: leftVisible } = useScrollReveal(0.1, true)
   const { ref: rightRef, isVisible: rightVisible } = useScrollReveal(0.1, true)
+  const [poppedIndex, setPoppedIndex] = useState(-1)
+
+  useEffect(() => {
+    if (!rightVisible) return
+    milestones.forEach((_, i) => {
+      setTimeout(() => setPoppedIndex(i), i * 380 + 300)
+    })
+  }, [rightVisible])
 
   return (
     <section className="py-24 sec-bg-b relative overflow-hidden" id="about">
@@ -108,14 +117,12 @@ export default function AboutSection() {
               <div className="grid grid-cols-2 gap-3">
                 {units.map((u, i) => (
                   <div key={u.name}
-                    className={`reveal glass rounded-xl overflow-hidden hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
+                    className={`reveal glass rounded-xl p-3 hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
                     style={{ transitionDelay: `${i * 100 + 400}ms` }}>
-                    <img src={u.banner} alt={u.name} className="w-full h-12 object-cover" />
-                    <div className="p-3">
-                      <div className="t-head font-bold text-xs">{u.name}</div>
-                      <div className="t-xmuted text-xs">{u.desc}</div>
-                      <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
-                    </div>
+                    <div className="text-2xl mb-1">{(u as any).flag}</div>
+                    <div className="t-head font-bold text-xs">{u.name}</div>
+                    <div className="t-xmuted text-xs">{u.desc}</div>
+                    <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
                   </div>
                 ))}
               </div>
@@ -143,12 +150,21 @@ export default function AboutSection() {
                     style={{ transitionDelay: `${i * 100 + 100}ms` }}>
                     {/* Dot */}
                     <div className="relative flex-shrink-0">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 hover:scale-110"
+                      {/* Ripple ring */}
+                      {poppedIndex >= i && (
+                        <span className="absolute inset-0 rounded-full animate-ping-once pointer-events-none"
+                          style={{ background: `${m.color}35` }} />
+                      )}
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center border-2 hover:scale-110"
                         style={{
-                          background: `${m.color}15`,
-                          borderColor: `${m.color}50`,
+                          background: poppedIndex >= i ? `${m.color}22` : `${m.color}08`,
+                          borderColor: poppedIndex >= i ? m.color : `${m.color}25`,
+                          boxShadow: poppedIndex >= i ? `0 0 18px ${m.color}55, 0 0 5px ${m.color}70` : "none",
+                          animation: poppedIndex === i ? "circlePop 0.75s cubic-bezier(0.34,1.56,0.64,1) forwards" : "none",
+                          transition: "background 0.35s ease, border-color 0.35s ease, box-shadow 0.4s ease",
                         }}>
-                        <span className="text-xs font-black" style={{ color: m.color }}>{m.year}</span>
+                        <span className="text-xs font-black transition-colors duration-300"
+                          style={{ color: poppedIndex >= i ? m.color : `${m.color}50` }}>{m.year}</span>
                       </div>
                     </div>
 

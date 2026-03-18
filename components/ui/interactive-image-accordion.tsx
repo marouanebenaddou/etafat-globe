@@ -57,7 +57,7 @@ const DesktopItem = ({ item, isActive, isExpanded, onHover, onToggleExpand, acce
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <p className="text-white font-black text-xl leading-tight mb-1">{item.title}</p>
+          <p className="text-white font-black text-2xl leading-tight mb-1">{item.title}</p>
           {item.subtitle && <p className="text-white/65 text-sm mb-4">{item.subtitle}</p>}
           {item.details && (
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
@@ -93,7 +93,7 @@ const DesktopItem = ({ item, isActive, isExpanded, onHover, onToggleExpand, acce
                 style={{ background: `${accentColor}30`, color: accentColor }}>
                 Marché
               </div>
-              <h3 className="text-white font-black text-xl leading-tight mb-2">{item.title}</h3>
+              <h3 className="text-white font-black text-2xl leading-tight mb-2">{item.title}</h3>
               {item.details && <p className="text-white/70 text-sm leading-relaxed mb-4">{item.details}</p>}
             </motion.div>
             {item.services && item.services.length > 0 && (
@@ -117,7 +117,7 @@ const DesktopItem = ({ item, isActive, isExpanded, onHover, onToggleExpand, acce
       {!isActive && (
         <motion.div className="absolute inset-0 flex items-center justify-center pointer-events-none"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-          <span className="text-white/80 text-sm font-semibold whitespace-nowrap"
+          <span className="text-white/80 text-base font-semibold whitespace-nowrap"
             style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
             {item.title}
           </span>
@@ -148,7 +148,7 @@ const MobileItem = ({ item, isOpen, onToggle, accentColor }: MobileItemProps) =>
         animate={{ opacity: isOpen ? 1 : 0.5 }} transition={{ duration: 0.3 }} />
       <div className="absolute inset-0 flex items-center justify-between px-5">
         <div>
-          <p className="text-white font-bold text-base leading-tight">{item.title}</p>
+          <p className="text-white font-bold text-lg leading-tight">{item.title}</p>
           {item.subtitle && <p className="text-white/60 text-xs">{item.subtitle}</p>}
         </div>
         <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>

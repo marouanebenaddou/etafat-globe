@@ -31,11 +31,11 @@ const media = [
     src: "/etafat-scan.jpg",
     alt: "Scan patrimoine historique",
   },
-  // index 3 — right center: Highway interchange aerial
+  // index 3 — right center: Rabat aerial city
   {
-    type: "image" as const,
-    src: "/highway-aerial.jpg",
-    alt: "Échangeur autoroutier vue aérienne",
+    type: "video" as const,
+    src: "/rabat-aerial.mp4",
+    alt: "Vue aérienne Rabat",
   },
   // index 4 — lower left: Etafat GPS survey near wind turbines
   {

@@ -93,7 +93,7 @@ export default function FooterSection() {
             <div className="space-y-2.5 mb-6">
               <div className="flex items-center gap-2 t-muted text-sm">
                 <MapPin className="w-4 h-4 text-[#007BFF] flex-shrink-0" />
-                Rabat, Maroc (Siège social)
+                Casablanca, Maroc (Siège social)
               </div>
               <div className="flex items-center gap-2 t-muted text-sm">
                 <Phone className="w-4 h-4 text-[#007BFF] flex-shrink-0" />
@@ -138,11 +138,7 @@ export default function FooterSection() {
           <h4 className="t-xmuted text-xs uppercase tracking-widest mb-5">Nos implantations</h4>
           <div className="flex flex-wrap gap-4">
             {[
-              { city: "Rabat", flag: "🇲🇦", type: "Siège" },
-              { city: "Casablanca", flag: "🇲🇦", type: "Agence" },
-              { city: "Marrakech", flag: "🇲🇦", type: "Agence" },
-              { city: "Agadir", flag: "🇲🇦", type: "Agence" },
-              { city: "Fès", flag: "🇲🇦", type: "Agence" },
+              { city: "Casablanca", flag: "🇲🇦", type: "Siège" },
               { city: "Abidjan", flag: "🇨🇮", type: "Etafat Afrique" },
               { city: "Dakar", flag: "🇸🇳", type: "Etafat Sénégal" },
               { city: "Bamako", flag: "🇲🇱", type: "Bureau" },

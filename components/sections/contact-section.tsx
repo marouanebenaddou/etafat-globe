@@ -7,7 +7,7 @@ import { Mail, Phone, Send, Linkedin, Twitter, Youtube, Facebook, ArrowRight, Ch
 
 const offices = [
   {
-    city: "Rabat",
+    city: "Casablanca",
     country: "Maroc",
     flag: "🇲🇦",
     address: "Siège social — Maroc",

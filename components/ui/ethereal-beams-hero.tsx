@@ -241,8 +241,16 @@ export default function EtherealBeamsHero() {
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const t = setTimeout(() => setVideoVisible(true), 1000)
-    return () => clearTimeout(t)
+    let t: ReturnType<typeof setTimeout>
+    const onSplashDone = () => { t = setTimeout(() => setVideoVisible(true), 1000) }
+    window.addEventListener("etafat:splashDone", onSplashDone)
+    // Fallback: if no splash (e.g. dev hot reload), show after 1s anyway
+    const fallback = setTimeout(() => setVideoVisible(true), 4000)
+    return () => {
+      window.removeEventListener("etafat:splashDone", onSplashDone)
+      clearTimeout(t)
+      clearTimeout(fallback)
+    }
   }, [])
 
   const openMenu = (label: string) => {

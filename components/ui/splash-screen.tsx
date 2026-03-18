@@ -21,7 +21,10 @@ export default function SplashScreen() {
         requestAnimationFrame(animate)
       } else {
         setPhase("hold")
-        setTimeout(() => setPhase("exit"), 400)
+        setTimeout(() => {
+          setPhase("exit")
+          window.dispatchEvent(new CustomEvent("etafat:splashDone"))
+        }, 400)
         setTimeout(() => setPhase("done"), 1100)
       }
     }

@@ -80,7 +80,7 @@ export default function StatsSection() {
   const { ref, isVisible } = useScrollReveal()
 
   return (
-    <section className="pt-32 sm:pt-20 pb-28 sm:pb-32 sec-bg-a relative overflow-hidden" id="stats">
+    <section className="pt-32 sm:pt-20 sec-bg-a relative [overflow:clip]" id="stats">
       {/* Background */}
       <div className="absolute inset-0 moroccan-pattern opacity-30" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#007BFF]/8 rounded-full blur-3xl pointer-events-none" />
@@ -110,9 +110,12 @@ export default function StatsSection() {
             <StatCard key={stat.label} stat={stat} index={i} />
           ))}
         </div>
+
+        {/* Explicit bottom spacer */}
+        <div style={{ height: "clamp(80px, 10vw, 128px)" }} />
       </div>
 
-      <div className="section-divider mt-10 sm:mt-32" />
+      <div className="section-divider" />
     </section>
   )
 }

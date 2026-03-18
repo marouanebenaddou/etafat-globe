@@ -218,7 +218,7 @@ function HeroStats({ isDark }: { isDark: boolean }) {
   return (
     <div
       className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto"
-      style={{ animation: "fade-up 0.7s ease 1s both" }}
+      style={{ animation: "fade-up 0.7s ease 1s both", paddingBottom: "clamp(0px, calc(60px - 4vw), 60px)" }}
     >
       {heroStats.map(s => (
         <HeroStatCard key={s.label} stat={s} isDark={isDark} />
@@ -237,7 +237,13 @@ export default function EtherealBeamsHero() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
+  const [videoVisible, setVideoVisible] = useState(false)
   const dropdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVideoVisible(true), 1000)
+    return () => clearTimeout(t)
+  }, [])
 
   const openMenu = (label: string) => {
     if (dropdownTimer.current) clearTimeout(dropdownTimer.current)
@@ -350,8 +356,8 @@ export default function EtherealBeamsHero() {
       <div className="absolute inset-0 z-0">
         <video
           autoPlay muted loop playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ opacity: isDark ? 0.85 : 0.92 }}
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[3000ms]"
+          style={{ opacity: videoVisible ? (isDark ? 0.85 : 0.92) : 0 }}
         >
           <source src="/globe.mp4" type="video/mp4"/>
         </video>

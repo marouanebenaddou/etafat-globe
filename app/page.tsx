@@ -2,6 +2,16 @@
 
 import dynamic from "next/dynamic"
 import { useEffect } from "react"
+
+/** Spacer visible only on mobile — no Tailwind, pure inline CSS */
+function MobileGap() {
+  return (
+    <>
+      <style>{`@media (max-width: 767px) { .etafat-mobile-gap { height: 64px; } }`}</style>
+      <div className="etafat-mobile-gap" />
+    </>
+  )
+}
 import StatsSection from "@/components/sections/stats-section"
 import ParallaxSection from "@/components/sections/parallax-section"
 import ServicesSection from "@/components/sections/services-section"

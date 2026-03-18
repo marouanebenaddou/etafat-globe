@@ -106,7 +106,8 @@ export default function ParallaxSection() {
         />
         <div
           ref={ref}
-          className={`relative z-20 pointer-events-none pt-10 sm:pt-20 pb-16 text-center px-6 transition-all duration-700 ${
+          style={{ paddingTop: "clamp(56px, 8vw, 80px)" }}
+          className={`relative z-20 pointer-events-none pb-16 text-center px-6 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >

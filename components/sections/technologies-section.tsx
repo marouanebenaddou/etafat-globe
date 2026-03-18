@@ -365,34 +365,28 @@ function TechModal({ tech, onClose, origin }: { tech: typeof technologies[0]; on
               ))}
             </div>
 
-            {/* Coordinates row + CTA */}
-            <div className="modal-coord-border flex items-center justify-between pt-4 border-t gap-3">
-              <div className="flex items-center gap-2 shrink-0">
-                <MapPin className="w-3.5 h-3.5" style={{ color: tech.color }} />
-                <span className="modal-coord-text text-xs font-mono">{tech.coord}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    handleClose()
-                    setTimeout(() => {
-                      document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
-                    }, 350)
-                  }}
-                  className="group relative inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold overflow-hidden transition-all duration-300 hover:scale-105"
-                  style={{
-                    background: `linear-gradient(135deg, ${tech.color}, ${tech.color}bb)`,
-                    boxShadow: `0 3px 12px ${tech.color}40`,
-                    color: "#fff",
-                  }}
-                >
-                  <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: `linear-gradient(135deg, ${tech.color}dd, ${tech.color}99)` }} />
-                  <MessageCircle className="relative z-10 w-3.5 h-3.5" />
-                  <span className="relative z-10">Nous contacter</span>
-                </button>
-                <span className="text-lg font-black tracking-widest shrink-0" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
-              </div>
+            {/* Footer row */}
+            <div className="modal-coord-border flex items-center justify-between pt-4 border-t">
+              <button
+                onClick={() => {
+                  handleClose()
+                  setTimeout(() => {
+                    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })
+                  }, 350)
+                }}
+                className="group relative inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold overflow-hidden transition-all duration-300 hover:scale-105"
+                style={{
+                  background: `linear-gradient(135deg, ${tech.color}, ${tech.color}bb)`,
+                  boxShadow: `0 3px 12px ${tech.color}40`,
+                  color: "#fff",
+                }}
+              >
+                <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: `linear-gradient(135deg, ${tech.color}dd, ${tech.color}99)` }} />
+                <MessageCircle className="relative z-10 w-3.5 h-3.5" />
+                <span className="relative z-10">Nous contacter</span>
+              </button>
+              <span className="text-lg font-black tracking-widest" style={{ color: isDark ? "#ffffff" : "#007BFF" }}>ETAFAT</span>
             </div>
           </div>
         </div>

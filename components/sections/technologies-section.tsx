@@ -4,7 +4,7 @@ import { useScrollReveal, useCenterFocus } from "@/lib/hooks"
 import { GlowingEffect } from "@/components/ui/glowing-effect"
 import { useTheme } from "@/lib/theme-context"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Plane, ScanLine, MapPin, Car, Waves, Radio, Zap, Camera, Crosshair, X, ChevronRight } from "lucide-react"
+import { Plane, ScanLine, MapPin, Car, Waves, Radio, Zap, Camera, Crosshair, X, ChevronRight, MessageCircle } from "lucide-react"
 
 const technologies = [
   {
@@ -392,9 +392,7 @@ function TechModal({ tech, onClose, origin }: { tech: typeof technologies[0]; on
               >
                 <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                   style={{ background: `linear-gradient(135deg, ${tech.color}dd, ${tech.color}99)` }} />
-                <svg xmlns="http://www.w3.org/2000/svg" className="relative z-10 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.35 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 5.55 5.55l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21 15.5v1.42z"/>
-                </svg>
+                <MessageCircle className="relative z-10 w-4 h-4" />
                 <span className="relative z-10">Nous contacter</span>
               </button>
             </div>

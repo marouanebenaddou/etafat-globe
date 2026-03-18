@@ -494,9 +494,21 @@ function TechCard({
 }
 
 // ─── Section ──────────────────────────────────────────────────────────────────
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")
+
 export default function TechnologiesSection() {
   const { ref, isVisible } = useScrollReveal()
   const [selected, setSelected] = useState<typeof technologies[0] | null>(null)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      const tech = technologies.find(t => `tech-${slug(t.name)}` === id)
+      if (tech) setSelected(tech)
+    }
+    window.addEventListener("etafat:open", handler)
+    return () => window.removeEventListener("etafat:open", handler)
+  }, [])
 
   return (
     <section className="py-24 sec-bg-a relative overflow-hidden" id="technologies">

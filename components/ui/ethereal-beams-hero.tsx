@@ -415,7 +415,10 @@ export default function EtherealBeamsHero() {
                                 e.preventDefault()
                                 setOpenDropdown(null)
                                 const el = document.querySelector(child.href)
-                                el?.scrollIntoView({ behavior: "smooth", block: "start" })
+                                el?.scrollIntoView({ behavior: "smooth", block: "center" })
+                                setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent("etafat:open", { detail: { id: child.href.replace("#", "") } }))
+                                }, 700)
                               }}
                               className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-all duration-150 cursor-pointer ${isDark ? "text-white/70 hover:text-white hover:bg-white/8" : "text-slate-600 hover:text-[#007BFF] hover:bg-[#007BFF]/5"}`}>
                               <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
@@ -513,7 +516,10 @@ export default function EtherealBeamsHero() {
                               setMobileOpen(false)
                               setMobileExpanded(null)
                               setTimeout(() => {
-                                document.querySelector(child.href)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                                document.querySelector(child.href)?.scrollIntoView({ behavior: "smooth", block: "center" })
+                                setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent("etafat:open", { detail: { id: child.href.replace("#", "") } }))
+                                }, 700)
                               }, 300)
                             }}
                             className={`flex items-center gap-2.5 px-5 py-3 text-sm transition-all duration-150 ${isDark ? "text-white/60 hover:text-white" : "text-slate-500 hover:text-[#007BFF]"}`}>

@@ -443,9 +443,21 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
 }
 
 // ─── Section ───────────────────────────────────────────────────────────────────
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")
+
 export default function ServicesSection() {
   const { ref, isVisible } = useScrollReveal()
   const [selected, setSelected] = useState<typeof services[0] | null>(null)
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      const svc = services.find(s => `service-${slug(s.title)}` === id)
+      if (svc) setSelected(svc)
+    }
+    window.addEventListener("etafat:open", handler)
+    return () => window.removeEventListener("etafat:open", handler)
+  }, [])
 
   return (
     <section className="py-24 sec-bg-b relative overflow-hidden" id="services">

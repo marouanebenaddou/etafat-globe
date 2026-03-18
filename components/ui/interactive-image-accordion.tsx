@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { ChevronRight, ChevronDown, X } from "lucide-react"
@@ -230,6 +230,23 @@ export function InteractiveImageAccordion({
   // Mobile state – only one open at a time
   const [openMobile, setOpenMobile] = useState<number | null>(null)
   const toggleMobile = (index: number) => setOpenMobile(prev => prev === index ? null : index)
+
+  // Listen for etafat:open event to auto-activate/expand the right item
+  useEffect(() => {
+    const slugFn = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent<{ id: string }>).detail?.id
+      const idx = items.findIndex(item => `marche-${slugFn(item.title)}` === id)
+      if (idx === -1) return
+      // Desktop: activate + expand
+      setActiveIndex(idx)
+      setExpandedIndex(idx)
+      // Mobile: open
+      setOpenMobile(idx)
+    }
+    window.addEventListener("etafat:open", handler)
+    return () => window.removeEventListener("etafat:open", handler)
+  }, [items])
 
   return (
     <>

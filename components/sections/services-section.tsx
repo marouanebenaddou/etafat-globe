@@ -227,9 +227,10 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
             {(service as any).video ? (
               <video
                 src={(service as any).video}
-                autoPlay muted loop playsInline
+                autoPlay loop playsInline
                 className="w-full h-full object-cover"
                 style={{ filter: "brightness(0.85) saturate(1.05)" }}
+                ref={el => { if (el) { el.muted = true; el.play().catch(() => {}) } }}
               />
             ) : service.image ? (
               <img
@@ -443,9 +444,10 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
           {(service as any).video ? (
             <video
               src={(service as any).video}
-              autoPlay muted loop playsInline
+              autoPlay loop playsInline
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               style={{ filter: isDark ? "brightness(0.75) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+              ref={el => { if (el) { el.muted = true; el.play().catch(() => {}) } }}
             />
           ) : (
             <img

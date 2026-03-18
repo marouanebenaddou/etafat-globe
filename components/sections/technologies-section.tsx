@@ -253,10 +253,10 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
                 src={tech.video}
                 autoPlay
                 loop
-                muted
                 playsInline
                 className="w-full h-full object-cover"
                 style={{ filter: "brightness(0.9) saturate(1.05)" }}
+                ref={el => { if (el) { el.muted = true; el.play().catch(() => {}) } }}
               />
             ) : tech.image ? (
               <img
@@ -476,10 +476,10 @@ function TechCard({
               src={tech.video}
               autoPlay
               loop
-              muted
               playsInline
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               style={{ filter: isDark ? "brightness(0.7) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+              ref={el => { if (el) { el.muted = true; el.play().catch(() => {}) } }}
             />
           ) : (
             <img

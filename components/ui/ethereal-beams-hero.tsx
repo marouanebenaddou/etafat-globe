@@ -355,9 +355,10 @@ export default function EtherealBeamsHero() {
       {/* Globe video background */}
       <div className="absolute inset-0 z-0">
         <video
-          autoPlay muted loop playsInline
+          autoPlay loop playsInline
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[3000ms]"
           style={{ opacity: videoVisible ? (isDark ? 0.85 : 0.92) : 0 }}
+          ref={el => { if (el) { el.muted = true; el.play().catch(() => {}) } }}
         >
           <source src="/globe.mp4" type="video/mp4"/>
         </video>

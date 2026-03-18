@@ -84,16 +84,16 @@ const marches: AccordionItemData[] = [
 ]
 
 export default function MarchesSection() {
-  const { ref, isVisible } = useScrollReveal()
+  const { ref, isVisible } = useScrollReveal(0.12, true)
   const { isDark } = useTheme()
 
   return (
-    <section className="py-24 sec-bg-b relative overflow-hidden" id="marches">
+    <section className="py-24 sec-bg-b relative overflow-hidden" id="marches" data-reveal-once>
       <div className="absolute inset-0 moroccan-pattern opacity-10" />
 
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         {/* Header */}
-        <div ref={ref} className={`reveal text-center mb-14 ${isVisible ? "visible" : ""}`}>
+        <div ref={ref} className={`reveal text-center mb-14 ${isVisible ? "is-visible" : ""}`}>
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-widest uppercase mb-4 border"
             style={{

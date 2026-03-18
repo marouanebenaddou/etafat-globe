@@ -136,7 +136,7 @@ const technologies = [
 ]
 
 // ─── Geomatic Modal ────────────────────────────────────────────────────────────
-function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: () => void }) {
+function TechModal({ tech, onClose, origin }: { tech: typeof technologies[0]; onClose: () => void; origin?: { x: number; y: number } }) {
   const { isDark } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [dragY, setDragY] = useState(0)
@@ -174,28 +174,37 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
     else setDragY(0)
   }
 
+  const originStyle = origin ? `${origin.x}px ${origin.y}px` : "center center"
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
-      style={{
-        background: mounted ? "rgba(0,0,0,0.82)" : "rgba(0,0,0,0)",
-        backdropFilter: mounted ? "blur(8px)" : "blur(0px)",
-        transition: "background 0.3s ease, backdrop-filter 0.3s ease",
-      }}
-      onClick={handleClose}
-    >
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50"
+        style={{
+          background: mounted ? "rgba(0,0,0,0.82)" : "rgba(0,0,0,0)",
+          backdropFilter: mounted ? "blur(8px)" : "blur(0px)",
+          transition: "background 0.35s ease, backdrop-filter 0.35s ease",
+        }}
+        onClick={handleClose}
+      />
+      {/* Scale wrapper — grows from card center */}
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 pointer-events-none"
+        style={{
+          transformOrigin: originStyle,
+          transform: mounted ? `scale(1) translateY(${dragY * 0.3}px)` : "scale(0.15)",
+          opacity: mounted ? Math.max(0, 1 - dragY / 200) : 0,
+          transition: dragY > 0 ? "none" : "transform 0.45s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
+        }}
+      >
       {/* Modal panel */}
       <div
-        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-none sm:block"
+        className="modal-surface relative w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-none sm:block pointer-events-auto"
         style={{
           border: `1px solid ${tech.color}35`,
           borderRadius: "4px",
           boxShadow: `0 0 0 1px ${tech.color}15, 0 40px 80px rgba(0,0,0,0.6), 0 0 80px ${tech.color}15`,
-          transform: mounted
-            ? `scale(1) translateY(${dragY}px)`
-            : "scale(0.88) translateY(24px)",
-          opacity: mounted ? Math.max(0, 1 - dragY / 200) : 0,
-          transition: dragY > 0 ? "none" : "transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease",
         }}
         onClick={e => e.stopPropagation()}
         onTouchStart={onTouchStart}
@@ -367,7 +376,8 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -379,7 +389,7 @@ function TechCard({
 }: {
   tech: typeof technologies[0]
   index: number
-  onOpen: () => void
+  onOpen: (origin: { x: number; y: number }) => void
 }) {
   const { ref: revealRef, isVisible } = useScrollReveal(0.1)
   const { ref: focusRef, centered } = useCenterFocus()
@@ -408,10 +418,13 @@ function TechCard({
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={onOpen}
+        onClick={e => {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+          onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+        }}
         role="button"
         tabIndex={0}
-        onKeyDown={e => e.key === "Enter" && onOpen()}
+        onKeyDown={e => { if (e.key === "Enter") { const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); onOpen({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }) } }}
       >
         <GlowingEffect
           spread={40}
@@ -506,6 +519,7 @@ function TechCard({
 export default function TechnologiesSection() {
   const { ref, isVisible } = useScrollReveal()
   const [selected, setSelected] = useState<typeof technologies[0] | null>(null)
+  const [origin, setOrigin] = useState<{ x: number; y: number } | undefined>()
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -548,12 +562,12 @@ export default function TechnologiesSection() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {technologies.map((tech, i) => (
-            <TechCard key={tech.name} tech={tech} index={i} onOpen={() => setSelected(tech)} />
+            <TechCard key={tech.name} tech={tech} index={i} onOpen={(o) => { setOrigin(o); setSelected(tech) }} />
           ))}
         </div>
       </div>
 
-      {selected && <TechModal tech={selected} onClose={() => setSelected(null)} />}
+      {selected && <TechModal tech={selected} onClose={() => setSelected(null)} origin={origin} />}
 
       <div className="section-divider mt-8" />
     </section>

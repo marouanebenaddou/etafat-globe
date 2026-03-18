@@ -75,8 +75,8 @@ export default function Home() {
       <ParallaxSection />
       <StatsSection />
       <ServicesSection />
-      <TechnologiesSection />
       <MarchesSection />
+      <TechnologiesSection />
       <div data-reveal-once>
         <AboutSection />
         <ClientsSection />

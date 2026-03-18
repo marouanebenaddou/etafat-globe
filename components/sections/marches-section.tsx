@@ -25,7 +25,7 @@ const marches: AccordionItemData[] = [
     id: 2,
     title: "Aménagement du Territoire",
     subtitle: "Urbanisme, patrimoine, foncier",
-    imageUrl: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?q=80&w=1600&auto=format&fit=crop",
+    imageUrl: "/images/amenagement-territoire.jpg",
     details: "De l'urbanisme à la gestion foncière, ETAFAT apporte son expertise géomatique pour planifier, modéliser et gérer les territoires urbains et ruraux.",
     services: [
       "Bornage, morcellement et gestion foncière",

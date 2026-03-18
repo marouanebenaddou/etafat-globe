@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export const BoxesCore = ({ className, isStatic = false, ...rest }: { className?: string; isStatic?: boolean }) => {
-  const rows = new Array(isStatic ? 40 : 80).fill(1);
-  const cols = new Array(isStatic ? 25 : 50).fill(1);
+  const rows = new Array(isStatic ? 40 : 120).fill(1);
+  const cols = new Array(isStatic ? 25 : 60).fill(1);
 
   const colors = [
     "rgb(0 123 255)",   // etafat primary #007BFF

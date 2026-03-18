@@ -11,7 +11,7 @@ const offices = [
     country: "Maroc",
     flag: "🇲🇦",
     address: "Siège social — Maroc",
-    phone: "+212 5 37 XX XX XX",
+    phone: "+212 522 79 87 00",
     email: "contact@etafat.ma",
     isHQ: true,
     color: "#007BFF",

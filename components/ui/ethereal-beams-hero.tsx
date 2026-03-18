@@ -5,10 +5,11 @@ import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, useState, 
 import * as THREE from "three"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { PerspectiveCamera } from "@react-three/drei"
-import { ArrowRight, MapPin, Menu, X } from "lucide-react"
+import { ArrowRight, MapPin, Menu, X, Search } from "lucide-react"
 import { useTheme } from "@/lib/theme-context"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import { useCountUp } from "@/lib/hooks"
+import SearchModal from "@/components/ui/search-modal"
 
 type UniformValue = THREE.IUniform<unknown> | unknown
 interface ExtendMaterialConfig {
@@ -233,6 +234,7 @@ export default function EtherealBeamsHero() {
   const { isDark } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [navHidden, setNavHidden] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const lastScrollY = useRef(0)
   const scrolledDown = useRef(false)
   const mouseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -271,6 +273,18 @@ export default function EtherealBeamsHero() {
       window.removeEventListener("mousemove", onMouseMove)
       if (mouseTimer.current) clearTimeout(mouseTimer.current)
     }
+  }, [])
+
+  // Cmd+K / Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        setSearchOpen(o => !o)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
   }, [])
   const beamCfg = isDark
     ? { bgColor:"#000510", diffuseColor:"#000510", lightColor:"#007BFF" }
@@ -337,6 +351,16 @@ export default function EtherealBeamsHero() {
 
             {/* Actions */}
             <div className="flex items-center gap-4">
+              {/* Search button */}
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Rechercher"
+                className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-all duration-200 border ${isDark ? "text-white/60 hover:text-white border-white/10 hover:bg-white/8" : "text-slate-500 hover:text-slate-800 border-slate-200 hover:bg-slate-50"}`}
+              >
+                <Search className="w-4 h-4" />
+                <span className="hidden md:inline">Rechercher</span>
+                <kbd className={`hidden md:inline text-xs px-1.5 py-0.5 rounded font-mono ${isDark ? "bg-white/10 text-white/40" : "bg-slate-100 text-slate-400"}`}>⌘K</kbd>
+              </button>
               <ThemeToggle/>
               <a href="#contact"
                 className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#007BFF] hover:bg-[#00669D] text-white text-sm font-semibold transition-all duration-300 shadow-lg shadow-[#007BFF]/30 hover:scale-105">
@@ -417,6 +441,8 @@ export default function EtherealBeamsHero() {
           </nav>
         </div>
       </div>
+
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* HERO CONTENT */}
       <div className="relative z-10 flex min-h-[calc(100vh-5rem)] items-center justify-center">

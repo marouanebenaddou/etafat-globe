@@ -247,7 +247,7 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
         {/* Scrollable content — mobile only */}
         <div className="overflow-y-auto sm:overflow-visible overscroll-contain flex-1 sm:flex-none">
           {/* ── Image / Video slot ── */}
-          <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
+          <div className="relative w-full overflow-hidden max-h-48 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
             {"video" in tech && tech.video ? (
               <video
                 src={tech.video}

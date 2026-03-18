@@ -32,6 +32,7 @@ const technologies = [
     color: "#22d3ee",
     bg: "rgba(34,211,238,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/pva_lidar.jpg" as string | null,
+    video: "/videos/lidar.mp4" as string | null,
   },
   {
     icon: MapPin,
@@ -238,9 +239,19 @@ function TechModal({ tech, onClose }: { tech: typeof technologies[0]; onClose: (
 
         {/* Scrollable content — mobile only */}
         <div className="overflow-y-auto sm:overflow-visible overscroll-contain flex-1 sm:flex-none">
-          {/* ── Image slot ── */}
+          {/* ── Image / Video slot ── */}
           <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
-            {tech.image ? (
+            {"video" in tech && tech.video ? (
+              <video
+                src={tech.video}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+                style={{ filter: "brightness(0.9) saturate(1.05)" }}
+              />
+            ) : tech.image ? (
               <img
                 src={tech.image}
                 alt={tech.name}

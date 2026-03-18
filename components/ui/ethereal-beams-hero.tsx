@@ -341,8 +341,8 @@ export default function EtherealBeamsHero() {
 
             {/* Nav pills */}
             <div className={`hidden lg:flex items-center space-x-1 rounded-full p-1 backdrop-blur-xl border transition-colors duration-500 ${isDark?"bg-white/5 border-white/10":"bg-white/70 border-blue-100 shadow-sm"}`}>
-              {["Accueil","Services","Technologies","À Propos","Académie","Contact"].map(item=>(
-                <a key={item} href={`#${item.toLowerCase().replace(" ","").replace("à","a")}`}
+              {["Accueil","Services","Technologies","Marchés","À Propos","Académie","Contact"].map(item=>(
+                <a key={item} href={`#${item.toLowerCase().replace(" ","").replace("é","e").replace("à","a").replace("è","e")}`}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${isDark?"text-white/80 hover:bg-white/10 hover:text-white":"text-slate-600 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}>
                   {item}
                 </a>
@@ -416,6 +416,7 @@ export default function EtherealBeamsHero() {
               { label: "Accueil",      href: "#home" },
               { label: "Services",     href: "#services" },
               { label: "Technologies", href: "#technologies" },
+              { label: "Marchés",      href: "#marches" },
               { label: "À Propos",     href: "#apropos" },
               { label: "Académie",     href: "#academie" },
               { label: "Contact",      href: "#contact" },

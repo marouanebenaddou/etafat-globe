@@ -6,6 +6,7 @@ import StatsSection from "@/components/sections/stats-section"
 import ParallaxSection from "@/components/sections/parallax-section"
 import ServicesSection from "@/components/sections/services-section"
 import TechnologiesSection from "@/components/sections/technologies-section"
+import MarchesSection from "@/components/sections/marches-section"
 import AboutSection from "@/components/sections/about-section"
 import ClientsSection from "@/components/sections/clients-section"
 import AcademySection from "@/components/sections/academy-section"
@@ -75,6 +76,7 @@ export default function Home() {
       <StatsSection />
       <ServicesSection />
       <TechnologiesSection />
+      <MarchesSection />
       <div data-reveal-once>
         <AboutSection />
         <ClientsSection />

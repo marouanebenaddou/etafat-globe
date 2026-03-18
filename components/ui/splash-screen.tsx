@@ -43,7 +43,7 @@ export default function SplashScreen() {
     >
       <div className="flex flex-col items-center gap-6">
         {/* Logo with fill-up effect */}
-        <div className="relative" style={{ width: 200, height: 64 }}>
+        <div className="relative" style={{ width: 320, height: 100 }}>
           {/* Dim base logo */}
           <img
             src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"

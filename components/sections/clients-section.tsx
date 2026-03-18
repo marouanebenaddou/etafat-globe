@@ -108,7 +108,12 @@ export default function ClientsSection() {
       <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
         {/* Header */}
         <div ref={ref} className={`text-center mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <div className="inline-flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-4 py-1.5 text-xs text-yellow-400 uppercase tracking-widest mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs uppercase tracking-widest mb-4"
+            style={{
+              background: isDark ? "rgba(251,191,36,0.1)" : "rgba(0,123,255,0.08)",
+              border: isDark ? "1px solid rgba(251,191,36,0.25)" : "1px solid rgba(0,123,255,0.25)",
+              color: isDark ? "#fbbf24" : "#007BFF",
+            }}>
             <Building className="w-3.5 h-3.5" />
             Ils nous font confiance
           </div>

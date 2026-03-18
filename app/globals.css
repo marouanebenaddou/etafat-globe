@@ -354,7 +354,7 @@
   filter: drop-shadow(0 0 24px rgba(79,195,247,0.45));
 }
 .gradient-text-gold {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  background: linear-gradient(135deg, #007BFF 0%, #0057b8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

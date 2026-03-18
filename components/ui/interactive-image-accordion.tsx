@@ -27,6 +27,7 @@ interface DesktopItemProps {
 
 const DesktopItem = ({ item, isActive, isExpanded, onHover, onToggleExpand, accentColor }: DesktopItemProps) => (
   <motion.div
+    id={`marche-${item.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`}
     className="relative rounded-2xl overflow-hidden cursor-pointer flex-shrink-0"
     style={{ height: 560 }}
     animate={{ width: isActive ? 440 : 64 }}
@@ -136,7 +137,7 @@ interface MobileItemProps {
 }
 
 const MobileItem = ({ item, isOpen, onToggle, accentColor }: MobileItemProps) => (
-  <div className="rounded-2xl overflow-hidden w-full" onClick={onToggle}>
+  <div id={`marche-${item.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="rounded-2xl overflow-hidden w-full" onClick={onToggle}>
     {/* Header row – always visible */}
     <div className="relative h-20 cursor-pointer">
       <img src={item.imageUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />

@@ -386,7 +386,7 @@ function TechCard({
   }, [])
 
   return (
-    <div ref={setRefs} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
+    <div ref={setRefs} id={`tech-${tech.name.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
       <div
         className="group relative rounded-[5px] p-5 h-full transition-all duration-300 cursor-pointer overflow-hidden"
         style={{

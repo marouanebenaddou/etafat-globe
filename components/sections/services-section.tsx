@@ -327,7 +327,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
   }, [])
 
   return (
-    <div ref={setRefs} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
+    <div ref={setRefs} id={`service-${service.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
       <div
         className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden"
         style={{

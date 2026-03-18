@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react"
 
 /** Watches an element — sets isVisible true on enter, resets to false on leave so animation replays.
  *  Pass `once = true` to play the animation only once and never reset it. */
-export function useScrollReveal(threshold = 0.12, once = false) {
+export function useScrollReveal(threshold = 0.06, once = false) {
   const ref = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -20,7 +20,7 @@ export function useScrollReveal(threshold = 0.12, once = false) {
           setIsVisible(false)
         }
       },
-      { threshold },
+      { threshold, rootMargin: "0px 0px 120px 0px" },
     )
     observer.observe(el)
     return () => observer.disconnect()

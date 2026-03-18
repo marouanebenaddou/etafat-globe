@@ -10,7 +10,7 @@ const marches: AccordionItemData[] = [
     id: 1,
     title: "Infrastructures",
     subtitle: "Routes, ouvrages d'art, aéroports",
-    imageUrl: "/images/tour-mohammed-vi.jpg",
+    imageUrl: "/images/infrastructures.jpg",
     details: "ETAFAT accompagne les maîtres d'ouvrage dans tous les projets d'infrastructure : routes, autoroutes, ponts, tunnels et aéroports, de la phase étude jusqu'à la réception.",
     services: [
       "Études topographiques et relevés de terrain",

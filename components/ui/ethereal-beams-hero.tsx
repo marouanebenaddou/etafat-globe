@@ -576,7 +576,7 @@ export default function EtherealBeamsHero() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8 w-full">
           <div className="mx-auto max-w-4xl text-center">
 
-            <div className={`mb-8 inline-flex items-center gap-2 rounded-full backdrop-blur-xl border px-5 py-2 text-sm transition-colors duration-500 ${isDark?"bg-[#007BFF]/10 border-[#007BFF]/20 text-[#4da6ff]":"bg-white/80 border-[#007BFF]/30 text-[#007BFF] shadow-sm"}`}
+            <div className={`mb-8 mt-6 sm:mt-0 inline-flex items-center gap-2 rounded-full backdrop-blur-xl border px-5 py-2 text-sm transition-colors duration-500 ${isDark?"bg-[#007BFF]/10 border-[#007BFF]/20 text-[#4da6ff]":"bg-white/80 border-[#007BFF]/30 text-[#007BFF] shadow-sm"}`}
               style={{animation:"fade-up 0.6s ease 0.2s both"}}>
               <MapPin className="w-4 h-4"/> Maroc &amp; Afrique — Depuis 1983
             </div>

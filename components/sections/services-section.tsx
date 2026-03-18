@@ -22,6 +22,7 @@ const services = [
     signal: "GIS · WebGL · PostGIS",
     coord: "33°59′N 006°51′W",
     image: "https://etafat.ma/wp-content/uploads/2020/12/sig.png",
+    video: "/videos/sig.mp4",
   },
   {
     icon: Layers,
@@ -36,6 +37,7 @@ const services = [
     signal: "RTK · CORS · EDM",
     coord: "31°09′N 007°59′W",
     image: "https://etafat.ma/wp-content/uploads/2020/12/foncier-1.png",
+    video: "/videos/foncier.mp4",
   },
   {
     icon: Database,
@@ -92,6 +94,7 @@ const services = [
     signal: "IFC · LOD 500 · COBie",
     coord: "34°01′N 006°49′W",
     image: "https://etafat.ma/wp-content/uploads/2021/01/bim-batiment.jpg",
+    video: "/videos/bim.mp4",
   },
   {
     icon: GraduationCap,
@@ -106,6 +109,7 @@ const services = [
     signal: "OFPPT · CPF · ISO 29990",
     coord: "31°38′N 008°00′W",
     image: "https://etafat.ma/wp-content/uploads/2020/12/etafat_academie-e1610024624338.png",
+    video: "/videos/formation.mp4",
   },
 ]
 
@@ -209,8 +213,6 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
             <span className="text-xs font-mono tracking-widest uppercase" style={{ color: service.accent }}>
               {service.abbr}
             </span>
-            <span className="modal-header-slash text-xs font-mono">//</span>
-            <span className="modal-header-signal text-xs font-mono hidden sm:inline">{service.signal}</span>
           </div>
           <button onClick={handleClose}
             className="modal-close-btn w-7 h-7 flex items-center justify-center rounded transition-all">
@@ -222,7 +224,14 @@ function ServiceModal({ service, onClose }: { service: typeof services[0]; onClo
         <div className="overflow-y-auto sm:overflow-visible overscroll-contain flex-1 sm:flex-none">
           {/* Image slot */}
           <div className="relative w-full overflow-hidden max-h-28 sm:max-h-80" style={{ aspectRatio: "16 / 9" }}>
-            {service.image ? (
+            {(service as any).video ? (
+              <video
+                src={(service as any).video}
+                autoPlay muted loop playsInline
+                className="w-full h-full object-cover"
+                style={{ filter: "brightness(0.85) saturate(1.05)" }}
+              />
+            ) : service.image ? (
               <img
                 src={service.image}
                 alt={service.title}
@@ -431,12 +440,21 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
               background: `linear-gradient(135deg, ${service.accent}18, transparent)`,
               opacity: active ? 1 : 0,
             }} />
-          <img
-            src={service.image}
-            alt={service.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            style={{ filter: isDark ? "brightness(0.75) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
-          />
+          {(service as any).video ? (
+            <video
+              src={(service as any).video}
+              autoPlay muted loop playsInline
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              style={{ filter: isDark ? "brightness(0.75) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+            />
+          ) : (
+            <img
+              src={service.image}
+              alt={service.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              style={{ filter: isDark ? "brightness(0.75) saturate(0.9)" : "brightness(0.95) saturate(1.05)" }}
+            />
+          )}
         </div>
       </div>
     </div>

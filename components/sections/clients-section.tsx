@@ -2,7 +2,27 @@
 
 import { useScrollReveal } from "@/lib/hooks"
 import { useTheme } from "@/lib/theme-context"
-import { Building, Quote } from "lucide-react"
+import { Building, Quote, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect } from "react"
+
+const testimonials = [
+  {
+    quote: "Etafat nous a fourni des données géospatiales d'une précision remarquable pour nos projets d'infrastructure, dans des délais qu'aucun autre prestataire n'aurait pu tenir.",
+    author: "Direction Technique — Grand compte national",
+  },
+  {
+    quote: "Grâce aux levés LiDAR d'Etafat, nous avons réduit de 40% le temps de conception de nos ouvrages. Une expertise rare sur le continent.",
+    author: "Responsable Études & Travaux — Opérateur public africain",
+  },
+  {
+    quote: "Le système SIG déployé par Etafat a transformé notre capacité à gérer le patrimoine foncier de notre région. Un partenaire de confiance depuis dix ans.",
+    author: "Directeur de l'Urbanisme — Collectivité territoriale",
+  },
+  {
+    quote: "Leur réactivité sur le terrain et la qualité de leurs livrables cartographiques sont sans équivalent. Etafat est notre référence pour tous nos projets géospatiaux.",
+    author: "Chef de Projet Infrastructure — Institution financière internationale",
+  },
+]
 
 const clients = [
   { name: "OCP", sector: "Mines & Phosphates", color: "#f59e0b" },
@@ -28,6 +48,51 @@ const sectors = [
 
 // Double the array for infinite marquee
 const marqueeClients = [...clients, ...clients]
+
+function TestimonialCarousel({ isVisible }: { isVisible: boolean }) {
+  const [idx, setIdx] = useState(0)
+  const [fading, setFading] = useState(false)
+
+  const go = (next: number) => {
+    setFading(true)
+    setTimeout(() => {
+      setIdx((next + testimonials.length) % testimonials.length)
+      setFading(false)
+    }, 300)
+  }
+
+  useEffect(() => {
+    const t = setInterval(() => go(idx + 1), 5000)
+    return () => clearInterval(t)
+  }, [idx])
+
+  const t = testimonials[idx]
+
+  return (
+    <div className={`max-w-3xl mx-auto mb-16 glass-blue rounded-2xl p-8 text-center transition-all duration-700 delay-200 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+      <Quote className="w-8 h-8 text-[#007BFF]/50 mx-auto mb-4" />
+      <div style={{ transition: "opacity 0.3s", opacity: fading ? 0 : 1 }}>
+        <p className="t-body text-lg italic leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
+        <div className="text-[#007BFF] font-semibold text-sm">{t.author}</div>
+      </div>
+      <div className="flex items-center justify-center gap-4 mt-6">
+        <button onClick={() => go(idx - 1)} className="w-7 h-7 rounded-full flex items-center justify-center glass hover:bg-[#007BFF]/20 transition-colors">
+          <ChevronLeft className="w-4 h-4 t-muted" />
+        </button>
+        <div className="flex gap-2">
+          {testimonials.map((_, i) => (
+            <button key={i} onClick={() => go(i)}
+              className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+              style={{ background: i === idx ? "#007BFF" : "rgba(0,123,255,0.25)", transform: i === idx ? "scale(1.4)" : "scale(1)" }} />
+          ))}
+        </div>
+        <button onClick={() => go(idx + 1)} className="w-7 h-7 rounded-full flex items-center justify-center glass hover:bg-[#007BFF]/20 transition-colors">
+          <ChevronRight className="w-4 h-4 t-muted" />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function ClientsSection() {
   const { isDark } = useTheme()
@@ -56,14 +121,8 @@ export default function ClientsSection() {
           </p>
         </div>
 
-        {/* Testimonial */}
-        <div className={`max-w-3xl mx-auto mb-16 glass-blue rounded-2xl p-8 text-center transition-all duration-700 delay-200 ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-          <Quote className="w-8 h-8 text-[#007BFF]/50 mx-auto mb-4" />
-          <p className="t-body text-lg italic leading-relaxed mb-4">
-            &ldquo;Etafat nous a fourni des données géospatiales d&apos;une précision remarquable pour nos projets d&apos;infrastructure, dans des délais qu&apos;aucun autre prestataire n&apos;aurait pu tenir.&rdquo;
-          </p>
-          <div className="text-[#007BFF] font-semibold text-sm">Direction Technique — Grand compte national</div>
-        </div>
+        {/* Testimonial carousel */}
+        <TestimonialCarousel isVisible={isVisible} />
 
         {/* Infinite marquee */}
         <div className="relative mb-12 overflow-hidden">

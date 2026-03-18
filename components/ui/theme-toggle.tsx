@@ -2,9 +2,24 @@
 
 import { useTheme } from "@/lib/theme-context"
 import { Sun, Moon } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 
 export default function ThemeToggle() {
   const { isDark, toggle } = useTheme()
+  const [glowing, setGlowing] = useState(false)
+  const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevDark = useRef(isDark)
+
+  useEffect(() => {
+    // Only trigger glow when switching FROM dark TO light
+    if (prevDark.current && !isDark) {
+      setGlowing(true)
+      if (glowTimer.current) clearTimeout(glowTimer.current)
+      glowTimer.current = setTimeout(() => setGlowing(false), 2000)
+    }
+    prevDark.current = isDark
+    return () => { if (glowTimer.current) clearTimeout(glowTimer.current) }
+  }, [isDark])
 
   return (
     <button
@@ -23,7 +38,7 @@ export default function ThemeToggle() {
       </span>
 
       {/* Toggle track */}
-      <div className={`theme-track ${isDark ? "is-dark" : "is-light"}`}>
+      <div className={`theme-track ${isDark ? "is-dark" : "is-light"} ${!isDark && glowing ? "is-glowing" : ""}`}>
         <div className={`theme-thumb ${isDark ? "is-dark" : "is-light"}`}>
           {isDark ? (
             <Moon className="w-3 h-3 text-blue-600" />

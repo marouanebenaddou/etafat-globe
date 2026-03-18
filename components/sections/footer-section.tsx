@@ -3,31 +3,32 @@
 import { useTheme } from "@/lib/theme-context"
 import { Linkedin, Twitter, Youtube, Facebook, ArrowUpRight, MapPin, Mail, Phone } from "lucide-react"
 
-const footerLinks = {
+function slug(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+function openCard(section: string, id: string) {
+  const el = document.getElementById(section)
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+  setTimeout(() => window.dispatchEvent(new CustomEvent("etafat:open", { detail: { id } })), 700)
+}
+
+const footerLinks: { [col: string]: { label: string; action: () => void }[] } = {
   "Services": [
-    "SIG & Géomatique",
-    "Foncier & Topographie",
-    "Ingénierie des données",
-    "Conseil en ingénierie",
-    "Inspection d'infrastructures",
-    "BIM & Digital",
-    "Académie Etafat",
+    { label: "SIG & Géomatique",             action: () => openCard("services", slug("Systèmes d'Information Géographique")) },
+    { label: "Foncier & Topographie",         action: () => openCard("services", slug("Foncier & Topographie")) },
+    { label: "Ingénierie des données",        action: () => openCard("services", slug("Ingénierie des Données")) },
+    { label: "Conseil en ingénierie",         action: () => openCard("services", slug("Conseil en Ingénierie")) },
+    { label: "Inspection d'infrastructures",  action: () => openCard("services", slug("Inspection d'Infrastructures")) },
+    { label: "BIM & Digital",                 action: () => openCard("services", slug("BIM & Digital")) },
+    { label: "Académie Etafat",               action: () => openCard("services", slug("Académie Etafat")) },
   ],
   "Marchés": [
-    "Infrastructure & Transport",
-    "Planification territoriale",
-    "Énergie & Mines",
-    "Agriculture & Environnement",
-    "Urbanisme",
-    "Port & Maritime",
-  ],
-  "Entreprise": [
-    "À propos d'Etafat",
-    "Notre équipe",
-    "Carrières",
-    "Actualités",
-    "Publications",
-    "Certifications",
+    { label: "Infrastructures",               action: () => openCard("marches", "marche-" + slug("Infrastructures")) },
+    { label: "Aménagement du Territoire",     action: () => openCard("marches", "marche-" + slug("Aménagement du Territoire")) },
+    { label: "Énergie & Mines",               action: () => openCard("marches", "marche-" + slug("Énergie & Mines")) },
+    { label: "Agriculture",                   action: () => openCard("marches", "marche-" + slug("Agriculture")) },
+    { label: "Cartographie",                  action: () => openCard("marches", "marche-" + slug("Cartographie")) },
   ],
 }
 
@@ -121,11 +122,11 @@ export default function FooterSection() {
             <div key={title}>
               <h4 className="t-head font-bold text-sm mb-5 tracking-wide">{title}</h4>
               <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="t-muted text-sm hover:text-[#007BFF] transition-colors duration-200">
-                      {link}
-                    </a>
+                {links.map(({ label, action }) => (
+                  <li key={label}>
+                    <button onClick={action} className="t-muted text-sm hover:text-[#007BFF] transition-colors duration-200 text-left">
+                      {label}
+                    </button>
                   </li>
                 ))}
               </ul>

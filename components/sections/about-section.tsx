@@ -11,6 +11,7 @@ const milestones = [
   { year: "2012", title: "Etafat Afrique", desc: "Expansion continentale avec l'ouverture d'Etafat Côte d'Ivoire et développement en Afrique subsaharienne", color: "#10b981" },
   { year: "2018", title: "Innovation LiDAR & Drones", desc: "Adoption massive des technologies LiDAR, drones et mobile mapping, positionnant Etafat à l'avant-garde", color: "#f97316" },
   { year: "2024", title: "Etafat Sénégal & BIM", desc: "Nouvelle expansion sénégalaise et lancement de l'offre BIM digital et jumeaux numériques", color: "#f43f5e" },
+  { year: "2025", title: "Premier projet en Asie", desc: "Franchissement d'une nouvelle frontière avec le premier projet géospatial d'Etafat déployé en Asie", color: "#22d3ee" },
 ]
 
 const strengths = [

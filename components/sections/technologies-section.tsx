@@ -19,6 +19,7 @@ const technologies = [
     color: "#007BFF",
     bg: "rgba(0,123,255,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg" as string | null,
+    video: "/videos/drone-uav.mp4" as string | null,
   },
   {
     icon: ScanLine,
@@ -46,6 +47,7 @@ const technologies = [
     color: "#10b981",
     bg: "rgba(16,185,129,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/gps-1.jpg" as string | null,
+    video: "/videos/gps-gnss.mp4" as string | null,
   },
   {
     icon: Car,
@@ -59,6 +61,7 @@ const technologies = [
     color: "#8b5cf6",
     bg: "rgba(139,92,246,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/mms-e1609684489385.jpg" as string | null,
+    video: "/videos/mobile-mapping.mp4" as string | null,
   },
   {
     icon: Waves,
@@ -72,6 +75,7 @@ const technologies = [
     color: "#06b6d4",
     bg: "rgba(6,182,212,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/bathymetrie.jpg" as string | null,
+    video: "/videos/bathymetrie.mp4" as string | null,
   },
   {
     icon: Radio,
@@ -85,6 +89,7 @@ const technologies = [
     color: "#f97316",
     bg: "rgba(249,115,22,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/georadar-1.jpg" as string | null,
+    video: "/videos/georadar.mp4" as string | null,
   },
   {
     icon: Zap,
@@ -111,6 +116,7 @@ const technologies = [
     color: "#f43f5e",
     bg: "rgba(244,63,94,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/03/scanner2.jpg" as string | null,
+    video: "/videos/laser-scanning.mp4" as string | null,
   },
   {
     icon: Crosshair,
@@ -124,6 +130,7 @@ const technologies = [
     color: "#a78bfa",
     bg: "rgba(167,139,250,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/station_totale.jpg" as string | null,
+    video: "/videos/station-totale.mp4" as string | null,
   },
 ]
 

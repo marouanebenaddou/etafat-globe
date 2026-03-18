@@ -5,7 +5,7 @@ import { forwardRef, useImperativeHandle, useEffect, useRef, useMemo, useState, 
 import * as THREE from "three"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { PerspectiveCamera } from "@react-three/drei"
-import { ArrowRight, MapPin, Menu, X, Search } from "lucide-react"
+import { ArrowRight, MapPin, Menu, X, Search, ChevronDown } from "lucide-react"
 import { useTheme } from "@/lib/theme-context"
 import ThemeToggle from "@/components/ui/theme-toggle"
 import { useCountUp } from "@/lib/hooks"
@@ -235,6 +235,45 @@ export default function EtherealBeamsHero() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [navHidden, setNavHidden] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
+
+  const navItems = [
+    { label: "Accueil",      href: "#home" },
+    {
+      label: "Services", href: "#services",
+      children: [
+        { label: "SIG & Géomatique",              href: "#services" },
+        { label: "Foncier & Topographie",         href: "#services" },
+        { label: "Ingénierie des Données",        href: "#services" },
+        { label: "Conseil en Ingénierie",         href: "#services" },
+        { label: "Inspection d'Infrastructures",  href: "#services" },
+        { label: "BIM & Digital",                 href: "#services" },
+      ],
+    },
+    {
+      label: "Marchés", href: "#marches",
+      children: [
+        { label: "Infrastructures",          href: "#marches" },
+        { label: "Aménagement du Territoire",href: "#marches" },
+        { label: "Énergie & Mines",          href: "#marches" },
+        { label: "Agriculture",              href: "#marches" },
+        { label: "Cartographie",             href: "#marches" },
+      ],
+    },
+    {
+      label: "Technologies", href: "#technologies",
+      children: [
+        { label: "Drones & UAV",     href: "#technologies" },
+        { label: "LiDAR",            href: "#technologies" },
+        { label: "GPS / GNSS",       href: "#technologies" },
+        { label: "Mobile Mapping",   href: "#technologies" },
+        { label: "Bathymétrie",      href: "#technologies" },
+        { label: "Laser Scanning",   href: "#technologies" },
+      ],
+    },
+    { label: "Contact", href: "#contact" },
+  ]
   const lastScrollY = useRef(0)
   const scrolledDown = useRef(false)
   const mouseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -341,11 +380,34 @@ export default function EtherealBeamsHero() {
 
             {/* Nav pills */}
             <div className={`hidden lg:flex items-center space-x-1 rounded-full p-1 backdrop-blur-xl border transition-colors duration-500 ${isDark?"bg-white/5 border-white/10":"bg-white/70 border-blue-100 shadow-sm"}`}>
-              {["Accueil","Services","Marchés","Technologies","Contact"].map(item=>(
-                <a key={item} href={`#${item.toLowerCase().replace(" ","").replace("é","e").replace("à","a").replace("è","e")}`}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${isDark?"text-white/80 hover:bg-white/10 hover:text-white":"text-slate-600 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}>
-                  {item}
-                </a>
+              {navItems.map(item => (
+                <div key={item.label} className="relative"
+                  onMouseEnter={() => item.children && setOpenDropdown(item.label)}
+                  onMouseLeave={() => setOpenDropdown(null)}
+                >
+                  <a href={item.href}
+                    className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${isDark?"text-white/80 hover:bg-white/10 hover:text-white":"text-slate-600 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}>
+                    {item.label}
+                    {item.children && (
+                      <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${openDropdown === item.label ? "rotate-180" : ""}`} />
+                    )}
+                  </a>
+                  {/* Dropdown */}
+                  {item.children && openDropdown === item.label && (
+                    <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 rounded-2xl border shadow-xl overflow-hidden z-50 ${isDark ? "bg-[#000c1e]/95 border-white/10 backdrop-blur-xl" : "bg-white/95 border-blue-100 backdrop-blur-xl shadow-blue-100/40"}`}>
+                      <div className="py-2">
+                        {item.children.map(child => (
+                          <a key={child.label} href={child.href}
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-all duration-150 ${isDark ? "text-white/70 hover:text-white hover:bg-white/8" : "text-slate-600 hover:text-[#007BFF] hover:bg-[#007BFF]/5"}`}>
+                            <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
+                            {child.label}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -412,21 +474,40 @@ export default function EtherealBeamsHero() {
 
           {/* Nav links */}
           <nav className="px-6 pb-6 flex flex-col gap-1">
-            {[
-              { label: "Accueil",      href: "#home" },
-              { label: "Services",     href: "#services" },
-              { label: "Marchés",      href: "#marches" },
-              { label: "Technologies", href: "#technologies" },
-              { label: "Contact",      href: "#contact" },
-            ].map(({ label, href }) => (
-              <a
-                key={label}
-                href={href}
-                onClick={() => setMobileOpen(false)}
-                className={`flex items-center rounded-2xl px-5 py-4 text-base font-medium transition-all duration-200 ${isDark ? "text-white/80 hover:bg-white/8 hover:text-white" : "text-slate-700 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}
-              >
-                {label}
-              </a>
+            {navItems.map(({ label, href, children }) => (
+              <div key={label}>
+                {children ? (
+                  <>
+                    <button
+                      onClick={() => setMobileExpanded(mobileExpanded === label ? null : label)}
+                      className={`w-full flex items-center justify-between rounded-2xl px-5 py-4 text-base font-medium transition-all duration-200 ${isDark ? "text-white/80 hover:bg-white/8 hover:text-white" : "text-slate-700 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}
+                    >
+                      {label}
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileExpanded === label ? "rotate-180" : ""}`} />
+                    </button>
+                    {mobileExpanded === label && (
+                      <div className={`mx-4 mb-1 rounded-xl overflow-hidden ${isDark ? "bg-white/5" : "bg-[#007BFF]/4"}`}>
+                        {children.map(child => (
+                          <a key={child.label} href={child.href}
+                            onClick={() => { setMobileOpen(false); setMobileExpanded(null) }}
+                            className={`flex items-center gap-2.5 px-5 py-3 text-sm transition-all duration-150 ${isDark ? "text-white/60 hover:text-white" : "text-slate-500 hover:text-[#007BFF]"}`}>
+                            <span className="w-1 h-1 rounded-full bg-[#007BFF] flex-shrink-0" />
+                            {child.label}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <a
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center rounded-2xl px-5 py-4 text-base font-medium transition-all duration-200 ${isDark ? "text-white/80 hover:bg-white/8 hover:text-white" : "text-slate-700 hover:bg-[#007BFF]/5 hover:text-[#007BFF]"}`}
+                  >
+                    {label}
+                  </a>
+                )}
+              </div>
             ))}
 
             {/* CTA */}

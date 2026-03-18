@@ -103,6 +103,7 @@ const technologies = [
     color: "#eab308",
     bg: "rgba(234,179,8,0.08)",
     image: "https://etafat.ma/wp-content/uploads/2021/01/detecteur_electromagnetique.jpg" as string | null,
+    video: "/videos/detection-em.mp4",
   },
   {
     icon: Camera,

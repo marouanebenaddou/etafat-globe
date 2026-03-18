@@ -52,6 +52,7 @@ const services = [
     signal: "ETL · PostGIS · GDAL",
     coord: "34°01′N 005°00′W",
     image: "https://etafat.ma/wp-content/uploads/2021/01/traitement.jpg",
+    video: "/videos/ingenierie-donnees.mp4",
   },
   {
     icon: Settings,
@@ -66,6 +67,7 @@ const services = [
     signal: "AMO · PMBOK · ISO",
     coord: "33°35′N 007°35′W",
     image: "https://etafat.ma/wp-content/uploads/2021/01/ingenieurie_infrastructure.jpg",
+    video: "/videos/conseil.mp4",
   },
   {
     icon: Eye,

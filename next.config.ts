@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  compress: true,
   images: {
     remotePatterns: [
       {
@@ -9,6 +10,10 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+    formats: ["image/webp"],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "framer-motion", "@react-three/fiber", "@react-three/drei"],
   },
 };
 

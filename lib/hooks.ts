@@ -20,7 +20,7 @@ export function useScrollReveal(threshold = 0.06, once = false) {
           setIsVisible(false)
         }
       },
-      { threshold, rootMargin: "0px 0px 120px 0px" },
+      { threshold: 0, rootMargin: "0px 0px 200px 0px" },
     )
     observer.observe(el)
     return () => observer.disconnect()

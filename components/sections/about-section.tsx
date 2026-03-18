@@ -24,10 +24,55 @@ const strengths = [
 ]
 
 const units = [
-  { name: "ETAFAT", desc: "Géomatique & topographie", flag: "🇲🇦", color: "#007BFF" },
-  { name: "ETAFAT ING", desc: "Ingénierie & conseil", flag: "🏗️", color: "#00669D" },
-  { name: "ETAFAT AFRIQUE", desc: "Côte d'Ivoire & Afrique", flag: "🇨🇮", color: "#10b981" },
-  { name: "ETAFAT SÉNÉGAL", desc: "Sénégal & Afrique de l'Ouest", flag: "🇸🇳", color: "#f97316" },
+  {
+    name: "ETAFAT",
+    desc: "Géomatique & topographie",
+    color: "#007BFF",
+    banner: (
+      <div className="w-full h-full" style={{ background: "#c1272d" }}>
+        <div className="w-full h-full flex items-center justify-center">
+          <svg viewBox="0 0 3 2" className="w-full h-full"><rect width="3" height="2" fill="#c1272d"/><circle cx="1.5" cy="1" r="0.4" fill="none" stroke="#006233" strokeWidth="0.06"/><polygon points="1.5,0.62 1.56,0.8 1.75,0.8 1.61,0.91 1.66,1.09 1.5,0.98 1.34,1.09 1.39,0.91 1.25,0.8 1.44,0.8" fill="#006233"/></svg>
+        </div>
+      </div>
+    ),
+  },
+  {
+    name: "ETAFAT ING",
+    desc: "Ingénierie & conseil",
+    color: "#00669D",
+    banner: (
+      <div className="w-full h-full bg-gradient-to-br from-slate-100 to-blue-50 flex items-center justify-center overflow-hidden">
+        <svg viewBox="0 0 200 80" className="w-full h-full opacity-80" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="80" fill="#e8f0fe"/>
+          <rect x="10" y="30" width="40" height="40" fill="#4285f4" rx="2"/>
+          <rect x="60" y="20" width="40" height="50" fill="#34a853" rx="2"/>
+          <rect x="110" y="10" width="40" height="60" fill="#fbbc04" rx="2"/>
+          <rect x="160" y="25" width="30" height="45" fill="#ea4335" rx="2"/>
+          <line x1="0" y1="75" x2="200" y2="75" stroke="#aaa" strokeWidth="1"/>
+        </svg>
+      </div>
+    ),
+  },
+  {
+    name: "ETAFAT AFRIQUE",
+    desc: "Côte d'Ivoire & Afrique",
+    color: "#10b981",
+    banner: (
+      <div className="w-full h-full">
+        <svg viewBox="0 3 3 2" className="w-full h-full"><rect width="1" height="2" fill="#f77f00"/><rect x="1" width="1" height="2" fill="#ffffff"/><rect x="2" width="1" height="2" fill="#009a44"/></svg>
+      </div>
+    ),
+  },
+  {
+    name: "ETAFAT SÉNÉGAL",
+    desc: "Sénégal & Afrique de l'Ouest",
+    color: "#f97316",
+    banner: (
+      <div className="w-full h-full">
+        <svg viewBox="0 0 3 2" className="w-full h-full"><rect width="1" height="2" fill="#00853f"/><rect x="1" width="1" height="2" fill="#fdef42"/><rect x="2" width="1" height="2" fill="#e31b23"/><polygon points="1.5,0.5 1.6,0.8 1.9,0.8 1.65,1 1.75,1.3 1.5,1.1 1.25,1.3 1.35,1 1.1,0.8 1.4,0.8" fill="#00853f"/></svg>
+      </div>
+    ),
+  },
 ]
 
 export default function AboutSection() {
@@ -108,12 +153,24 @@ export default function AboutSection() {
               <div className="grid grid-cols-2 gap-3">
                 {units.map((u, i) => (
                   <div key={u.name}
-                    className={`reveal glass rounded-xl p-3 hover:scale-105 transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
-                    style={{ transitionDelay: `${i * 100 + 400}ms` }}>
-                    <div className="text-2xl mb-1">{u.flag}</div>
-                    <div className="t-head font-bold text-xs">{u.name}</div>
-                    <div className="t-xmuted text-xs">{u.desc}</div>
-                    <div className="mt-2 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
+                    className={`reveal rounded-2xl overflow-hidden hover:scale-[1.03] transition-transform duration-300 ${leftVisible ? "is-visible" : ""}`}
+                    style={{
+                      transitionDelay: `${i * 100 + 400}ms`,
+                      background: isDark ? "rgba(255,255,255,0.04)" : "#ffffff",
+                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.07)",
+                      boxShadow: isDark ? "none" : "0 2px 12px rgba(0,0,0,0.06)",
+                    }}>
+                    {/* Flag / banner */}
+                    <div className="w-full overflow-hidden" style={{ height: 72 }}>
+                      {u.banner}
+                    </div>
+                    {/* Text */}
+                    <div className="px-3 pt-2 pb-1">
+                      <div className="t-head font-bold text-sm">{u.name}</div>
+                      <div className="t-xmuted text-xs mt-0.5">{u.desc}</div>
+                    </div>
+                    {/* Bottom accent bar */}
+                    <div className="mx-3 mb-2 mt-1 h-0.5 rounded-full" style={{ background: `linear-gradient(90deg, ${u.color}, transparent)` }} />
                   </div>
                 ))}
               </div>

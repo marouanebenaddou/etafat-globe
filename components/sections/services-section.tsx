@@ -329,6 +329,7 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
   return (
     <div ref={setRefs} id={`service-${service.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="reveal" style={{ transitionDelay: `${index * 80}ms` }}>
       <div
+        data-open-id={`service-${service.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`}
         className="group relative rounded-2xl p-6 h-full cursor-pointer transition-all duration-400 overflow-hidden"
         style={{
           background: active
@@ -443,8 +444,6 @@ function ServiceCard({ service, index, onOpen }: { service: typeof services[0]; 
 }
 
 // ─── Section ───────────────────────────────────────────────────────────────────
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")
-
 export default function ServicesSection() {
   const { ref, isVisible } = useScrollReveal()
   const [selected, setSelected] = useState<typeof services[0] | null>(null)
@@ -452,8 +451,9 @@ export default function ServicesSection() {
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent<{ id: string }>).detail?.id
-      const svc = services.find(s => `service-${slug(s.title)}` === id)
-      if (svc) setSelected(svc)
+      if (!id) return
+      const btn = document.querySelector<HTMLElement>(`[data-open-id="${id}"]`)
+      btn?.click()
     }
     window.addEventListener("etafat:open", handler)
     return () => window.removeEventListener("etafat:open", handler)

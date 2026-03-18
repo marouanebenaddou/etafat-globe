@@ -388,6 +388,7 @@ function TechCard({
   return (
     <div ref={setRefs} id={`tech-${tech.name.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`} className="reveal" style={{ transitionDelay: `${index * 60}ms` }}>
       <div
+        data-open-id={`tech-${tech.name.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")}`}
         className="group relative rounded-[5px] p-5 h-full transition-all duration-300 cursor-pointer overflow-hidden"
         style={{
           background: active
@@ -494,8 +495,6 @@ function TechCard({
 }
 
 // ─── Section ──────────────────────────────────────────────────────────────────
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "")
-
 export default function TechnologiesSection() {
   const { ref, isVisible } = useScrollReveal()
   const [selected, setSelected] = useState<typeof technologies[0] | null>(null)
@@ -503,8 +502,9 @@ export default function TechnologiesSection() {
   useEffect(() => {
     const handler = (e: Event) => {
       const id = (e as CustomEvent<{ id: string }>).detail?.id
-      const tech = technologies.find(t => `tech-${slug(t.name)}` === id)
-      if (tech) setSelected(tech)
+      if (!id) return
+      const btn = document.querySelector<HTMLElement>(`[data-open-id="${id}"]`)
+      btn?.click()
     }
     window.addEventListener("etafat:open", handler)
     return () => window.removeEventListener("etafat:open", handler)

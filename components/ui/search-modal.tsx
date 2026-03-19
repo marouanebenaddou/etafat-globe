@@ -48,13 +48,15 @@ export default function SearchModal({ open, onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
+  const suggestions = searchItems.slice(0, 5)
+
   const filtered = query.trim()
     ? searchItems.filter(item =>
         `${item.label} ${item.keywords} ${item.category}`
           .toLowerCase()
           .includes(query.toLowerCase())
-      )
-    : searchItems
+      ).slice(0, 5)
+    : []
 
   // Reset active index when results change
   useEffect(() => { setActive(0) }, [query])
@@ -126,7 +128,35 @@ export default function SearchModal({ open, onClose }: Props) {
 
         {/* Results */}
         <div ref={listRef} className="max-h-[55vh] overflow-y-auto py-2">
-          {filtered.length === 0 ? (
+          {!query.trim() ? (
+            /* No query — show 5 suggestions */
+            <>
+              <p className={`px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-white/25" : "text-slate-400"}`}>
+                Suggestions
+              </p>
+              {suggestions.map((item, i) => (
+                <button
+                  key={`sug-${i}`}
+                  data-index={i}
+                  onClick={() => navigate(item.href)}
+                  onMouseEnter={() => setActive(i)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150 ${
+                    active === i
+                      ? isDark ? "bg-white/8" : "bg-[#007BFF]/6"
+                      : "hover:bg-transparent"
+                  }`}
+                >
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${categoryColors[item.category]}20` }}>
+                    <Hash className="w-3.5 h-3.5" style={{ color: categoryColors[item.category] }} />
+                  </div>
+                  <span className={`text-sm ${isDark ? "text-white/50" : "text-slate-500"}`}>
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </>
+          ) : filtered.length === 0 ? (
             <p className={`text-center text-sm py-8 ${isDark ? "text-white/30" : "text-slate-400"}`}>
               Aucun résultat pour &ldquo;{query}&rdquo;
             </p>

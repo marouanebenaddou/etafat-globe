@@ -9,6 +9,7 @@ type SearchItem = {
   category: string
   keywords: string
   section: string
+  cardLabel?: string  // first word(s) used to find the card button by text
   cardId?: string
   cardSection?: string
 }
@@ -24,29 +25,29 @@ const searchItems: SearchItem[] = [
   { label: "Académie Etafat",             category: "Section",  section: "academy",      keywords: "académie formation training certification" },
   { label: "Contactez-nous",             category: "Section",  section: "contact",      keywords: "contact email téléphone message formulaire" },
   // Services
-  { label: "Systèmes d'Information Géographique", category: "Service", section: "services", cardId: "systemes-d-information-geographique", cardSection: "services", keywords: "sig géomatique cartographie spatiale analyse données décision urbanisme" },
-  { label: "Foncier & Topographie",      category: "Service",  section: "services", cardId: "foncier-topographie",       cardSection: "services", keywords: "foncier topographie levé terrain bornage morcellement délimitation" },
-  { label: "Ingénierie des Données",     category: "Service",  section: "services", cardId: "ingenierie-des-donnees",    cardSection: "services", keywords: "données data ingénierie pipeline cloud acquisition traitement structuration" },
-  { label: "Conseil en Ingénierie",      category: "Service",  section: "services", cardId: "conseil-en-ingenierie",     cardSection: "services", keywords: "conseil ingénierie étude amo schéma directeur audit aménagement territorial" },
-  { label: "Inspection d'Ouvrages",      category: "Service",  section: "services", cardId: "inspection-d-ouvrages",     cardSection: "services", keywords: "inspection infrastructure pont route ouvrage" },
-  { label: "BIM & Digital Twin",         category: "Service",  section: "services", cardId: "bim-digital-twin",          cardSection: "services", keywords: "bim digital numérique jumeau modélisation 3d maquette" },
-  { label: "Académie Etafat",            category: "Service",  section: "services", cardId: "academie-etafat",           cardSection: "services", keywords: "académie formation training certification etafat" },
+  { label: "Systèmes d'Information Géographique", category: "Service", section: "services", cardLabel: "Systèmes", keywords: "sig géomatique cartographie spatiale analyse données décision urbanisme" },
+  { label: "Foncier & Topographie",      category: "Service",  section: "services", cardLabel: "Foncier",       keywords: "foncier topographie levé terrain bornage morcellement délimitation" },
+  { label: "Ingénierie des Données",     category: "Service",  section: "services", cardLabel: "Ingénierie des", keywords: "données data ingénierie pipeline cloud acquisition traitement structuration" },
+  { label: "Conseil en Ingénierie",      category: "Service",  section: "services", cardLabel: "Conseil",        keywords: "conseil ingénierie étude amo schéma directeur audit aménagement territorial" },
+  { label: "Inspection d'Ouvrages",      category: "Service",  section: "services", cardLabel: "Inspection",     keywords: "inspection infrastructure pont route ouvrage" },
+  { label: "BIM & Digital Twin",         category: "Service",  section: "services", cardLabel: "BIM",            keywords: "bim digital numérique jumeau modélisation 3d maquette" },
+  { label: "Académie Etafat",            category: "Service",  section: "services", cardLabel: "Académie",       keywords: "académie formation training certification etafat" },
   // Technologies
-  { label: "Drones & UAV",               category: "Tech",     section: "technologies", cardId: "drones-uav",          cardSection: "technologies", keywords: "drone uav photogrammétrie vol aérien orthophoto haute résolution" },
-  { label: "LiDAR",                      category: "Tech",     section: "technologies", cardId: "lidar",               cardSection: "technologies", keywords: "lidar laser aérien nuage points 3d topographie" },
-  { label: "GPS / GNSS",                 category: "Tech",     section: "technologies", cardId: "gps-gnss",            cardSection: "technologies", keywords: "gps gnss rtk positionnement satellite géodésie mesure" },
-  { label: "Mobile Mapping",             category: "Tech",     section: "technologies", cardId: "mobile-mapping",      cardSection: "technologies", keywords: "mobile mapping véhicule scan route corridor" },
-  { label: "Bathymétrie",                category: "Tech",     section: "technologies", cardId: "bathymetrie",         cardSection: "technologies", keywords: "bathymétrie fond marin lac rivière profondeur sonar" },
-  { label: "Géoradar GPR",               category: "Tech",     section: "technologies", cardId: "georadar-gpr",        cardSection: "technologies", keywords: "géoradar gpr sol sous-sol détection réseaux cavités" },
-  { label: "Détection EM",               category: "Tech",     section: "technologies", cardId: "detection-em",        cardSection: "technologies", keywords: "détection électromagnétique em réseaux souterrains canalisations" },
-  { label: "Laser Scanning",             category: "Tech",     section: "technologies", cardId: "laser-scanning",      cardSection: "technologies", keywords: "laser scanning numérisation bim relevé intérieur" },
-  { label: "Stations Totales",           category: "Tech",     section: "technologies", cardId: "stations-totales",    cardSection: "technologies", keywords: "station totale tachéomètre mesure précision topographie terrain" },
+  { label: "Drones & UAV",               category: "Tech",     section: "technologies", cardLabel: "Drones",         keywords: "drone uav photogrammétrie vol aérien orthophoto haute résolution" },
+  { label: "LiDAR",                      category: "Tech",     section: "technologies", cardLabel: "LiDAR",          keywords: "lidar laser aérien nuage points 3d topographie" },
+  { label: "GPS / GNSS",                 category: "Tech",     section: "technologies", cardLabel: "GPS",            keywords: "gps gnss rtk positionnement satellite géodésie mesure" },
+  { label: "Mobile Mapping",             category: "Tech",     section: "technologies", cardLabel: "Mobile",         keywords: "mobile mapping véhicule scan route corridor" },
+  { label: "Bathymétrie",                category: "Tech",     section: "technologies", cardLabel: "Bathym",         keywords: "bathymétrie fond marin lac rivière profondeur sonar" },
+  { label: "Géoradar GPR",               category: "Tech",     section: "technologies", cardLabel: "Géoradar",       keywords: "géoradar gpr sol sous-sol détection réseaux cavités" },
+  { label: "Détection EM",               category: "Tech",     section: "technologies", cardLabel: "Détection",      keywords: "détection électromagnétique em réseaux souterrains canalisations" },
+  { label: "Laser Scanning",             category: "Tech",     section: "technologies", cardLabel: "Laser",          keywords: "laser scanning numérisation bim relevé intérieur" },
+  { label: "Stations Totales",           category: "Tech",     section: "technologies", cardLabel: "Stations",       keywords: "station totale tachéomètre mesure précision topographie terrain" },
   // Marchés
-  { label: "Infrastructures",            category: "Marché",   section: "marches", cardId: "marche-infrastructures",          cardSection: "marches", keywords: "infrastructures routes autoroutes ponts aéroports rail" },
-  { label: "Aménagement du Territoire",  category: "Marché",   section: "marches", cardId: "marche-amenagement-du-territoire", cardSection: "marches", keywords: "aménagement territoire urbanisme patrimoine foncier" },
-  { label: "Énergie & Mines",            category: "Marché",   section: "marches", cardId: "marche-energie-mines",            cardSection: "marches", keywords: "énergie mines carrières renouvelable solaire vent" },
-  { label: "Agriculture",                category: "Marché",   section: "marches", cardId: "marche-agriculture",              cardSection: "marches", keywords: "agriculture précision télédétection irrigation forêt" },
-  { label: "Cartographie",               category: "Marché",   section: "marches", cardId: "marche-cartographie",             cardSection: "marches", keywords: "cartographie orthophoto mnt bim 3d planification" },
+  { label: "Infrastructures",            category: "Marché",   section: "marches", keywords: "infrastructures routes autoroutes ponts aéroports rail" },
+  { label: "Aménagement du Territoire",  category: "Marché",   section: "marches", keywords: "aménagement territoire urbanisme patrimoine foncier" },
+  { label: "Énergie & Mines",            category: "Marché",   section: "marches", keywords: "énergie mines carrières renouvelable solaire vent" },
+  { label: "Agriculture",                category: "Marché",   section: "marches", keywords: "agriculture précision télédétection irrigation forêt" },
+  { label: "Cartographie",               category: "Marché",   section: "marches", keywords: "cartographie orthophoto mnt bim 3d planification" },
   // Clients
   { label: "OCP",       category: "Client",   section: "clients", keywords: "ocp phosphates mines chimie" },
   { label: "ONCF",      category: "Client",   section: "clients", keywords: "oncf ferroviaire train rail" },
@@ -132,11 +133,21 @@ export default function SearchModal({ open, onClose }: Props) {
       section.scrollIntoView({ behavior: "smooth" })
       setTimeout(() => flashSection(item.section), 600)
     }
-    if (item.cardId && item.cardSection) {
+    if (item.cardLabel) {
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent("etafat:open", {
-          detail: { section: item.cardSection, id: item.cardId }
-        }))
+        // Find all card buttons with data-open-id in the section
+        const sectionEl = document.getElementById(item.section)
+        if (!sectionEl) return
+        const cards = Array.from(sectionEl.querySelectorAll<HTMLElement>("[data-open-id]"))
+        // Match by closest text content to the label
+        const label = item.cardLabel!.toLowerCase()
+        const match = cards.find(card =>
+          card.textContent?.toLowerCase().includes(label.split(" ")[0]) ||
+          card.textContent?.toLowerCase().includes(label.split("&")[0].trim())
+        )
+        if (match) {
+          match.click()
+        }
       }, 750)
     }
   }

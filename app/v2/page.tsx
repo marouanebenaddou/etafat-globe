@@ -198,13 +198,20 @@ function MenuOverlay({ open, onClose, scrollTo }: { open: boolean; onClose: () =
       transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
       overflow: "hidden",
     }}>
-      {/* Decorative giant E */}
-      <div style={{
-        position: "absolute", left: -30, top: "50%", transform: "translateY(-55%)",
-        fontSize: "clamp(400px,55vw,700px)", fontWeight: 900, lineHeight: 1,
-        color: "rgba(255,255,255,0.028)", userSelect: "none", pointerEvents: "none",
-        fontFamily: "inherit",
-      }}>E</div>
+      {/* Decorative logo watermark */}
+      <img
+        src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+        alt="" aria-hidden
+        style={{
+          position: "absolute", left: "50%", top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "clamp(420px, 65vw, 780px)",
+          opacity: 0.04,
+          filter: "brightness(0) invert(1)",
+          pointerEvents: "none", userSelect: "none",
+          objectFit: "contain",
+        }}
+      />
 
       {/* Top bar */}
       <div className="max-w-7xl mx-auto px-6 lg:px-10">

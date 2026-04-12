@@ -162,6 +162,73 @@ function StatCard({ value, prefix, suffix, label, sub, active }: { value: number
   )
 }
 
+/* ─── VISION SECTION ────────────────────────────────────── */
+function VisionSection() {
+  const { ref, visible } = useReveal(0.15)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  const togglePlay = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) { v.play(); setPlaying(true) }
+    else { v.pause(); setPlaying(false) }
+  }
+
+  return (
+    <section className="py-24" style={{ background: "#eef1f6" }}>
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          {/* Left */}
+          <RevealSection>
+            <SectionLabel text="Notre vision" />
+            <h2 style={{ fontSize: "clamp(2rem,3.5vw,2.8rem)", fontWeight: 900, color: "#0f172a", lineHeight: 1.1, marginBottom: "2rem" }}>
+              Ce qui donne du sens<br />à nos engagements
+            </h2>
+            <p className="text-slate-500 leading-relaxed mb-10 text-[15px]" style={{ maxWidth: 420 }}>
+              Depuis 1983, Etafat place l'humain et le territoire au cœur de chaque mission. Chaque levé, chaque donnée, chaque carte produite contribue à bâtir un Maroc et une Afrique mieux aménagés, mieux connectés, mieux décidés.
+            </p>
+            <button
+              onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+              className="inline-flex items-center gap-3 text-[13px] font-semibold text-[#007BFF] border border-[#007BFF] rounded-full px-6 py-3 hover:bg-[#007BFF] hover:text-white transition-all duration-300 group">
+              Notre mission
+              <span className="transition-transform duration-300 group-hover:translate-x-1"><ArrowRight size={14} /></span>
+            </button>
+          </RevealSection>
+
+          {/* Right — video */}
+          <div ref={ref} style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(28px)", transition: "all 0.75s ease 0.15s" }}>
+            <div className="relative rounded-2xl overflow-hidden cursor-pointer group"
+              style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.13)" }}
+              onClick={togglePlay}>
+              <video
+                ref={videoRef}
+                src="/videos/drone-uav.mp4"
+                className="w-full object-cover"
+                style={{ aspectRatio: "16/9", display: "block" }}
+                loop
+                playsInline
+                muted={false}
+                onEnded={() => setPlaying(false)}
+              />
+              {/* Play overlay */}
+              <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-300"
+                style={{ background: playing ? "transparent" : "rgba(5,14,32,0.28)", opacity: playing ? 0 : 1, pointerEvents: playing ? "none" : "auto" }}>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: "#007BFF", boxShadow: "0 0 0 8px rgba(0,123,255,0.2)" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style={{ marginLeft: 3 }}>
+                    <polygon points="5,3 19,12 5,21" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ─── PAGE ───────────────────────────────────────────────── */
 export default function EtafatV2() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -575,6 +642,9 @@ export default function EtafatV2() {
           </div>
         </div>
       </section>
+
+      {/* ── VISION ── */}
+      <VisionSection />
 
       {/* ── CONTACT ── */}
       <section id="contact" className="py-28" style={{ background: "#07101f" }}>

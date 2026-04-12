@@ -162,6 +162,121 @@ function StatCard({ value, prefix, suffix, label, sub, active }: { value: number
   )
 }
 
+/* ─── MENU OVERLAY ──────────────────────────────────────── */
+const menuGroups = [
+  {
+    heading: "Le Groupe",
+    items: [
+      { label: "À propos", id: "stats" },
+      { label: "Nos entités", id: "references" },
+      { label: "Nos engagements", id: "engagements" },
+      { label: "Carrières", id: "contact" },
+    ],
+  },
+  {
+    heading: "Notre offre",
+    items: [
+      { label: "Savoir-faire", id: "savoir-faire" },
+      { label: "Domaines d'activité", id: "domaines" },
+      { label: "Références", id: "references" },
+      { label: "Nous contacter", id: "contact" },
+    ],
+  },
+]
+
+function MenuOverlay({ open, onClose, scrollTo }: { open: boolean; onClose: () => void; scrollTo: (id: string) => void }) {
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : ""
+    return () => { document.body.style.overflow = "" }
+  }, [open])
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100,
+      background: "#07101f",
+      transform: open ? "translateY(0)" : "translateY(-100%)",
+      transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
+      overflow: "hidden",
+    }}>
+      {/* Decorative giant E */}
+      <div style={{
+        position: "absolute", left: -30, top: "50%", transform: "translateY(-55%)",
+        fontSize: "clamp(400px,55vw,700px)", fontWeight: 900, lineHeight: 1,
+        color: "rgba(255,255,255,0.028)", userSelect: "none", pointerEvents: "none",
+        fontFamily: "inherit",
+      }}>E</div>
+
+      {/* Top bar */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        <div className="flex items-center justify-between h-[76px]">
+          <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+            alt="Etafat" className="h-11" style={{ filter: "brightness(0) invert(1)" }} />
+          <button onClick={onClose}
+            className="flex items-center gap-2.5 text-[13px] font-semibold px-5 py-2.5 rounded-full text-white"
+            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+            Fermer <X size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* Nav grid */}
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 pt-16 pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 lg:gap-32">
+          {menuGroups.map((group, gi) => (
+            <div key={group.heading}>
+              {/* Group heading */}
+              <p className="text-white/35 text-[11px] font-bold tracking-[0.22em] uppercase mb-8"
+                style={{
+                  opacity: open ? 1 : 0,
+                  transform: open ? "none" : "translateY(20px)",
+                  transition: `all 0.5s ease ${0.25 + gi * 0.05}s`,
+                }}>
+                {group.heading}
+              </p>
+              {/* Items */}
+              <div className="space-y-1">
+                {group.items.map((item, i) => (
+                  <div key={item.label}
+                    style={{
+                      opacity: open ? 1 : 0,
+                      transform: open ? "none" : "translateY(28px)",
+                      transition: `all 0.55s cubic-bezier(0.16,1,0.3,1) ${0.3 + gi * 0.05 + i * 0.07}s`,
+                    }}>
+                    <button onClick={() => scrollTo(item.id)}
+                      className="group flex items-center gap-4 py-3 w-full text-left"
+                      style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                      <span className="text-white font-bold transition-all duration-300 group-hover:text-[#007BFF] group-hover:pl-2"
+                        style={{ fontSize: "clamp(1.4rem,3vw,2.2rem)", lineHeight: 1.1 }}>
+                        {item.label}
+                      </span>
+                      <ChevronRight size={18} className="text-white/20 transition-all duration-300 group-hover:text-[#007BFF] group-hover:translate-x-1 ml-auto flex-shrink-0" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom contact strip */}
+        <div className="mt-16 pt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.07)",
+            opacity: open ? 1 : 0,
+            transition: `opacity 0.5s ease ${0.65}s`,
+          }}>
+          <p className="text-white/30 text-xs">Rabat, Maroc — contact@etafat.ma</p>
+          <div className="flex gap-6">
+            {["Maroc", "Côte d'Ivoire", "Sénégal", "Asie"].map(c => (
+              <span key={c} className="text-white/25 text-xs hover:text-white/55 cursor-pointer transition-colors">{c}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ─── CHALLENGE SECTION ─────────────────────────────────── */
 function ChallengeSection() {
   const { ref, visible } = useReveal(0.2)
@@ -208,7 +323,7 @@ function ChallengeSection() {
               opacity: visible ? 1 : 0,
               transform: visible ? "translateY(0)" : "translateY(110%)",
               transition: "opacity 0.7s ease 0.05s, transform 0.75s cubic-bezier(0.16,1,0.3,1) 0.05s",
-            }}>Vous avez un projet</span>
+            }}>Vous bâtissez,</span>
           </div>
 
           {/* Line 2 — with SVG underline */}
@@ -220,7 +335,7 @@ function ChallengeSection() {
               transition: "opacity 0.7s ease 0.18s, transform 0.75s cubic-bezier(0.16,1,0.3,1) 0.18s",
               paddingBottom: "0.2em",
             }}>
-              géospatial ?
+              nous cartographions.
               {/* SVG brush-stroke underline */}
               <svg viewBox="0 0 340 20" style={{ position: "absolute", bottom: -2, left: 0, width: "100%", height: 20, overflow: "visible" }} aria-hidden>
                 <path
@@ -239,7 +354,7 @@ function ChallengeSection() {
             transform: visible ? "none" : "translateY(16px)",
             transition: "all 0.65s ease 0.38s",
           }}>
-            Nos équipes sont prêtes à étudier votre besoin et à vous proposer une solution sur-mesure — en Maroc, en Afrique et à l'international.
+            De la donnée brute au livrable final, Etafat transforme chaque territoire en opportunité — avec précision, fiabilité et engagement depuis 1983.
           </p>
 
           {/* CTA link */}
@@ -328,7 +443,7 @@ function VisionSection() {
 
 /* ─── PAGE ───────────────────────────────────────────────── */
 export default function EtafatV2() {
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [scrollY, setScrollY] = useState(0)
   const [heroVisible, setHeroVisible] = useState(false)
@@ -341,7 +456,7 @@ export default function EtafatV2() {
     return () => { window.removeEventListener("scroll", onScroll); clearTimeout(t) }
   }, [])
 
-  const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); setMobileOpen(false) }
+  const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }) }
 
   return (
     <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif" }}>
@@ -402,55 +517,23 @@ export default function EtafatV2() {
       }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="flex items-center justify-between h-[76px]">
-            {/* Logo: white when transparent, normal when scrolled */}
-            <img
-              src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+            <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
               alt="Etafat" className="h-11"
-              style={{ filter: scrolled ? "none" : "brightness(0) invert(1)", transition: "filter 0.4s ease" }}
-            />
-            <div className="hidden md:flex items-center gap-8">
-              {[
-                { label: "Savoir-faire", id: "savoir-faire" },
-                { label: "Domaines", id: "domaines" },
-                { label: "Références", id: "references" },
-                { label: "À propos", id: "stats" },
-                { label: "Contact", id: "contact" },
-              ].map(item => (
-                <button key={item.id} onClick={() => scrollTo(item.id)}
-                  className="relative text-[13px] font-medium group py-1"
-                  style={{ color: scrolled ? "#475569" : "rgba(255,255,255,0.85)", transition: "color 0.4s ease" }}>
-                  <span className="hover:opacity-100 transition-opacity">{item.label}</span>
-                  <span className="absolute -bottom-0 left-0 w-0 h-[1.5px] group-hover:w-full transition-all duration-300 rounded-full"
-                    style={{ background: scrolled ? "#007BFF" : "rgba(255,255,255,0.7)" }} />
-                </button>
-              ))}
-              {/* CTA: outline-white when transparent, solid-blue when scrolled */}
-              <button onClick={() => scrollTo("contact")}
-                className="text-[13px] font-semibold px-5 py-2.5 rounded-md transition-all duration-300 hover:-translate-y-px"
-                style={scrolled
-                  ? { background: "#007BFF", color: "#fff", boxShadow: "0 0 0 transparent" }
-                  : { background: "transparent", color: "#fff", border: "1.5px solid rgba(255,255,255,0.55)" }
-                }>
-                Nous contacter
-              </button>
-            </div>
-            <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}
-              style={{ color: scrolled ? "#334155" : "#fff", transition: "color 0.4s ease" }}>
-              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+              style={{ filter: scrolled ? "none" : "brightness(0) invert(1)", transition: "filter 0.4s ease" }} />
+            {/* Menu pill button — GeoFit style */}
+            <button onClick={() => setMenuOpen(true)}
+              className="flex items-center gap-2.5 text-[13px] font-semibold px-5 py-2.5 rounded-full transition-all duration-300"
+              style={scrolled
+                ? { background: "#007BFF", color: "#fff" }
+                : { background: "rgba(255,255,255,0.15)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", backdropFilter: "blur(8px)" }}>
+              Menu <Menu size={15} />
             </button>
           </div>
         </div>
-        {/* Mobile menu */}
-        <div className={`md:hidden overflow-hidden transition-all duration-300 ${mobileOpen ? "max-h-72" : "max-h-0"}`}>
-          <div className="bg-white border-t border-slate-100 px-6 py-4 space-y-0.5">
-            {[{ label: "Savoir-faire", id: "savoir-faire" }, { label: "Domaines", id: "domaines" }, { label: "Références", id: "references" }, { label: "À propos", id: "stats" }, { label: "Contact", id: "contact" }].map(item => (
-              <button key={item.id} onClick={() => scrollTo(item.id)} className="block w-full text-left text-sm font-medium text-slate-700 py-3 hover:text-[#007BFF] transition-colors border-b border-slate-50 last:border-0">
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </nav>
+
+      {/* ── MENU OVERLAY ── */}
+      <MenuOverlay open={menuOpen} onClose={() => setMenuOpen(false)} scrollTo={(id) => { scrollTo(id); setMenuOpen(false) }} />
 
       {/* ── HERO ── */}
       <section id="hero" className="relative min-h-screen flex items-center overflow-hidden">

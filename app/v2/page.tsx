@@ -17,6 +17,7 @@ const savoirFaire = [
     desc: "Levés de précision, bornages et opérations cadastrales pour sécuriser votre patrimoine territorial.",
     result: "Litiges fonciers évités, patrimoine sécurisé",
     color: "#007BFF",
+    img: "https://etafat.ma/wp-content/uploads/2020/12/foncier-1.png",
   },
   {
     Icon: Layers,
@@ -24,6 +25,7 @@ const savoirFaire = [
     desc: "Plateformes SIG sur-mesure qui transforment vos données spatiales en outils de décision et de pilotage.",
     result: "Décisions éclairées, pilotage simplifié",
     color: "#0057b8",
+    img: "https://etafat.ma/wp-content/uploads/2020/12/sig.png",
   },
   {
     Icon: ScanLine,
@@ -31,6 +33,7 @@ const savoirFaire = [
     desc: "Cartographie à grande échelle par drone et capteur laser aéroporté. Précision centimétrique garantie.",
     result: "Couverture rapide, données fiables",
     color: "#00669D",
+    img: "https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg",
   },
   {
     Icon: Briefcase,
@@ -38,6 +41,7 @@ const savoirFaire = [
     desc: "Accompagnement en AMO, études de faisabilité et pilotage de projets d'infrastructure pour maîtres d'ouvrage.",
     result: "Projets maîtrisés, délais respectés",
     color: "#007BFF",
+    img: "https://etafat.ma/wp-content/uploads/2021/01/ingenieurie_infrastructure.jpg",
   },
   {
     Icon: Box,
@@ -45,6 +49,7 @@ const savoirFaire = [
     desc: "Jumeaux numériques, maquettes BIM et modèles 3D pour visualiser, coordonner et exécuter vos projets.",
     result: "Erreurs réduites, coûts maîtrisés",
     color: "#0057b8",
+    img: "https://etafat.ma/wp-content/uploads/2021/01/bim-batiment.jpg",
   },
   {
     Icon: Database,
@@ -52,16 +57,17 @@ const savoirFaire = [
     desc: "Structuration, exploitation et valorisation de vos données géospatiales via des pipelines robustes.",
     result: "Données exploitables, valeur créée",
     color: "#00669D",
+    img: "https://etafat.ma/wp-content/uploads/2021/01/traitement.jpg",
   },
 ]
 
 const domaines = [
-  { Icon: Route,      label: "Infrastructures",          sub: "Routes, ouvrages d'art, aéroports, ports",         color: "#007BFF" },
-  { Icon: Building2,  label: "Aménagement du territoire", sub: "Urbanisme, patrimoine, planification foncière",      color: "#0057b8" },
-  { Icon: Zap,        label: "Énergie & Mines",           sub: "Énergies renouvelables, carrières, réseaux",         color: "#00669D" },
-  { Icon: Sprout,     label: "Agriculture & Eau",         sub: "Agriculture de précision, irrigation, hydrologie",   color: "#007BFF" },
-  { Icon: Landmark,   label: "Bâtiment & Patrimoine",     sub: "Réhabilitation, conservation, scan bâtiment",        color: "#0057b8" },
-  { Icon: Globe,      label: "International",             sub: "Maroc, Côte d'Ivoire, Sénégal, Asie",               color: "#00669D" },
+  { Icon: Route,      label: "Infrastructures",          sub: "Routes, ouvrages d'art, aéroports, ports",       color: "#007BFF", img: "https://etafat.ma/wp-content/uploads/2021/01/ingenieurie_infrastructure.jpg" },
+  { Icon: Building2,  label: "Aménagement du territoire", sub: "Urbanisme, patrimoine, planification foncière",   color: "#0057b8", img: "https://etafat.ma/wp-content/uploads/2020/12/foncier-1.png" },
+  { Icon: Zap,        label: "Énergie & Mines",           sub: "Énergies renouvelables, carrières, réseaux",      color: "#00669D", img: "https://etafat.ma/wp-content/uploads/2021/01/georadar-1.jpg" },
+  { Icon: Sprout,     label: "Agriculture & Eau",         sub: "Agriculture de précision, irrigation, hydrologie",color: "#007BFF", img: "https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg" },
+  { Icon: Landmark,   label: "Bâtiment & Patrimoine",     sub: "Réhabilitation, conservation, scan bâtiment",    color: "#0057b8", img: "https://etafat.ma/wp-content/uploads/2021/03/scanner2.jpg" },
+  { Icon: Globe,      label: "International",             sub: "Maroc, Côte d'Ivoire, Sénégal, Asie",            color: "#00669D", img: "https://etafat.ma/wp-content/uploads/2021/01/pva_lidar.jpg" },
 ]
 
 const stats = [
@@ -184,9 +190,41 @@ export default function EtafatV2() {
         @keyframes v2-fadeup  { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
         .v2-link:hover .v2-arrow { transform: translateX(4px); }
         .v2-arrow { transition: transform 0.2s ease; display: inline-block; }
-        .v2-card { transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.25s ease; }
-        .v2-card:hover { transform: translateY(-3px); border-color: rgba(0,123,255,0.2) !important; box-shadow: 0 12px 48px rgba(0,123,255,0.10); }
-        .v2-domain:hover { background: linear-gradient(135deg, rgba(0,123,255,0.04), rgba(0,123,255,0.01)); }
+
+        /* ── Image hover cards ── */
+        .v2-imgcard { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .v2-imgcard:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,0.18) !important; }
+        .v2-imgcard .v2-bg { opacity:0; transform:scale(1); transition: opacity 0.45s cubic-bezier(0.25,1,0.2,1), transform 0.55s cubic-bezier(0.25,1,0.2,1); }
+        .v2-imgcard:hover .v2-bg { opacity:1; transform:scale(1.08); }
+        .v2-imgcard .v2-overlay { opacity:0; transition: opacity 0.45s cubic-bezier(0.25,1,0.2,1); }
+        .v2-imgcard:hover .v2-overlay { opacity:1; }
+        .v2-imgcard .v2-ic-wrap { transition: background 0.35s ease, border-color 0.35s ease; }
+        .v2-imgcard:hover .v2-ic-wrap { background: rgba(255,255,255,0.15) !important; border-color: rgba(255,255,255,0.25) !important; }
+        .v2-imgcard:hover .v2-ic-svg { filter: brightness(0) invert(1); }
+        .v2-imgcard .v2-title { transition: color 0.35s ease; }
+        .v2-imgcard:hover .v2-title { color: #fff !important; }
+        .v2-imgcard .v2-desc { transition: color 0.35s ease; }
+        .v2-imgcard:hover .v2-desc { color: rgba(255,255,255,0.72) !important; }
+        .v2-imgcard .v2-result { transition: color 0.35s ease, border-color 0.35s ease; }
+        .v2-imgcard:hover .v2-result { color: rgba(255,255,255,0.55) !important; border-color: rgba(255,255,255,0.12) !important; }
+        .v2-imgcard:hover .v2-chevron { color: rgba(255,255,255,0.8) !important; }
+
+        /* ── Domain hover cards ── */
+        .v2-domain { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .v2-domain:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,0,0,0.14) !important; }
+        .v2-domain .v2-bg { opacity:0; transform:scale(1); transition: opacity 0.45s cubic-bezier(0.25,1,0.2,1), transform 0.55s cubic-bezier(0.25,1,0.2,1); }
+        .v2-domain:hover .v2-bg { opacity:1; transform:scale(1.08); }
+        .v2-domain .v2-overlay { opacity:0; transition: opacity 0.45s cubic-bezier(0.25,1,0.2,1); }
+        .v2-domain:hover .v2-overlay { opacity:1; }
+        .v2-domain .v2-ic-wrap { transition: background 0.35s ease; }
+        .v2-domain:hover .v2-ic-wrap { background: rgba(255,255,255,0.15) !important; }
+        .v2-domain:hover .v2-ic-svg { filter: brightness(0) invert(1); }
+        .v2-domain .v2-title { transition: color 0.35s ease; }
+        .v2-domain:hover .v2-title { color: #fff !important; }
+        .v2-domain .v2-sub { transition: color 0.35s ease; }
+        .v2-domain:hover .v2-sub { color: rgba(255,255,255,0.6) !important; }
+        .v2-domain .v2-savoir { transition: opacity 0.3s ease, color 0.35s ease; }
+        .v2-domain:hover .v2-savoir { opacity:1 !important; color: rgba(255,255,255,0.8) !important; }
       `}</style>
 
       {/* ── NAV ── */}
@@ -334,24 +372,35 @@ export default function EtafatV2() {
             {savoirFaire.map((sf, i) => {
               const { ref, visible } = useReveal()
               return (
-                <div key={sf.title} ref={ref} className="v2-card v2-link bg-white rounded-xl p-7 border border-slate-150 cursor-pointer"
+                <div key={sf.title} ref={ref}
+                  className="v2-imgcard relative rounded-xl overflow-hidden cursor-pointer"
                   style={{
                     opacity: visible ? 1 : 0,
                     transform: visible ? "translateY(0)" : "translateY(28px)",
                     transition: `opacity 0.6s ease ${i * 75}ms, transform 0.6s ease ${i * 75}ms`,
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.03)",
                     border: "1px solid #e8edf3",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.03)",
+                    background: "#fff",
+                    minHeight: 260,
                   }}>
-                  {/* Icon container */}
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-6"
-                    style={{ background: `${sf.color}12`, border: `1px solid ${sf.color}22` }}>
-                    <sf.Icon size={22} color={sf.color} strokeWidth={1.75} />
-                  </div>
-                  <h3 className="text-[15px] font-bold text-slate-900 mb-3 leading-snug">{sf.title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed mb-7 flex-1">{sf.desc}</p>
-                  <div className="flex items-center justify-between pt-5 border-t border-slate-100">
-                    <span className="text-xs text-slate-400 leading-snug">{sf.result}</span>
-                    <span className="v2-arrow text-[#007BFF]"><ChevronRight size={16} strokeWidth={2.5} /></span>
+                  {/* BG image layer */}
+                  <div className="v2-bg absolute inset-0"
+                    style={{ backgroundImage: `url(${sf.img})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                  {/* Dark overlay */}
+                  <div className="v2-overlay absolute inset-0"
+                    style={{ background: "linear-gradient(160deg, rgba(5,14,32,0.78) 0%, rgba(0,30,70,0.88) 100%)" }} />
+                  {/* Content */}
+                  <div className="relative z-10 p-7 flex flex-col h-full">
+                    <div className="v2-ic-wrap w-12 h-12 rounded-lg flex items-center justify-center mb-6"
+                      style={{ background: `${sf.color}14`, border: `1px solid ${sf.color}28` }}>
+                      <sf.Icon className="v2-ic-svg" size={22} color={sf.color} strokeWidth={1.75} />
+                    </div>
+                    <h3 className="v2-title text-[15px] font-bold text-slate-900 mb-3 leading-snug">{sf.title}</h3>
+                    <p className="v2-desc text-slate-500 text-sm leading-relaxed mb-7 flex-1">{sf.desc}</p>
+                    <div className="v2-result flex items-center justify-between pt-5 border-t border-slate-100">
+                      <span className="text-xs text-slate-400 leading-snug">{sf.result}</span>
+                      <span className="v2-chevron text-[#007BFF]"><ChevronRight size={16} strokeWidth={2.5} /></span>
+                    </div>
                   </div>
                 </div>
               )
@@ -377,7 +426,8 @@ export default function EtafatV2() {
             {domaines.map((d, i) => {
               const { ref, visible } = useReveal()
               return (
-                <div key={d.label} ref={ref} className="v2-domain group rounded-xl p-6 cursor-pointer transition-all duration-300"
+                <div key={d.label} ref={ref}
+                  className="v2-domain relative rounded-xl overflow-hidden cursor-pointer"
                   style={{
                     border: "1px solid #e8edf3",
                     borderLeft: `3.5px solid ${d.color}`,
@@ -385,18 +435,25 @@ export default function EtafatV2() {
                     transform: visible ? "none" : "translateY(20px)",
                     transition: `opacity 0.55s ease ${i * 65}ms, transform 0.55s ease ${i * 65}ms`,
                     background: "#fff",
+                    minHeight: 160,
                   }}>
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 transition-colors duration-300"
-                    style={{ background: `${d.color}10` }}>
-                    <d.Icon size={18} color={d.color} strokeWidth={1.75} />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-[14px] mb-1.5 group-hover:text-[#007BFF] transition-colors duration-200">{d.label}</h3>
-                  <p className="text-[12px] text-slate-400 leading-relaxed">{d.sub}</p>
-                  <div className="flex items-center gap-1 mt-4 text-xs font-semibold transition-colors duration-200"
-                    style={{ color: d.color, opacity: 0 }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = "0")}>
-                    En savoir plus <ChevronRight size={12} strokeWidth={2.5} />
+                  {/* BG image */}
+                  <div className="v2-bg absolute inset-0"
+                    style={{ backgroundImage: `url(${d.img})`, backgroundSize: "cover", backgroundPosition: "center" }} />
+                  {/* Dark overlay */}
+                  <div className="v2-overlay absolute inset-0"
+                    style={{ background: "linear-gradient(160deg, rgba(5,14,32,0.80) 0%, rgba(0,30,70,0.90) 100%)" }} />
+                  {/* Content */}
+                  <div className="relative z-10 p-6">
+                    <div className="v2-ic-wrap w-10 h-10 rounded-lg flex items-center justify-center mb-4"
+                      style={{ background: `${d.color}12` }}>
+                      <d.Icon className="v2-ic-svg" size={18} color={d.color} strokeWidth={1.75} />
+                    </div>
+                    <h3 className="v2-title font-bold text-slate-900 text-[14px] mb-1.5">{d.label}</h3>
+                    <p className="v2-sub text-[12px] text-slate-400 leading-relaxed">{d.sub}</p>
+                    <div className="v2-savoir flex items-center gap-1 mt-4 text-xs font-semibold" style={{ opacity: 0, color: d.color }}>
+                      En savoir plus <ChevronRight size={12} strokeWidth={2.5} />
+                    </div>
                   </div>
                 </div>
               )

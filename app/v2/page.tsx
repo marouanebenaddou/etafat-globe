@@ -292,7 +292,7 @@ export default function EtafatV2() {
       <section id="hero" className="relative min-h-screen flex items-center overflow-hidden">
         {/* Parallax BG */}
         <div className="absolute inset-0" style={{ transform: `translateY(${scrollY * 0.3}px)` }}>
-          <img src="https://etafat.ma/wp-content/uploads/2021/01/ingenieurie_infrastructure.jpg"
+          <img src="/hero-aerial.jpg"
             alt="" className="w-full h-full object-cover scale-110" />
           <div className="absolute inset-0" style={{ background: "linear-gradient(105deg, rgba(5,14,32,0.93) 0%, rgba(5,14,32,0.78) 45%, rgba(5,14,32,0.35) 100%)" }} />
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(5,14,32,0.55), transparent 55%)" }} />

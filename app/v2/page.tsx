@@ -898,7 +898,7 @@ export default function EtafatV2() {
                 </div>
                 <div className="relative min-h-[280px] md:min-h-0 overflow-hidden">
                   <video
-                    src="/rabat-aerial.mp4"
+                    src="/morocco.mp4"
                     autoPlay
                     loop
                     muted

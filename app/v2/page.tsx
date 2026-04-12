@@ -192,15 +192,20 @@ export default function EtafatV2() {
       {/* ── NAV ── */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
-        background: scrolled ? "rgba(255,255,255,0.94)" : "rgba(255,255,255,0.98)",
-        backdropFilter: "blur(14px)",
+        background: scrolled ? "rgba(255,255,255,0.96)" : "transparent",
+        backdropFilter: scrolled ? "blur(14px)" : "none",
         borderBottom: scrolled ? "1px solid rgba(0,0,0,0.07)" : "1px solid transparent",
-        boxShadow: scrolled ? "0 2px 24px rgba(0,0,0,0.06)" : "none",
-        transition: "all 0.35s ease",
+        boxShadow: scrolled ? "0 2px 24px rgba(0,0,0,0.07)" : "none",
+        transition: "background 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease",
       }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="flex items-center justify-between h-[72px]">
-            <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png" alt="Etafat" className="h-8" />
+          <div className="flex items-center justify-between h-[76px]">
+            {/* Logo: white when transparent, normal when scrolled */}
+            <img
+              src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+              alt="Etafat" className="h-8"
+              style={{ filter: scrolled ? "none" : "brightness(0) invert(1)", transition: "filter 0.4s ease" }}
+            />
             <div className="hidden md:flex items-center gap-8">
               {[
                 { label: "Savoir-faire", id: "savoir-faire" },
@@ -210,17 +215,25 @@ export default function EtafatV2() {
                 { label: "Contact", id: "contact" },
               ].map(item => (
                 <button key={item.id} onClick={() => scrollTo(item.id)}
-                  className="relative text-[13px] font-medium text-slate-600 hover:text-[#007BFF] transition-colors duration-200 group py-1">
-                  {item.label}
-                  <span className="absolute -bottom-0 left-0 w-0 h-[1.5px] bg-[#007BFF] group-hover:w-full transition-all duration-300 rounded-full" />
+                  className="relative text-[13px] font-medium group py-1"
+                  style={{ color: scrolled ? "#475569" : "rgba(255,255,255,0.85)", transition: "color 0.4s ease" }}>
+                  <span className="hover:opacity-100 transition-opacity">{item.label}</span>
+                  <span className="absolute -bottom-0 left-0 w-0 h-[1.5px] group-hover:w-full transition-all duration-300 rounded-full"
+                    style={{ background: scrolled ? "#007BFF" : "rgba(255,255,255,0.7)" }} />
                 </button>
               ))}
+              {/* CTA: outline-white when transparent, solid-blue when scrolled */}
               <button onClick={() => scrollTo("contact")}
-                className="bg-[#007BFF] hover:bg-[#0057b8] text-white text-[13px] font-semibold px-5 py-2.5 rounded-md transition-all duration-200 hover:shadow-lg hover:shadow-[#007BFF]/20 hover:-translate-y-px">
+                className="text-[13px] font-semibold px-5 py-2.5 rounded-md transition-all duration-300 hover:-translate-y-px"
+                style={scrolled
+                  ? { background: "#007BFF", color: "#fff", boxShadow: "0 0 0 transparent" }
+                  : { background: "transparent", color: "#fff", border: "1.5px solid rgba(255,255,255,0.55)" }
+                }>
                 Nous contacter
               </button>
             </div>
-            <button className="md:hidden p-2 text-slate-600" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}
+              style={{ color: scrolled ? "#334155" : "#fff", transition: "color 0.4s ease" }}>
               {mobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>

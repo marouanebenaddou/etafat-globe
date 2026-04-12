@@ -241,7 +241,7 @@ export default function EtafatV2() {
             {/* Logo: white when transparent, normal when scrolled */}
             <img
               src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
-              alt="Etafat" className="h-8"
+              alt="Etafat" className="h-11"
               style={{ filter: scrolled ? "none" : "brightness(0) invert(1)", transition: "filter 0.4s ease" }}
             />
             <div className="hidden md:flex items-center gap-8">
@@ -649,7 +649,7 @@ export default function EtafatV2() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png" alt="Etafat" className="h-7 mb-5 brightness-0 invert opacity-70" />
+              <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png" alt="Etafat" className="h-9 mb-5 brightness-0 invert opacity-70" />
               <p className="text-white/30 text-xs leading-relaxed">Géospatiale & aménagement du territoire depuis 1983.</p>
               <p className="text-white/30 text-xs mt-1.5">Maroc · Côte d'Ivoire · Sénégal · Asie</p>
             </div>

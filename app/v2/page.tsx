@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import ImageGallery from "@/components/ui/image-gallery"
 import {
   Crosshair, Layers, ScanLine, Briefcase, Box, Database,
   Route, Building2, Zap, Sprout, Landmark, Globe,
@@ -67,13 +68,13 @@ const domaines = [
   { Icon: Zap,        label: "Énergie & Mines",           sub: "Énergies renouvelables, carrières, réseaux",      color: "#00669D", img: "https://etafat.ma/wp-content/uploads/2021/01/georadar-1.jpg" },
   { Icon: Sprout,     label: "Agriculture & Eau",         sub: "Agriculture de précision, irrigation, hydrologie",color: "#007BFF", img: "https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg" },
   { Icon: Landmark,   label: "Bâtiment & Patrimoine",     sub: "Réhabilitation, conservation, scan bâtiment",    color: "#0057b8", img: "https://etafat.ma/wp-content/uploads/2021/03/scanner2.jpg" },
-  { Icon: Globe,      label: "International",             sub: "Maroc, Côte d'Ivoire, Sénégal, Asie",            color: "#00669D", img: "https://etafat.ma/wp-content/uploads/2021/01/pva_lidar.jpg" },
+  { Icon: Globe,      label: "International",             sub: "Maroc, Côte d'Ivoire, Sénégal, Mali",            color: "#00669D", img: "https://etafat.ma/wp-content/uploads/2021/01/pva_lidar.jpg" },
 ]
 
 const stats = [
   { value: 40,  prefix: "+", suffix: " ans", label: "d'expertise",       sub: "Fondée à Rabat en 1983" },
   { value: 170, prefix: "",  suffix: "",      label: "collaborateurs",    sub: "Ingénieurs & techniciens" },
-  { value: 4,   prefix: "",  suffix: "",      label: "entités du groupe", sub: "Maroc, CI, Sénégal, Asie" },
+  { value: 4,   prefix: "",  suffix: "",      label: "entités du groupe", sub: "Maroc, CI, Sénégal, Mali" },
   { value: 500, prefix: "+", suffix: "",      label: "projets réalisés",  sub: "En Afrique et au-delà" },
 ]
 
@@ -274,9 +275,9 @@ function MenuOverlay({ open, onClose, scrollTo }: { open: boolean; onClose: () =
             opacity: open ? 1 : 0,
             transition: `opacity 0.5s ease ${0.65}s`,
           }}>
-          <p className="text-white/30 text-xs">Rabat, Maroc — contact@etafat.ma</p>
+          <p className="text-white/30 text-xs">Casablanca, Maroc — contact@etafat.ma</p>
           <div className="flex gap-6">
-            {["Maroc", "Côte d'Ivoire", "Sénégal", "Asie"].map(c => (
+            {["Maroc", "Côte d'Ivoire", "Sénégal", "Mali"].map(c => (
               <span key={c} className="text-white/25 text-xs hover:text-white/55 cursor-pointer transition-colors">{c}</span>
             ))}
           </div>
@@ -384,6 +385,110 @@ function ChallengeSection() {
 }
 
 /* ─── VISION SECTION ────────────────────────────────────── */
+function CultureSection() {
+  return (
+    <section className="py-24" style={{ background: "#fff" }}>
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        <RevealSection>
+          <SectionLabel text="Rejoignez l'aventure" />
+        </RevealSection>
+        <div className="grid md:grid-cols-2 gap-5" style={{ minHeight: 540 }}>
+
+          {/* LEFT — tall photo card */}
+          <RevealSection className="h-full">
+            <div className="relative rounded-2xl overflow-hidden h-full" style={{ minHeight: 480 }}>
+              {/* Background image */}
+              <img
+                src="https://etafat.ma/wp-content/uploads/2021/01/drone_acquisition.jpg"
+                alt="Terrain"
+                style={{
+                  position: "absolute", inset: 0, width: "100%", height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+              {/* Dark gradient */}
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(160deg, rgba(5,14,32,0.3) 0%, rgba(5,14,32,0.82) 100%)",
+              }} />
+              {/* Content */}
+              <div style={{ position: "relative", zIndex: 1, padding: "clamp(2rem,4vw,2.8rem)", display: "flex", flexDirection: "column", height: "100%", justifyContent: "flex-end" }}>
+                <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-white/60 mb-4">Culture</span>
+                <h3 style={{ fontSize: "clamp(1.7rem,3vw,2.2rem)", fontWeight: 900, color: "#fff", lineHeight: 1.15, marginBottom: "1.1rem" }}>
+                  Notre culture<br />d'entreprise
+                </h3>
+                <p className="text-white/65 text-[15px] leading-relaxed mb-8" style={{ maxWidth: 380 }}>
+                  Chez Etafat, la rigueur technique s'allie à l'esprit d'équipe. Nos ingénieurs interviennent sur le terrain et en laboratoire, portés par la conviction que la donnée géospatiale transforme les territoires.
+                </p>
+                <button
+                  onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center gap-2 text-[13px] font-semibold text-white border border-white/40 rounded-full px-6 py-3 hover:bg-white hover:text-[#07101f] transition-all duration-300 group"
+                  style={{ alignSelf: "flex-start" }}>
+                  Découvrir nos valeurs
+                  <span className="transition-transform duration-300 group-hover:translate-x-1"><ArrowRight size={14} /></span>
+                </button>
+              </div>
+            </div>
+          </RevealSection>
+
+          {/* RIGHT — two stacked cards */}
+          <div className="flex flex-col gap-5">
+
+            {/* Top white card — L'expérience collaborateur */}
+            <RevealSection delay={100} className="flex-1">
+              <div className="rounded-2xl p-8 h-full flex flex-col justify-between" style={{ background: "#f4f7fc", border: "1px solid #e8edf5" }}>
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-6" style={{ background: "#007BFF10" }}>
+                    <Users size={20} color="#007BFF" strokeWidth={1.75} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 mb-3 leading-snug">
+                    L'expérience<br />collaborateur
+                  </h3>
+                  <p className="text-slate-500 text-[14px] leading-relaxed">
+                    Formations continues, projets internationaux, évolution interne — nous investissons dans chaque talent pour qu'il grandisse avec le groupe.
+                  </p>
+                </div>
+                <button
+                  onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#007BFF] mt-7 group"
+                  style={{ alignSelf: "flex-start" }}>
+                  En savoir plus
+                  <span className="transition-transform duration-300 group-hover:translate-x-1"><ArrowRight size={14} /></span>
+                </button>
+              </div>
+            </RevealSection>
+
+            {/* Bottom colored card — Rejoignez-nous */}
+            <RevealSection delay={200} className="flex-1">
+              <div className="rounded-2xl p-8 h-full flex flex-col justify-between" style={{ background: "#007BFF" }}>
+                <div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-6" style={{ background: "rgba(255,255,255,0.15)" }}>
+                    <Award size={20} color="#fff" strokeWidth={1.75} />
+                  </div>
+                  <h3 className="text-xl font-black text-white mb-3 leading-snug">
+                    Rejoignez-nous
+                  </h3>
+                  <p className="text-white/75 text-[14px] leading-relaxed">
+                    Vous êtes ingénieur, technicien ou expert en géospatiale ? Rejoignez une équipe passionnée et contribuez à des projets structurants au Maroc et en Afrique.
+                  </p>
+                </div>
+                <button
+                  onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center gap-2 text-[13px] font-semibold text-white mt-7 group"
+                  style={{ alignSelf: "flex-start" }}>
+                  Voir nos offres d'emploi
+                  <span className="transition-transform duration-300 group-hover:translate-x-1"><ChevronRight size={14} /></span>
+                </button>
+              </div>
+            </RevealSection>
+
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function VisionSection() {
   const { ref, visible } = useReveal(0.15)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -843,6 +948,12 @@ export default function EtafatV2() {
         </div>
       </section>
 
+      {/* ── CULTURE ── */}
+      <CultureSection />
+
+      {/* ── GALLERY ── */}
+      <ImageGallery />
+
       {/* ── VISION ── */}
       <VisionSection />
 
@@ -860,8 +971,8 @@ export default function EtafatV2() {
               </p>
               <div className="space-y-5">
                 {[
-                  { Icon: MapPin, label: "Siège social", val: "Rabat, Maroc" },
-                  { Icon: Phone,  label: "Téléphone",    val: "+212 537 ..." },
+                  { Icon: MapPin, label: "Siège social", val: "Casablanca, Maroc" },
+                  { Icon: Phone,  label: "Téléphone",    val: "+212 522 79 87 00" },
                   { Icon: Mail,   label: "Email",         val: "contact@etafat.ma" },
                 ].map(c => (
                   <div key={c.label} className="flex items-center gap-4 group cursor-pointer">
@@ -921,12 +1032,12 @@ export default function EtafatV2() {
             <div className="col-span-2 md:col-span-1">
               <img src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png" alt="Etafat" className="h-9 mb-5 brightness-0 invert opacity-70" />
               <p className="text-white/30 text-xs leading-relaxed">Géospatiale & aménagement du territoire depuis 1983.</p>
-              <p className="text-white/30 text-xs mt-1.5">Maroc · Côte d'Ivoire · Sénégal · Asie</p>
+              <p className="text-white/30 text-xs mt-1.5">Maroc · Côte d'Ivoire · Sénégal · Mali</p>
             </div>
             {[
               { title: "Savoir-faire", items: ["Topographie & Foncier", "SIG", "Acquisition Aérienne", "Conseil & AMO", "BIM & 3D", "Ingénierie des données"] },
               { title: "Domaines",    items: ["Infrastructures", "Aménagement", "Énergie & Mines", "Agriculture", "Bâtiment", "International"] },
-              { title: "Groupe",      items: ["Etafat Maroc", "Etafat ING", "Etafat Afrique", "Etafat Sénégal", "Contact", "Carrières"] },
+              { title: "Groupe",      items: ["Etafat Maroc", "Etafat ING", "Etafat Afrique", "Etafat Sénégal", "Etafat Mali", "Carrières"] },
             ].map(col => (
               <div key={col.title}>
                 <h4 className="text-white/40 text-[10px] font-bold uppercase tracking-[0.22em] mb-5">{col.title}</h4>
@@ -940,7 +1051,7 @@ export default function EtafatV2() {
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <span className="text-white/18 text-xs">© 2025 Etafat. Tous droits réservés.</span>
-            <span className="text-white/18 text-xs">Rabat, Maroc — contact@etafat.ma</span>
+            <span className="text-white/18 text-xs">Casablanca, Maroc — contact@etafat.ma</span>
           </div>
         </div>
       </footer>

@@ -198,15 +198,17 @@ function MenuOverlay({ open, onClose, scrollTo }: { open: boolean; onClose: () =
       transition: "transform 0.6s cubic-bezier(0.16,1,0.3,1)",
       overflow: "hidden",
     }}>
-      {/* Decorative logo watermark */}
+      {/* Decorative globe watermark */}
       <img
-        src="https://etafat.ma/wp-content/themes/etafat/assets/images/logo.png"
+        src="/etafat-globe.png"
         alt="" aria-hidden
         style={{
-          position: "absolute", left: "50%", top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "clamp(420px, 65vw, 780px)",
-          opacity: 0.04,
+          position: "absolute",
+          right: "-12%",
+          top: "50%",
+          transform: "translateY(-52%)",
+          width: "clamp(520px, 72vw, 920px)",
+          opacity: 0.07,
           filter: "brightness(0) invert(1)",
           pointerEvents: "none", userSelect: "none",
           objectFit: "contain",

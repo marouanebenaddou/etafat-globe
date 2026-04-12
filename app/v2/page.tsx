@@ -896,10 +896,16 @@ export default function EtafatV2() {
                     ))}
                   </div>
                 </div>
-                <div className="relative min-h-[280px] md:min-h-0 overflow-hidden group">
-                  <img src="https://etafat.ma/wp-content/uploads/2021/01/ingenieurie_infrastructure.jpg"
-                    alt="Projet ADM" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to left, transparent 60%, rgba(248,250,252,0.15))" }} />
+                <div className="relative min-h-[280px] md:min-h-0 overflow-hidden">
+                  <video
+                    src="/rabat-aerial.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to left, transparent 60%, rgba(248,250,252,0.2))" }} />
                 </div>
               </div>
             </div>

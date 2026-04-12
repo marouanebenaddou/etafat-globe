@@ -835,8 +835,8 @@ export default function EtafatV2() {
       <ChallengeSection />
 
       {/* ── STATS ── */}
-      <section id="stats" className="py-28 relative overflow-hidden" style={{ background: "#007BFF" }}>
-        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 15% 50%, rgba(255,255,255,0.09) 0%, transparent 55%), radial-gradient(ellipse at 85% 50%, rgba(0,0,0,0.08) 0%, transparent 55%)" }} />
+      <section id="stats" className="py-28 relative overflow-hidden" style={{ background: "linear-gradient(135deg, #07101f 0%, #0a1f3d 40%, #003580 75%, #0057b8 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 20% 60%, rgba(0,123,255,0.18) 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, rgba(0,87,184,0.15) 0%, transparent 55%)" }} />
         <div ref={statsRef} className="max-w-7xl mx-auto px-6 lg:px-10">
           <RevealSection className="text-center mb-20">
             <SectionLabel text="Etafat en chiffres" center />

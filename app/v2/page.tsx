@@ -162,6 +162,103 @@ function StatCard({ value, prefix, suffix, label, sub, active }: { value: number
   )
 }
 
+/* ─── CHALLENGE SECTION ─────────────────────────────────── */
+function ChallengeSection() {
+  const { ref, visible } = useReveal(0.2)
+
+  return (
+    <section className="py-36 bg-white relative overflow-hidden">
+      <style>{`
+        @keyframes v2-circle-in {
+          from { opacity: 0; transform: translateY(-50%) scale(0.72); }
+          to   { opacity: 1; transform: translateY(-50%) scale(1); }
+        }
+        @keyframes v2-circle-drift {
+          0%,100% { margin-top: 0px; }
+          50%      { margin-top: -18px; }
+        }
+        .v2-chal-circle {
+          position: absolute; left: -140px; top: 50%;
+          width: 520px; height: 520px; border-radius: 50%;
+          background: radial-gradient(circle at 40% 40%, rgba(0,123,255,0.10), rgba(0,87,184,0.04));
+          pointer-events: none;
+        }
+        .v2-chal-circle.in {
+          animation: v2-circle-in 1.1s cubic-bezier(0.16,1,0.3,1) forwards,
+                     v2-circle-drift 5s ease-in-out infinite 1.2s;
+        }
+        .v2-underline-path {
+          stroke-dasharray: 290;
+          stroke-dashoffset: 290;
+          transition: stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1) 0.55s;
+        }
+        .v2-underline-path.drawn { stroke-dashoffset: 0; }
+      `}</style>
+
+      {/* Floating decorative circle */}
+      <div className={`v2-chal-circle ${visible ? "in" : ""}`} />
+
+      <div ref={ref} className="max-w-7xl mx-auto px-6 lg:px-10 relative">
+        <div className="max-w-2xl">
+
+          {/* Line 1 */}
+          <div style={{ overflow: "hidden", marginBottom: "0.2em" }}>
+            <span className="block" style={{
+              fontSize: "clamp(2.4rem,5vw,4rem)", fontWeight: 900, color: "#0f172a", lineHeight: 1.08,
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(110%)",
+              transition: "opacity 0.7s ease 0.05s, transform 0.75s cubic-bezier(0.16,1,0.3,1) 0.05s",
+            }}>Vous avez un projet</span>
+          </div>
+
+          {/* Line 2 — with SVG underline */}
+          <div style={{ overflow: "visible", marginBottom: "2.5rem", display: "inline-block" }}>
+            <span className="inline-block relative" style={{
+              fontSize: "clamp(2.4rem,5vw,4rem)", fontWeight: 900, color: "#0f172a", lineHeight: 1.08,
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(110%)",
+              transition: "opacity 0.7s ease 0.18s, transform 0.75s cubic-bezier(0.16,1,0.3,1) 0.18s",
+              paddingBottom: "0.2em",
+            }}>
+              géospatial ?
+              {/* SVG brush-stroke underline */}
+              <svg viewBox="0 0 340 20" style={{ position: "absolute", bottom: -2, left: 0, width: "100%", height: 20, overflow: "visible" }} aria-hidden>
+                <path
+                  className={`v2-underline-path ${visible ? "drawn" : ""}`}
+                  d="M 3 14 Q 55 5 110 13 Q 170 20 230 11 Q 285 4 337 13"
+                  stroke="#007BFF" strokeWidth="3.5" fill="none" strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </div>
+
+          {/* Subtitle */}
+          <p className="text-slate-500 leading-relaxed mb-10 text-[15px]" style={{
+            maxWidth: 400,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "none" : "translateY(16px)",
+            transition: "all 0.65s ease 0.38s",
+          }}>
+            Nos équipes sont prêtes à étudier votre besoin et à vous proposer une solution sur-mesure — en Maroc, en Afrique et à l'international.
+          </p>
+
+          {/* CTA link */}
+          <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(14px)", transition: "all 0.6s ease 0.5s" }}>
+            <button
+              onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}
+              className="inline-flex items-center gap-3 text-[13px] font-semibold text-[#007BFF] group">
+              Découvrir nos solutions
+              <span className="w-9 h-9 rounded-full border-2 border-[#007BFF] flex items-center justify-center transition-all duration-300 group-hover:bg-[#007BFF] group-hover:scale-110">
+                <ChevronRight size={15} className="transition-colors duration-300 group-hover:text-white" />
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 /* ─── VISION SECTION ────────────────────────────────────── */
 function VisionSection() {
   const { ref, visible } = useReveal(0.15)
@@ -528,6 +625,9 @@ export default function EtafatV2() {
           </div>
         </div>
       </section>
+
+      {/* ── CHALLENGE ── */}
+      <ChallengeSection />
 
       {/* ── STATS ── */}
       <section id="stats" className="py-28 relative overflow-hidden" style={{ background: "#007BFF" }}>

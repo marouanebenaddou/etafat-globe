@@ -605,9 +605,17 @@ export default function EtafatV2() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
           style={{ opacity: heroVisible ? 0.5 : 0, transition: "opacity 1s ease 1.3s", animation: heroVisible ? "v2-float 2.8s ease-in-out infinite 1.5s" : "none" }}>
           <div className="w-px h-12 bg-gradient-to-b from-white/50 to-transparent" />
+        </div>
+
+        {/* Bottom curve */}
+        <div style={{ position: "absolute", bottom: -1, left: 0, right: 0, lineHeight: 0 }}>
+          <svg viewBox="0 0 1440 88" preserveAspectRatio="none"
+            style={{ display: "block", width: "100%", height: 88 }}>
+            <path d="M0,72 Q360,0 720,40 Q1080,80 1440,20 L1440,88 L0,88 Z" fill="#f8fafc" />
+          </svg>
         </div>
       </section>
 

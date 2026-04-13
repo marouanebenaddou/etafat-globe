@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import ImageGallery from "@/components/ui/image-gallery"
 import {
   Crosshair, Layers, ScanLine, Briefcase, Box, Database,
@@ -14,6 +15,7 @@ import {
 const savoirFaire = [
   {
     Icon: Crosshair,
+    slug: "topographie-foncier",
     title: "Topographie & Foncier",
     desc: "Levés de précision, bornages et opérations cadastrales pour sécuriser votre patrimoine territorial.",
     result: "Litiges fonciers évités, patrimoine sécurisé",
@@ -22,6 +24,7 @@ const savoirFaire = [
   },
   {
     Icon: Layers,
+    slug: "sig",
     title: "Systèmes d'Information Géographique",
     desc: "Plateformes SIG sur-mesure qui transforment vos données spatiales en outils de décision et de pilotage.",
     result: "Décisions éclairées, pilotage simplifié",
@@ -30,6 +33,7 @@ const savoirFaire = [
   },
   {
     Icon: ScanLine,
+    slug: "acquisition-aerienne",
     title: "Acquisition Aérienne & LiDAR",
     desc: "Cartographie à grande échelle par drone et capteur laser aéroporté. Précision centimétrique garantie.",
     result: "Couverture rapide, données fiables",
@@ -38,6 +42,7 @@ const savoirFaire = [
   },
   {
     Icon: Briefcase,
+    slug: "conseil-ingenierie",
     title: "Conseil & Ingénierie",
     desc: "Accompagnement en AMO, études de faisabilité et pilotage de projets d'infrastructure pour maîtres d'ouvrage.",
     result: "Projets maîtrisés, délais respectés",
@@ -46,6 +51,7 @@ const savoirFaire = [
   },
   {
     Icon: Box,
+    slug: "modelisation-3d-bim",
     title: "Modélisation 3D & BIM",
     desc: "Jumeaux numériques, maquettes BIM et modèles 3D pour visualiser, coordonner et exécuter vos projets.",
     result: "Erreurs réduites, coûts maîtrisés",
@@ -54,6 +60,7 @@ const savoirFaire = [
   },
   {
     Icon: Database,
+    slug: "ingenierie-donnees",
     title: "Ingénierie des Données",
     desc: "Structuration, exploitation et valorisation de vos données géospatiales via des pipelines robustes.",
     result: "Données exploitables, valeur créée",
@@ -557,6 +564,7 @@ function VisionSection() {
 
 /* ─── PAGE ───────────────────────────────────────────────── */
 export default function EtafatV2() {
+  const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [scrollY, setScrollY] = useState(0)
@@ -743,6 +751,7 @@ export default function EtafatV2() {
               return (
                 <div key={sf.title} ref={ref}
                   className="v2-imgcard relative rounded-xl overflow-hidden cursor-pointer"
+                  onClick={() => router.push(`/v2/expertises/${sf.slug}`)}
                   style={{
                     opacity: visible ? 1 : 0,
                     transform: visible ? "translateY(0)" : "translateY(28px)",

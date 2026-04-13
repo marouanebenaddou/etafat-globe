@@ -759,17 +759,12 @@ export default function EtafatV2() {
                   <div className="v2-overlay absolute inset-0"
                     style={{ background: "linear-gradient(160deg, rgba(5,14,32,0.78) 0%, rgba(0,30,70,0.88) 100%)" }} />
                   {/* Content */}
-                  <div className="relative z-10 p-7 flex flex-col h-full">
-                    <div className="v2-ic-wrap w-12 h-12 rounded-lg flex items-center justify-center mb-6"
+                  <div className="relative z-10 p-7 flex flex-col items-center justify-center h-full text-center">
+                    <div className="v2-ic-wrap w-16 h-16 rounded-xl flex items-center justify-center mb-5"
                       style={{ background: `${sf.color}14`, border: `1px solid ${sf.color}28` }}>
-                      <sf.Icon className="v2-ic-svg" size={22} color={sf.color} strokeWidth={1.75} />
+                      <sf.Icon className="v2-ic-svg" size={32} color={sf.color} strokeWidth={1.5} />
                     </div>
-                    <h3 className="v2-title text-[15px] font-bold text-slate-900 mb-3 leading-snug">{sf.title}</h3>
-                    <p className="v2-desc text-slate-500 text-sm leading-relaxed mb-7 flex-1">{sf.desc}</p>
-                    <div className="v2-result flex items-center justify-between pt-5 border-t border-slate-100">
-                      <span className="text-xs text-slate-400 leading-snug">{sf.result}</span>
-                      <span className="v2-chevron text-[#007BFF]"><ChevronRight size={16} strokeWidth={2.5} /></span>
-                    </div>
+                    <h3 className="v2-title text-[15px] font-bold text-slate-900 leading-snug">{sf.title}</h3>
                   </div>
                 </div>
               )

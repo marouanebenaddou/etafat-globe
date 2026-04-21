@@ -205,6 +205,35 @@ export function isRinexNav(name: string): boolean {
   return false
 }
 
+
+// ───────────────── PDF report ────────────────────────────────────────────
+//
+// Once /pipeline/from-* has returned a result, POST it back here to get a
+// downloadable 4-section PDF report (cover, baselines, loops, adjustments).
+
+export async function downloadPdfReport(
+  result: PipelineOut | PipelineFromRinexOut,
+  projectName: string,
+  filename = "etafat_rapport_gnss.pdf",
+): Promise<void> {
+  const res = await fetch(`${API_URL}/pipeline/report.pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ result, project_name: projectName }),
+  })
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  const blob = await res.blob()
+  // Trigger the browser's native download
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ───────────────── CSV parsing helpers ───────────────────────────────────
 
 /**

@@ -5,11 +5,11 @@ import {
   ChevronRight, FileArchive, FileText, MapPin, Globe2,
   PlayCircle, CheckCircle2, AlertTriangle, XCircle,
   Layers, Activity, Satellite, Radio, Anchor, Target,
-  Loader2, Info, Trash2, FileDown, Eye,
+  Loader2, Info, Trash2, FileDown,
   Clock, Signal, Cpu, Database, Wifi, WifiOff, Calculator, Wand2,
 } from "lucide-react"
 import {
-  checkHealth, runPipeline, runPipelineFromRinex,
+  checkHealth, runPipeline, runPipelineFromRinex, downloadPdfReport,
   parseBaselinesCSV, stationsFromBaselines,
   REFERENCE_DATASET, API_URL,
   isRinexObs, isRinexNav,
@@ -153,6 +153,8 @@ export default function GnssPage() {
   const [csvErrors, setCsvErrors] = useState<{ line: number; msg: string }[]>([])
   const [apiResult, setApiResult] = useState<PipelineOut | PipelineFromRinexOut | null>(null)
   const [apiError,  setApiError]  = useState<string | null>(null)
+  const [pdfDownloading, setPdfDownloading] = useState<boolean>(false)
+  const [projectLabel,  setProjectLabel]   = useState<string>("")
 
   /* Ping the backend on mount (and when API URL changes) */
   useEffect(() => {
@@ -399,12 +401,53 @@ export default function GnssPage() {
                     : `${obsFiles.length} fichier${obsFiles.length > 1 ? "s" : ""} · ${baseCoords.filter(b => b.north && b.east).length} base${baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} · Tolérances respectées`}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button style={{ background: "rgba(255,255,255,0.2)", color: "#fff", padding: "9px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
-                  <Eye size={14} /> Aperçu
-                </button>
-                <button style={{ background: "#fff", color: "#10b981", padding: "9px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
-                  <FileDown size={14} /> Rapport PDF
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={projectLabel}
+                  onChange={e => setProjectLabel(e.target.value)}
+                  placeholder="Nom du projet (optionnel)"
+                  style={{
+                    background: "rgba(255,255,255,0.15)",
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    color: "#fff",
+                    padding: "8px 12px",
+                    borderRadius: 7,
+                    fontSize: 12.5,
+                    outline: "none",
+                    width: 200,
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (!apiResult) return
+                    try {
+                      setPdfDownloading(true)
+                      await downloadPdfReport(
+                        apiResult,
+                        projectLabel || "Projet GNSS",
+                        `etafat_rapport_${new Date().toISOString().slice(0, 10)}.pdf`,
+                      )
+                    } catch (e) {
+                      setApiError(e instanceof Error ? e.message : String(e))
+                    } finally {
+                      setPdfDownloading(false)
+                    }
+                  }}
+                  disabled={!apiResult || pdfDownloading}
+                  style={{
+                    background: apiResult ? "#fff" : "rgba(255,255,255,0.3)",
+                    color: apiResult ? "#10b981" : "rgba(255,255,255,0.7)",
+                    padding: "9px 16px", borderRadius: 8,
+                    fontSize: 12.5, fontWeight: 700,
+                    display: "flex", alignItems: "center", gap: 7,
+                    cursor: apiResult && !pdfDownloading ? "pointer" : "not-allowed",
+                    opacity: pdfDownloading ? 0.7 : 1,
+                    transition: "all 0.2s ease",
+                  }}>
+                  {pdfDownloading
+                    ? <><Loader2 size={14} style={{ animation: "gnssSpin 1s linear infinite" }} /> Génération…</>
+                    : <><FileDown size={14} /> Télécharger rapport PDF</>}
                 </button>
               </div>
             </div>

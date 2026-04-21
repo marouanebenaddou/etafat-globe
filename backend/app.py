@@ -30,6 +30,7 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from gnss.models import Baseline, Station
@@ -215,6 +216,35 @@ def pipeline_from_vectors(inp: PipelineIn) -> PipelineOut:
         baselines, stations,
         projection_hint=inp.projection_hint,
         h_limit_m=inp.h_limit_m, v_limit_m=inp.v_limit_m,
+    )
+
+
+# ───── PDF report — accepts a previously-computed result, returns the PDF ─
+from gnss.reports import build_pdf_report
+
+
+class PdfReportIn(BaseModel):
+    result: dict[str, Any] = Field(..., description="JSON body exactly as returned by /pipeline/from-rinex or from-vectors")
+    project_name: str = Field("", description="Free-form project label printed on the cover")
+
+
+@app.post("/pipeline/report.pdf")
+def pipeline_report_pdf(inp: PdfReportIn):
+    """Render the 4-section PDF report (cover · baselines · loops · free +
+    constrained adjustments) for a previously-computed pipeline result.
+
+    The client calls /pipeline/from-rinex (or from-vectors) first, then
+    posts the JSON result back here to get a downloadable PDF. Keeping
+    the two steps separate means the client can re-render the PDF as the
+    project name changes without re-running rnx2rtkp."""
+    try:
+        pdf = build_pdf_report(inp.result, project_name=inp.project_name)
+    except Exception as e:
+        raise HTTPException(500, f"PDF build failed: {type(e).__name__}: {e}")
+    filename = "etafat_rapport_gnss.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -445,7 +445,7 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
             stop_opts=stop_opts or StopDetectorOpts(),
         )
         try:
-            baselines, stations, warnings = compute_all_baselines(pin)
+            baselines, stations, warnings, tracking_charts = compute_all_baselines(pin)
         except ValueError as e:
             raise HTTPException(400, str(e))
         except RuntimeError as e:
@@ -493,6 +493,7 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
             for b in baselines
         ],
         "warnings": warnings,
+        "tracking_charts": tracking_charts,
     }
 
     if crs_for_output is not None:

@@ -884,4 +884,45 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 seed = next((s for s in sessions if s.station_point == name), None)
                 xyz = seed.approx_xyz if (seed and seed.approx_xyz) else (0.0, 0.0, 0.0)
                 station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2])
-    return baselines, list(station_map.values()), warnings
+
+    # Build tracking charts (one per unique observation file referenced by
+    # the baselines). We do it here — inside compute_all_baselines — so the
+    # obs files are still on disk (the caller's _tempfile.TemporaryDirectory
+    # gets cleaned up right after we return). Charts come back as base64
+    # PNG strings so the JSON response can carry them to the client.
+    from .tracking import scan_rinex_obs
+    from .charts import tracking_chart_png
+    import base64
+    tracking_charts: list[dict] = []
+    obs_files_seen: set[str] = set()
+    # One chart per session that shows up in the final station_map — that
+    # keeps the chart count bounded by stations, not baselines.
+    relevant_sessions = [s for s in sessions
+                         if s.obs_file and s.obs_file not in obs_files_seen
+                         and (s.marker_name in {x.marker_name for x in bases}
+                              or s.station_point in station_map)]
+    for s in relevant_sessions:
+        obs_files_seen.add(s.obs_file)
+        try:
+            # Cap huge obs files at 64 MB of scan — the chart only needs
+            # enough epochs to be representative, not every sample.
+            timeline = scan_rinex_obs(s.obs_file, max_bytes=64 * 1024 * 1024)
+            if timeline.total_epochs == 0:
+                continue
+            title = f"Suivi satellitaire — {s.station_point}"
+            if s.session_code:
+                title += f" (session {s.session_code})"
+            png = tracking_chart_png(timeline, title=title)
+            tracking_charts.append({
+                "station":     s.station_point,
+                "marker_name": s.marker_name,
+                "session":     s.session_code or "",
+                "n_sats":      len(timeline.sats),
+                "n_epochs":    timeline.total_epochs,
+                "interval_s":  timeline.interval_s,
+                "png_b64":     base64.b64encode(png).decode("ascii"),
+            })
+        except Exception as e:
+            warnings.append(f"tracking chart {s.station_point}: {type(e).__name__}: {e}")
+
+    return baselines, list(station_map.values()), warnings, tracking_charts

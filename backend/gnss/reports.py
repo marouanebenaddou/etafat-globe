@@ -28,7 +28,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak,
-    KeepTogether,
+    KeepTogether, Image,
 )
 
 # ETAFAT brand colours (blue and dark slate).
@@ -232,7 +232,7 @@ def _loops_section(styles, result: dict) -> list:
         style.add("FONTNAME",  (-1, i), (-1, i), "Helvetica-Bold")
     t.setStyle(style)
     return [
-        Paragraph("2. Fermeture des boucles", styles["section"]),
+        Paragraph("3. Fermeture des boucles", styles["section"]),
         Paragraph(
             f"{len(loops)} boucles fondamentales détectées. "
             "ΔH et ΔV reportent la misclosure en composantes horizontale et "
@@ -240,6 +240,54 @@ def _loops_section(styles, result: dict) -> list:
             styles["caption"]),
         t,
     ]
+
+
+def _tracking_section(styles, result: dict, section_n: int) -> list:
+    """Section CHC calls "Tracking Summary" — a per-station Gantt chart of
+    satellite observation spans. Rendered server-side by matplotlib and
+    embedded as a PNG so the PDF stays self-contained (no dependency on
+    client-side rendering or external images).
+
+    Each chart is intentionally one page tall to match CHC's layout.
+    """
+    import base64
+    charts = result.get("tracking_charts") or []
+    if not charts:
+        return []
+    flow: list = [
+        PageBreak(),
+        Paragraph(f"{section_n}. Suivi satellitaire",
+                  styles["section"]),
+        Paragraph(
+            f"{len(charts)} station{'s' if len(charts) > 1 else ''} observé"
+            f"{'es' if len(charts) > 1 else 'e'} pendant la session. Chaque "
+            "barre horizontale représente l'intervalle pendant lequel "
+            "chaque satellite GNSS (GPS, GLONASS, Galileo, BeiDou…) a été "
+            "suivi par le récepteur. Les couleurs identifient la "
+            "constellation ; les trous révèlent les pertes de suivi ou "
+            "les obstructions (bâtiments, canopée).",
+            styles["caption"]),
+        Spacer(1, 6),
+    ]
+    for i, ch in enumerate(charts):
+        try:
+            png_bytes = base64.b64decode(ch.get("png_b64", ""))
+        except Exception:
+            continue
+        if not png_bytes:
+            continue
+        caption = (f"{ch.get('station','—')} · "
+                   f"{ch.get('n_sats', 0)} satellites · "
+                   f"{ch.get('n_epochs', 0)} epochs · "
+                   f"Δt={ch.get('interval_s', 0):.1f} s")
+        img = Image(io.BytesIO(png_bytes), width=180*mm, height=None,
+                    kind="proportional")
+        flow.append(img)
+        flow.append(Paragraph(caption, styles["caption"]))
+        # Page break between stations so each chart is legible on its own page
+        if i < len(charts) - 1:
+            flow.append(PageBreak())
+    return flow
 
 
 def _adjustment_section(styles, label: str, section_n: int, rep: dict | None) -> list:
@@ -374,10 +422,11 @@ def build_pdf_report(result: dict, project_name: str = "") -> bytes:
     story += _cover_section(styles, result, {"project": project_name or "—"})
     story.append(PageBreak())
     story += _baselines_section(styles, result)
+    story += _tracking_section(styles, result, section_n=2)
     story.append(PageBreak())
     story += _loops_section(styles, result)
-    story += _adjustment_section(styles, "Libre",     3, result.get("free"))
-    story += _adjustment_section(styles, "Contraint", 4, result.get("constrained"))
+    story += _adjustment_section(styles, "Libre",     4, result.get("free"))
+    story += _adjustment_section(styles, "Contraint", 5, result.get("constrained"))
 
     doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
     return buf.getvalue()

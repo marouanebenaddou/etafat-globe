@@ -640,17 +640,18 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         #     flickers between Fix and Float during long sessions
         # We run both and merge, de-duplicating by centroid proximity.
         stops_time  = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
-        # Loosen spatial cluster min-size: only 2 Fix at the same spot is
-        # enough to flag an occupation, catching more K-session short dwells.
-        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.5,
+        # Spatial clustering with a 1.5 m radius — wider than before so that
+        # nearby partial-Fix clusters merge into single occupations. 2 Fix
+        # epochs min to qualify (catches K's short dwells).
+        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=1.5,
                                               min_cluster_size=2)
-        # Deduplicate: keep a stop from the spatial run only if it's not already
-        # covered (≤ 2 m) by one from the time run.
+        # Deduplicate: keep a spatial-run stop only if not within 3 m of a
+        # time-run stop (both represent the same physical point).
         merged = list(stops_time)
         import math as _m
         for s in stops_space:
             dup = any(
-                _m.sqrt((s["x"]-t["x"])**2 + (s["y"]-t["y"])**2 + (s["z"]-t["z"])**2) < 2.0
+                _m.sqrt((s["x"]-t["x"])**2 + (s["y"]-t["y"])**2 + (s["z"]-t["z"])**2) < 3.0
                 for t in merged
             )
             if not dup:

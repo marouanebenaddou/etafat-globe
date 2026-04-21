@@ -688,23 +688,45 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not nav:
             warnings.append(f"Kinematic skipped ({rover.station_point}) — no nav for {rover.obs_file}")
             return []
-        # NB: we experimented with pre-decimating the rover to 5 s to cap
-        # rnx2rtkp's RAM footprint on the 332 MB K session, but thinning
-        # breaks carrier-phase continuity — the cycle-slip detector
-        # re-initialises ambiguities across every gap and every epoch
-        # drops to Float (0 Fix / 6194 measured empirically). We keep the
-        # rover at native 1 Hz and output every 5 s; memory management
-        # for very large sessions should be solved via `-ts/-te` time
-        # windowing instead (see decimate.py for the unused thinner).
+        # Rover MUST stay at native 1 Hz — thinning it breaks the
+        # cycle-slip detector and drops every epoch to Float (see commit
+        # bd0ce2a). But the BASE is stationary, so thinning it is safe
+        # and slashes peak RAM in the kinematic run. 5 s base cadence
+        # matches -ti 5 output: every output slot has a matching base
+        # epoch for double-differencing, but rnx2rtkp only has to keep
+        # 1/5 the base obs buffer resident.
+        base_obs_for_rtk = primary_base.obs_file
+        try:
+            base_size_mb = os.path.getsize(primary_base.obs_file) / (1024 * 1024)
+            if base_size_mb > 20.0:
+                thinned_base = os.path.join(
+                    os.path.dirname(primary_base.obs_file) or ".",
+                    "_thinned_kine_" + os.path.basename(primary_base.obs_file),
+                )
+                n_in, n_out = decimate_rinex_obs(
+                    primary_base.obs_file, thinned_base, interval_s=5.0,
+                )
+                thin_mb = os.path.getsize(thinned_base) / (1024 * 1024)
+                warnings.append(
+                    f"{rover.station_point}: pre-decimated kinematic base obs "
+                    f"{base_size_mb:.1f}→{thin_mb:.1f} MB "
+                    f"({n_in}→{n_out} epochs @ 5 s)"
+                )
+                base_obs_for_rtk = thinned_base
+        except Exception as e:
+            warnings.append(
+                f"{rover.station_point}: base decimation skipped "
+                f"({type(e).__name__}: {e})"
+            )
         warnings.append(
             f"Kinematic {rover.station_point}: invoking rnx2rtkp "
             f"(rover={os.path.basename(rover.obs_file)}, "
-            f"base={os.path.basename(primary_base.obs_file)}, "
+            f"base={os.path.basename(base_obs_for_rtk)}, "
             f"nav={[os.path.basename(n) for n in nav]})"
         )
         try:
             sol = _run_rnx2rtkp(
-                base_obs=primary_base.obs_file, rover_obs=rover.obs_file,
+                base_obs=base_obs_for_rtk, rover_obs=rover.obs_file,
                 nav_files=nav, base_pos_xyz=base_pos, kinematic=True,
             )
         except Exception as e:

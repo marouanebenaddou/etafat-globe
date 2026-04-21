@@ -312,8 +312,8 @@ def _detect_stops(epochs: list[dict],
                   speed_threshold_ms: float = 0.08,
                   min_duration_s: float = 10.0,
                   min_fix_epochs: int = 3,
-                  min_fix_ratio: float = 0.30,
-                  max_spread_m:   float = 0.15,
+                  min_fix_ratio: float = 0.15,
+                  max_spread_m:   float = 0.40,
                   q_accept: set[int] = frozenset({1, 2})) -> list[dict]:
     """Segment a kinematic trajectory into stationary occupations.
 

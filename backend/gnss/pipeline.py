@@ -309,14 +309,20 @@ class PipelineInput:
 
 
 def _cluster_fix_positions(epochs: list[dict],
-                           cluster_radius_m: float = 0.5,
-                           min_cluster_size: int = 3) -> list[dict]:
-    """Spatial-first clustering: group Fix epochs that land within
-    ``cluster_radius_m`` of each other regardless of time gaps.
+                           cluster_radius_m: float = 0.05,
+                           min_cluster_size: int = 3,
+                           max_time_span_s: float = 600.0) -> list[dict]:
+    """Spatial-first clustering of Fix epochs.
 
-    Much more forgiving than consecutive-epoch segmentation — it catches
-    stops even when rnx2rtkp's Fix quality flickers through a long
-    occupation and the epochs aren't contiguous.
+    Groups epochs that land within ``cluster_radius_m`` of each other.
+    A genuine static occupation has cm-level scatter; 5 cm is a generous
+    but still tight bound that rejects moving rovers that happen to drift
+    slowly.
+
+    ``max_time_span_s`` splits a cluster if it would span more than N seconds
+    — a rover that "returns" to the same point hours later is a separate
+    occupation, not the same one. Each returned stop is therefore contiguous
+    in time within about ``max_time_span_s``.
     """
     import math
     fix_epochs = [e for e in epochs if e["Q"] == 1]
@@ -324,17 +330,17 @@ def _cluster_fix_positions(epochs: list[dict],
         return []
 
     # Simple greedy clustering: walk time-ordered epochs, add to an existing
-    # cluster if its centroid is within the radius, else start a new one.
+    # cluster if its centroid is within the radius AND time span stays bounded.
     clusters: list[list[dict]] = []
     for e in fix_epochs:
         placed = False
         for c in clusters:
-            # Centroid of existing cluster
             cx = sum(x["x"] for x in c) / len(c)
             cy = sum(x["y"] for x in c) / len(c)
             cz = sum(x["z"] for x in c) / len(c)
             d = math.sqrt((e["x"]-cx)**2 + (e["y"]-cy)**2 + (e["z"]-cz)**2)
-            if d <= cluster_radius_m:
+            time_span = e["t"] - c[0]["t"]
+            if d <= cluster_radius_m and time_span <= max_time_span_s:
                 c.append(e); placed = True; break
         if not placed:
             clusters.append([e])
@@ -640,17 +646,20 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         #     flickers between Fix and Float during long sessions
         # We run both and merge, de-duplicating by centroid proximity.
         stops_time  = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
-        # Spatial-only fallback with a tight 0.5 m radius and 3-epoch minimum:
-        # catches K's short dwells that the time detector misses, without
-        # the explosion we saw at larger radii.
-        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.5,
-                                              min_cluster_size=3)
-        # Deduplicate: spatial stop is kept only if > 2 m from every time stop.
+        # Tight spatial cluster: 5 cm radius, 3-epoch min, same-occupation
+        # time span ≤ 10 min. Catches short dwells missed by the time
+        # detector while rejecting drift.
+        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.05,
+                                              min_cluster_size=3,
+                                              max_time_span_s=600.0)
+        # Deduplicate: spatial stop kept only if it isn't already covered
+        # (within 1 m) by a time-detector stop — tight so close revisits stay
+        # as separate occupations.
         merged = list(stops_time)
         import math as _m
         for s in stops_space:
             dup = any(
-                _m.sqrt((s["x"]-t["x"])**2 + (s["y"]-t["y"])**2 + (s["z"]-t["z"])**2) < 2.0
+                _m.sqrt((s["x"]-t["x"])**2 + (s["y"]-t["y"])**2 + (s["z"]-t["z"])**2) < 1.0
                 for t in merged
             )
             if not dup:

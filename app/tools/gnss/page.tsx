@@ -270,13 +270,17 @@ export default function GnssPage() {
     if (useRinexEngine) {
       /* ── RINEX upload pipeline ── */
       try {
-        // Derive base marker names from the coord TXT (stations the user declared as bases).
+        // Derive base marker names from Étape 2. Grid coords are OPTIONAL —
+        // when they're absent, the backend seeds the base from the RINEX
+        // APPROX POSITION XYZ header (~3 m accurate, fine for relative
+        // baselines). All we require is the name, so the pipeline knows
+        // which uploaded OBS file is the base vs. rover.
         const baseNames = baseCoords
-          .filter(b => b.name && (b.north || b.east))
-          .map(b => b.name)
+          .map(b => (b.name || "").trim())
+          .filter(Boolean)
         if (baseNames.length === 0) {
           setProcessing(false)
-          setApiError("Déclarez au moins une base (Étape 2) pour que le moteur sache quels fichiers RINEX sont des bases")
+          setApiError("Déclarez au moins un nom de base (Étape 2) pour que le moteur sache quels fichiers RINEX sont des bases")
           return
         }
         // Pass the grid coords through as control stations when the user has entered them.
@@ -593,8 +597,8 @@ export default function GnssPage() {
                       <input value={b.north} onChange={e => updateBase(i, "north", e.target.value)} placeholder="902235.673" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
                       <input value={b.east}  onChange={e => updateBase(i, "east",  e.target.value)} placeholder="237230.320" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
                       <input value={b.elev}  onChange={e => updateBase(i, "elev",  e.target.value)} placeholder="521.969"    style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
-                      <button onClick={() => removeBaseCoord(i)} disabled={baseCoords.length === 1}
-                        style={{ color: baseCoords.length === 1 ? "#cbd5e1" : "#ef4444", padding: 8 }} aria-label="Supprimer cette base">
+                      <button onClick={() => removeBaseCoord(i)}
+                        style={{ color: "#ef4444", padding: 8 }} aria-label="Supprimer cette base">
                         <Trash2 size={13} />
                       </button>
                     </div>

@@ -250,10 +250,13 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
             "-r", f"{base_pos_xyz[0]:.4f}",
                  f"{base_pos_xyz[1]:.4f}",
                  f"{base_pos_xyz[2]:.4f}",
-            rover_obs,
-            base_obs,
-            *nav_files,
         ]
+        if kinematic:
+            # Decimate to 5 s — any shorter and we spend forever processing
+            # multi-hour 1 Hz RINEX files. Stop detection still works fine
+            # at this sampling since survey dwell times are ≥ 5 s.
+            args += ["-ti", "5"]
+        args += [rover_obs, base_obs, *nav_files]
         proc = subprocess.run(args, capture_output=True, text=True, timeout=1800)
         if proc.returncode != 0:
             raise RuntimeError(
@@ -553,7 +556,10 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not epochs:
             warnings.append(f"Kinematic {rover.station_point}: 0 epochs parsed")
             return []
-        stops = _detect_stops(epochs, speed_threshold_ms=0.15, min_duration_s=5.0)
+        # Tight thresholds to match CHC's occupation detection: a real stop
+        # dwells ≥ 15 s at ≤ 0.08 m/s (almost stationary). With 5 s sampling
+        # that's ≥ 3 epochs per stop.
+        stops = _detect_stops(epochs, speed_threshold_ms=0.08, min_duration_s=15.0)
         n_fix = sum(1 for e in epochs if e["Q"] == 1)
         warnings.append(
             f"Kinematic {rover.station_point}: {len(epochs)} epochs "

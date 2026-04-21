@@ -595,8 +595,16 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if s.x or s.y or s.z   # skip placeholder zeros
     }
 
-    def _bl(b: Session, r: Session, bid: str) -> Optional[Baseline]:
-        """Solve a baseline from base ``b`` to rover ``r``."""
+    def _bl(b: Session, r: Session, bid: str,
+            inter_base: bool = False) -> Optional[Baseline]:
+        """Solve a baseline from base ``b`` to rover ``r``.
+
+        ``inter_base=True`` means both sides are stationary bases — both
+        obs files get pre-decimated to 30 s to cap rnx2rtkp's RAM at a
+        fraction of the native-resolution peak. Decimation is safe for
+        static receivers: no carrier-phase continuity is required because
+        the position doesn't move between epochs.
+        """
         # Prefer precise ECEF from control_stations, fall back to RINEX header.
         base_pos = control_ecef.get(b.station_point) or b.approx_xyz
         if base_pos is None:
@@ -607,10 +615,41 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not nav:
             warnings.append(f"{bid} skipped — no matching NAV file for {r.obs_file}")
             return None
+
+        # For inter-base static pairs, pre-decimate both obs files to 30 s.
+        # Long-duration base sessions (often 60+ MB at 1 Hz) otherwise blow
+        # past Railway's container memory when rnx2rtkp loads them both at
+        # once. 30 s spacing still leaves tens of minutes of redundant
+        # observations for AR on stationary receivers.
+        base_obs_path = b.obs_file
+        rover_obs_path = r.obs_file
+        if inter_base:
+            for tag, orig in (("base", b.obs_file), ("rover", r.obs_file)):
+                try:
+                    size_mb = os.path.getsize(orig) / (1024 * 1024)
+                    if size_mb > 20.0:
+                        thinned = os.path.join(
+                            os.path.dirname(orig) or ".",
+                            "_thinned_static_" + os.path.basename(orig),
+                        )
+                        n_in, n_out = decimate_rinex_obs(orig, thinned, interval_s=30.0)
+                        thin_mb = os.path.getsize(thinned) / (1024 * 1024)
+                        warnings.append(
+                            f"{bid} pre-decimated {tag} obs "
+                            f"{size_mb:.1f}→{thin_mb:.1f} MB "
+                            f"({n_in}→{n_out} epochs @ 30 s)"
+                        )
+                        if tag == "base":
+                            base_obs_path = thinned
+                        else:
+                            rover_obs_path = thinned
+                except Exception as e:
+                    warnings.append(f"{bid}: static decimation skipped for {tag} ({type(e).__name__}: {e})")
+
         try:
             sol = _run_rnx2rtkp(
-                base_obs=b.obs_file,
-                rover_obs=r.obs_file,
+                base_obs=base_obs_path,
+                rover_obs=rover_obs_path,
                 nav_files=nav,
                 base_pos_xyz=base_pos,
             )
@@ -745,7 +784,7 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
     for i, a in enumerate(bases):
         for b in bases[i+1:]:
             n += 1
-            bl = _bl(a, b, f"B{n:02d}")
+            bl = _bl(a, b, f"B{n:02d}", inter_base=True)
             if bl: baselines.append(bl)
 
     # Base-to-mobile baselines: every mobile session gets connected to every base

@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+tests/
+.venv/
+.pytest_cache/
+.DS_Store
+# Binaries will be rebuilt inside the container
+rtklib_bin/

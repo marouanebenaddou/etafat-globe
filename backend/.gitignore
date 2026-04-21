@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+# Platform-specific RTKLIB binaries are rebuilt by Dockerfile;
+# developers on macOS/Linux compile locally via the README instructions.
+rtklib_bin/rnx2rtkp
+rtklib_bin/convbin
+rtklib_bin/*.exe

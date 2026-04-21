@@ -158,12 +158,27 @@ def _run_pipeline_after_baselines(
 
     Used by both `/pipeline/from-vectors` (client supplies vectors) and
     `/pipeline/from-rinex` (we compute vectors via rnx2rtkp first).
+
+    Kinematic baselines (stop-and-go PPK) are **excluded** from the network
+    adjustment — each stop is an independent direct measurement, not a
+    redundant observation between two well-known points. Mixing them in
+    would produce nonsense σ₀. They are still returned in baselines_detail
+    so the client can display them.
     """
     if len(baselines) < 1:
         raise HTTPException(400, "at least one baseline is required")
     if len(stations) < 2:
         raise HTTPException(400, "at least two stations are required")
 
+    static_baselines = [
+        b for b in baselines
+        if not (b.solution_type or "").lower().startswith("kine")
+    ]
+    static_station_names = {s for b in static_baselines for s in (b.start, b.end)}
+    static_stations = [s for s in stations if s.name in static_station_names]
+
+    # Loop closures still work on the full set (kinematic stops form loops
+    # too; they're informative for quality even if we don't adjust them).
     loops = detect_loops(baselines)
     if projection_hint is not None:
         import math
@@ -186,19 +201,36 @@ def _run_pipeline_after_baselines(
         for lp in loops
     ]
 
-    free = free_adjustment(stations, baselines)
-    free_out = _report_to_dict(free)
-
+    # Only run the network adjustment when there's an actual network of
+    # redundant static observations. A single static baseline (B01 alone)
+    # has no redundancy and trivially reproduces the control coordinates;
+    # we skip rather than emit zeros.
+    free_out: Optional[dict[str, Any]] = None
     constrained_out: Optional[dict[str, Any]] = None
-    if any(s.is_control for s in stations):
-        constrained = constrained_adjustment(stations, baselines)
-        constrained_out = _report_to_dict(constrained)
+    if len(static_baselines) >= 1 and len(static_stations) >= 2:
+        try:
+            free = free_adjustment(static_stations, static_baselines)
+            free_out = _report_to_dict(free)
+        except Exception as e:
+            free_out = {"error": f"free adjustment failed: {type(e).__name__}: {e}"}
+        if any(s.is_control for s in static_stations):
+            try:
+                constrained = constrained_adjustment(static_stations, static_baselines)
+                constrained_out = _report_to_dict(constrained)
+            except Exception as e:
+                constrained_out = {"error": f"constrained adjustment failed: {type(e).__name__}: {e}"}
 
     out = PipelineOut(
         n_baselines=len(baselines),
         n_stations=len(stations),
         loops=loops_out,
-        free=free_out,
+        free=free_out or {
+            "type": "free", "chi2": 0.0, "chi2_range": [0.0, 0.0],
+            "chi2_pass": False, "sigma0": 0.0,
+            "horiz_accuracy_mm": 0.0, "vert_accuracy_mm": 0.0,
+            "n_obs": 0, "n_unk": 0, "dof": 0,
+            "points": [],
+        },
         constrained=constrained_out,
     )
     if extra:

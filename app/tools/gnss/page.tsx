@@ -54,6 +54,41 @@ function parseHCNHeader(text: string): Partial<ParsedHCNFile> {
   return r
 }
 
+/* ── RINEX 2.x / 3.x observation header parser ──
+   Fixed-column format: the value sits in cols 0-59, the record label in
+   cols 60-79 of each line. We only need enough metadata to tell station
+   groups apart in the upload UI (MARKER NAME, INTERVAL, first-obs time).
+*/
+function parseRinexHeader(text: string): Partial<ParsedHCNFile> {
+  const r: Partial<ParsedHCNFile> = {}
+  const lines = text.split("\n").slice(0, 200)   // headers end well before 200 lines
+  for (const raw of lines) {
+    if (raw.length < 60) continue
+    const body  = raw.slice(0, 60)
+    const label = raw.slice(60).trim()
+    if (label === "MARKER NAME") {
+      r.markerName = body.trim()
+    } else if (label === "INTERVAL") {
+      const n = parseFloat(body.trim())
+      if (!Number.isNaN(n)) r.interval = n
+    } else if (label === "TIME OF FIRST OBS") {
+      // columns: YYYY mm dd hh MM SS.SSSS  (6-wide integers, then float seconds)
+      const y = body.slice(0,6).trim()
+      const m = body.slice(6,12).trim()
+      const d = body.slice(12,18).trim()
+      const H = body.slice(18,24).trim()
+      const M = body.slice(24,30).trim()
+      const S = body.slice(30,43).trim()
+      if (y && m && d && H && M) {
+        r.firstObs = `${y}/${m.padStart(2,"0")}/${d.padStart(2,"0")}  ${H.padStart(2,"0")}:${M.padStart(2,"0")}:${Math.round(parseFloat(S || "0")).toString().padStart(2,"0")}`
+      }
+    } else if (label === "END OF HEADER") {
+      break
+    }
+  }
+  return r
+}
+
 /* ── TXT coordinate parser  (Nom  Nord  Est  Elev) ── */
 function parseCoordsTXT(text: string): BaseCoord[] {
   return text
@@ -180,17 +215,45 @@ export default function GnssPage() {
     const newRaw: File[] = Array.from(list)
     const parsed: ParsedHCNFile[] = []
     for (const file of newRaw) {
-      // Only parse HCN headers for now — RINEX metadata will come from the backend.
-      if (file.name.toLowerCase().endsWith(".hcn")) {
+      const lower = file.name.toLowerCase()
+      if (lower.endsWith(".hcn")) {
         const text = await readAsText(file)
-        const meta = parseHCNHeader(text)
-        parsed.push({ name: file.name, size: file.size, ...meta })
+        parsed.push({ name: file.name, size: file.size, ...parseHCNHeader(text) })
+      } else if (isRinexObs(file.name)) {
+        // Read only the first 16 KB — RINEX headers always end within that.
+        const text = await readAsText(file.slice(0, 16 * 1024) as File)
+        parsed.push({ name: file.name, size: file.size, ...parseRinexHeader(text) })
       } else {
+        // NAV files or unknown — no client-side metadata to extract.
         parsed.push({ name: file.name, size: file.size })
       }
     }
-    setObsFiles(prev   => [...prev, ...parsed])
+    setObsFiles(prev    => [...prev, ...parsed])
     setObsFilesRaw(prev => [...prev, ...newRaw])
+
+    // Auto-populate Étape 2 with each unique detected marker. The user can
+    // then remove the ones that are rovers rather than bases. We only seed
+    // rows that aren't already in the table; user edits win on conflicts.
+    const detected = parsed
+      .map(p => (p.markerName || "").trim())
+      .filter(Boolean)
+    if (detected.length > 0) {
+      setBaseCoords(prev => {
+        const existingNames = new Set(prev.map(b => b.name.trim().toLowerCase()))
+        // If the only existing row is the placeholder (name="BASE_01", empty coords),
+        // replace it outright instead of appending.
+        const isPlaceholderRow = (b: BaseCoord) =>
+          b.name === "BASE_01" && !b.north && !b.east && !b.elev
+        const start = (prev.length === 1 && isPlaceholderRow(prev[0])) ? [] : prev
+        const next = [...start]
+        for (const name of detected) {
+          if (!next.some(b => b.name.trim().toLowerCase() === name.toLowerCase())) {
+            next.push({ name, north: "", east: "", elev: "" })
+          }
+        }
+        return next
+      })
+    }
   }, [])
 
   /* ── Handle base coordinate TXT files ── */
@@ -545,9 +608,23 @@ export default function GnssPage() {
               />
               {obsFiles.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-                  {obsFiles.map((f, i) => (
-                    <HCNFileCard key={i} file={f} onRemove={() => removeObs(i)} />
-                  ))}
+                  {obsFiles.map((f, i) => {
+                    // Classify via declared bases (Étape 2). Fallback to the
+                    // legacy HCN-receiverId heuristic when neither is known.
+                    const declaredBases = new Set(
+                      baseCoords.map(b => b.name.trim().toLowerCase()).filter(Boolean)
+                    )
+                    const marker = (f.markerName || "").trim().toLowerCase()
+                    let isBase: boolean
+                    if (marker && declaredBases.size) {
+                      isBase = declaredBases.has(marker)
+                    } else {
+                      isBase = !f.receiverId?.startsWith("4813")
+                    }
+                    return (
+                      <HCNFileCard key={i} file={f} isBase={isBase} onRemove={() => removeObs(i)} />
+                    )
+                  })}
                 </div>
               )}
             </Card>
@@ -1011,8 +1088,13 @@ function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
   )
 }
 
-function HCNFileCard({ file, onRemove }: { file: ParsedHCNFile; onRemove: () => void }) {
-  const isBase   = !file.receiverId?.startsWith("4813") // heuristic
+function HCNFileCard({ file, isBase: isBaseProp, onRemove }: {
+  file: ParsedHCNFile; isBase?: boolean; onRemove: () => void
+}) {
+  // Prefer the caller-provided classification (derived from Étape 2's
+  // declared base list). Fall back to the legacy HCN-receiverId heuristic
+  // for older HCN uploads where markerName isn't matched against anything.
+  const isBase   = isBaseProp ?? !file.receiverId?.startsWith("4813")
   const roleColor = isBase ? "#007BFF" : "#8b5cf6"
   const roleBg    = isBase ? "#007BFF14" : "#8b5cf614"
 

@@ -661,7 +661,7 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         rover_ti_s = 1   # actual rover cadence after decimation, for -ti below
         try:
             size_mb = os.path.getsize(rover.obs_file) / (1024 * 1024)
-            if size_mb > 20.0:
+            if size_mb > 150.0:
                 thinned = os.path.join(
                     os.path.dirname(rover.obs_file) or ".",
                     "_thinned_" + os.path.basename(rover.obs_file),

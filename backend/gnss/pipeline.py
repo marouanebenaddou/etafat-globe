@@ -132,23 +132,30 @@ def pick_nav_files(obs_path: str, all_nav_files: list[str],
 # ═════════════════════════════  rnx2rtkp driver  ═══════════════════════════
 
 def _default_opts_conf() -> str:
-    """CHC-equivalent static processing defaults."""
+    """CHC-equivalent static processing defaults.
+
+    `out-solstatic=all` (not `single`) is important when sessions are short:
+    it emits one position per epoch instead of one global best estimate,
+    letting us see whether rnx2rtkp stays locked on a Fix solution or
+    oscillates. We pick the last `single` line downstream.
+    """
     return "\n".join([
         "pos1-posmode       =static",
         "pos1-frequency     =l1+l2",
-        "pos1-soltype       =forward",
+        "pos1-soltype       =combined",   # forward + backward then combine
         "pos1-elmask        =10",
         "pos1-ionoopt       =dual-freq",
         "pos1-tropopt       =saas",
         "pos1-sateph        =brdc",
-        "pos1-navsys        =63",          # all constellations
-        "pos2-armode        =continuous",
-        "pos2-arthres       =1.8",
+        "pos1-navsys        =63",          # GPS+GLO+GAL+QZS+BDS
+        "pos2-armode        =fix-and-hold",
+        "pos2-arthres       =3.0",         # CHC-style stricter than default
         "pos2-gloarmode     =on",
+        "pos2-arminfix      =20",          # need 20 fixed epochs before holding
         "out-solformat      =xyz",
         "out-outhead        =off",
         "out-outopt         =off",
-        "out-solstatic      =single",      # a single summary line
+        "out-solstatic      =single",
         "stats-eratio1      =100.0",
         "stats-eratio2      =100.0",
         "",
@@ -170,6 +177,9 @@ _SOL_LINE = re.compile(
     r"(?P<sx>\d+\.\d+)\s+"
     r"(?P<sy>\d+\.\d+)\s+"
     r"(?P<sz>\d+\.\d+)"
+    r"(?:\s+-?\d+\.\d+){3}"                 # sdxy sdyz sdzx
+    r"\s+(?P<age>\d+\.\d+)"
+    r"\s+(?P<ratio>\d+\.\d+)"
 )
 
 
@@ -221,6 +231,9 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
             "x":  float(m["x"]), "y":  float(m["y"]), "z":  float(m["z"]),
             "sx": float(m["sx"]), "sy": float(m["sy"]), "sz": float(m["sz"]),
             "Q":  int(m["Q"]), "ns": int(m["ns"]),
+            "age":   float(m.groupdict().get("age",   "0") or 0),
+            "ratio": float(m.groupdict().get("ratio", "0") or 0),
+            "raw":   line.strip(),
         }
         if best is None or rec["Q"] < best["Q"] or (rec["Q"] == best["Q"] and rec["ns"] >= best["ns"]):
             best = rec
@@ -290,7 +303,7 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         dy = sol["y"] - b.approx_xyz[1]
         dz = sol["z"] - b.approx_xyz[2]
         sol_type = {1: "Fix", 2: "Float", 4: "DGPS", 5: "Single"}.get(sol["Q"], "Unknown")
-        return Baseline(
+        bl = Baseline(
             id=bid,
             start=b.station_point,
             end=r.station_point,
@@ -298,8 +311,11 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             sdx=sol["sx"], sdy=sol["sy"], sdz=sol["sz"],
             solution_type=sol_type,
             rms=(sol["sx"]**2 + sol["sy"]**2 + sol["sz"]**2) ** 0.5,
-            ratio=0.0,
+            ratio=sol["ratio"],
         )
+        warnings.append(f"{bid} solved: {sol_type} ratio={sol['ratio']:.1f} ns={sol['ns']} "
+                        f"σ=({sol['sx']*1000:.1f},{sol['sy']*1000:.1f},{sol['sz']*1000:.1f})mm")
+        return bl
 
     n = 0
     # Inter-base baselines (if ≥ 2 bases)

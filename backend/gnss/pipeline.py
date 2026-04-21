@@ -30,6 +30,7 @@ from typing import Iterable, Optional
 from .models import Station, Baseline
 from .rinex  import parse_obs_header, is_obs, is_nav, RinexObsHeader
 from .baselines import _DEFAULT_RNX2RTKP, RTKLibConfig
+from .decimate import decimate_rinex_obs
 
 
 # ═════════════════════════════  station discovery  ═════════════════════════
@@ -645,9 +646,33 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not nav:
             warnings.append(f"Kinematic skipped ({rover.station_point}) — no nav for {rover.obs_file}")
             return []
+        # Pre-decimate the rover obs file to 15 s before rnx2rtkp opens it.
+        # rnx2rtkp loads the full observation buffer into RAM before
+        # processing, so a 332 MB 1 Hz file OOMs the Railway container.
+        # CHC's stop-and-go workflow dwells on every point for ≥30 s, so 15 s
+        # sampling still captures each occupation with enough redundancy for
+        # the cluster detector. We only decimate the rover — the base stays
+        # at native resolution because it drives integer ambiguity resolution.
+        rover_obs_for_rtk = rover.obs_file
+        try:
+            size_mb = os.path.getsize(rover.obs_file) / (1024 * 1024)
+            if size_mb > 20.0:
+                thinned = os.path.join(
+                    os.path.dirname(rover.obs_file) or ".",
+                    "_thinned_" + os.path.basename(rover.obs_file),
+                )
+                n_in, n_out = decimate_rinex_obs(rover.obs_file, thinned, interval_s=15.0)
+                thin_mb = os.path.getsize(thinned) / (1024 * 1024)
+                warnings.append(
+                    f"{rover.station_point}: pre-decimated rover obs "
+                    f"{size_mb:.1f}→{thin_mb:.1f} MB ({n_in}→{n_out} epochs @ 15 s)"
+                )
+                rover_obs_for_rtk = thinned
+        except Exception as e:
+            warnings.append(f"{rover.station_point}: decimation skipped ({type(e).__name__}: {e})")
         try:
             sol = _run_rnx2rtkp(
-                base_obs=primary_base.obs_file, rover_obs=rover.obs_file,
+                base_obs=primary_base.obs_file, rover_obs=rover_obs_for_rtk,
                 nav_files=nav, base_pos_xyz=base_pos, kinematic=True,
             )
         except Exception as e:

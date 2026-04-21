@@ -113,6 +113,98 @@ export async function runPipeline(body: PipelineIn,
   })
 }
 
+
+// ───────────────── from-RINEX ────────────────────────────────────────────
+//
+// Uploads RINEX observation + navigation files. The backend (Railway) runs
+// rnx2rtkp for every (base, rover-session) pair, then loops + adjustments.
+
+export type BaselineDetail = {
+  id: string
+  start: string
+  end: string
+  dx: number;  dy: number;  dz: number
+  length_m: number
+  solution_type: string
+  rms_m: number
+  sdx_m: number; sdy_m: number; sdz_m: number
+}
+
+export type PipelineFromRinexOut = PipelineOut & {
+  baselines_detail: BaselineDetail[]
+  warnings: string[]
+}
+
+export type RinexUploadConfig = {
+  files: File[]
+  base_marker_names: string[]
+  control_stations?: StationIn[]
+  projection_hint?: { lat_deg: number; lon_deg: number }
+  h_limit_m?: number
+  v_limit_m?: number
+}
+
+export async function runPipelineFromRinex(
+  cfg: RinexUploadConfig,
+  opts: { signal?: AbortSignal; onProgress?: (pct: number) => void } = {}
+): Promise<PipelineFromRinexOut> {
+  const fd = new FormData()
+  for (const f of cfg.files) fd.append("files", f, f.name)
+  fd.append("base_marker_names", JSON.stringify(cfg.base_marker_names))
+  fd.append("control_stations",  JSON.stringify(cfg.control_stations ?? []))
+  fd.append("projection_hint",   JSON.stringify(cfg.projection_hint ?? null))
+  if (cfg.h_limit_m != null) fd.append("h_limit_m", String(cfg.h_limit_m))
+  if (cfg.v_limit_m != null) fd.append("v_limit_m", String(cfg.v_limit_m))
+
+  // Use XHR for upload progress (fetch() still has no browser progress API for
+  // request bodies). We fall back to fetch() if there's no onProgress handler.
+  if (opts.onProgress) {
+    return await new Promise<PipelineFromRinexOut>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open("POST", `${API_URL}/pipeline/from-rinex`)
+      xhr.responseType = "json"
+      xhr.upload.addEventListener("progress", e => {
+        if (e.lengthComputable) opts.onProgress!(Math.round((e.loaded / e.total) * 100))
+      })
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response)
+        else reject(new Error(`${xhr.status}: ${xhr.response?.detail ?? xhr.responseText}`))
+      })
+      xhr.addEventListener("error",   () => reject(new Error("network error")))
+      xhr.addEventListener("abort",   () => reject(new DOMException("aborted", "AbortError")))
+      opts.signal?.addEventListener("abort", () => xhr.abort())
+      xhr.send(fd)
+    })
+  }
+  const res = await fetch(`${API_URL}/pipeline/from-rinex`, {
+    method: "POST", body: fd, signal: opts.signal,
+  })
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
+  return res.json() as Promise<PipelineFromRinexOut>
+}
+
+
+// ───────────────── file classification helpers ───────────────────────────
+
+/** Returns true if the filename looks like a RINEX observation file. */
+export function isRinexObs(name: string): boolean {
+  const low = name.toLowerCase()
+  // RINEX 2: .YYo (e.g. .26o, .05o)
+  if (/\.\d\d[o]$/.test(low)) return true
+  // RINEX 3 / generic: .obs, .rnx
+  if (low.endsWith(".obs") || low.endsWith(".rnx")) return true
+  return false
+}
+
+/** Returns true if the filename looks like a RINEX navigation file. */
+export function isRinexNav(name: string): boolean {
+  const low = name.toLowerCase()
+  // RINEX 2: .YYn / .YYg / .YYl / .YYc / .YYp / .YYq
+  if (/\.\d\d[nglpqc]$/.test(low)) return true
+  if (low.endsWith(".nav")) return true
+  return false
+}
+
 // ───────────────── CSV parsing helpers ───────────────────────────────────
 
 /**

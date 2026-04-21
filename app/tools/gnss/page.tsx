@@ -9,9 +9,11 @@ import {
   Clock, Signal, Cpu, Database, Wifi, WifiOff, Calculator, Wand2,
 } from "lucide-react"
 import {
-  checkHealth, runPipeline, parseBaselinesCSV, stationsFromBaselines,
+  checkHealth, runPipeline, runPipelineFromRinex,
+  parseBaselinesCSV, stationsFromBaselines,
   REFERENCE_DATASET, API_URL,
-  type PipelineOut, type BaselineIn,
+  isRinexObs, isRinexNav,
+  type PipelineOut, type BaselineIn, type PipelineFromRinexOut,
 } from "./api"
 
 /* ── Types ── */
@@ -131,6 +133,7 @@ export default function GnssPage() {
   const photoRef = useRef<HTMLInputElement>(null)
 
   const [obsFiles,   setObsFiles]   = useState<ParsedHCNFile[]>([])
+  const [obsFilesRaw, setObsFilesRaw] = useState<File[]>([])    // original Files so we can upload
   const [baseFiles,  setBaseFiles]  = useState<{ name: string; size: number }[]>([])
   const [projection, setProjection] = useState("")
   const [crsInfo,    setCrsInfo]    = useState<ParsedCRS | null>(null)
@@ -140,6 +143,7 @@ export default function GnssPage() {
 
   const [processing, setProcessing] = useState(false)
   const [progress,   setProgress]   = useState(0)
+  const [uploadPct,  setUploadPct]  = useState(0)
   const [done,       setDone]       = useState(false)
   const [activeTab,  setActiveTab]  = useState<"baselines" | "loops" | "free" | "constrained">("baselines")
 
@@ -147,7 +151,7 @@ export default function GnssPage() {
   const [apiHealth, setApiHealth] = useState<"checking" | "online" | "offline">("checking")
   const [baselinesCSV, setBaselinesCSV] = useState<string>("")
   const [csvErrors, setCsvErrors] = useState<{ line: number; msg: string }[]>([])
-  const [apiResult, setApiResult] = useState<PipelineOut | null>(null)
+  const [apiResult, setApiResult] = useState<PipelineOut | PipelineFromRinexOut | null>(null)
   const [apiError,  setApiError]  = useState<string | null>(null)
 
   /* Ping the backend on mount (and when API URL changes) */
@@ -166,16 +170,23 @@ export default function GnssPage() {
     : { baselines: [] as BaselineIn[], errors: [] as { line: number; msg: string }[] }
   const parsedVectors = parsedCSV.baselines
 
-  /* ── Handle HCN obs files ── */
+  /* ── Handle observation files (HCN or RINEX) ── */
   const handleObsFiles = useCallback(async (list: FileList | null) => {
     if (!list) return
+    const newRaw: File[] = Array.from(list)
     const parsed: ParsedHCNFile[] = []
-    for (const file of Array.from(list)) {
-      const text = await readAsText(file)
-      const meta = parseHCNHeader(text)
-      parsed.push({ name: file.name, size: file.size, ...meta })
+    for (const file of newRaw) {
+      // Only parse HCN headers for now — RINEX metadata will come from the backend.
+      if (file.name.toLowerCase().endsWith(".hcn")) {
+        const text = await readAsText(file)
+        const meta = parseHCNHeader(text)
+        parsed.push({ name: file.name, size: file.size, ...meta })
+      } else {
+        parsed.push({ name: file.name, size: file.size })
+      }
     }
-    setObsFiles(prev => [...prev, ...parsed])
+    setObsFiles(prev   => [...prev, ...parsed])
+    setObsFilesRaw(prev => [...prev, ...newRaw])
   }, [])
 
   /* ── Handle base coordinate TXT files ── */
@@ -204,7 +215,10 @@ export default function GnssPage() {
     setProjection("custom")
   }, [])
 
-  const removeObs  = (i: number) => setObsFiles(prev => prev.filter((_, idx) => idx !== i))
+  const removeObs  = (i: number) => {
+    setObsFiles(prev   => prev.filter((_, idx) => idx !== i))
+    setObsFilesRaw(prev => prev.filter((_, idx) => idx !== i))
+  }
   const removeBase = (i: number) => setBaseFiles(prev => prev.filter((_, idx) => idx !== i))
 
   const addBase    = () => setBaseCoords(prev => [...prev, { name: `BASE_${String(prev.length + 1).padStart(2,"0")}`, north: "", east: "", elev: "" }])
@@ -213,19 +227,70 @@ export default function GnssPage() {
     setBaseCoords(prev => { const a = [...prev]; a[i] = { ...a[i], [field]: v }; return a })
   }
 
-  /* With vectors ⇒ real calculation via backend. Without ⇒ demo mode (reference PDF data). */
-  const useRealEngine = parsedVectors.length > 0 && apiHealth === "online"
-  const canRun        = parsedVectors.length > 0
-    ? apiHealth === "online"
+  /* Three possible pipelines, picked in order of priority:
+     1. RINEX upload   → /pipeline/from-rinex (we compute baselines)
+     2. Pasted vectors → /pipeline/from-vectors
+     3. Demo mode      → hardcoded reference data
+  */
+  const rinexObsFiles = obsFilesRaw.filter(f => isRinexObs(f.name))
+  const rinexNavFiles = obsFilesRaw.filter(f => isRinexNav(f.name))
+  const hasRinex      = rinexObsFiles.length >= 2 && rinexNavFiles.length >= 1
+  const useRinexEngine  = hasRinex && apiHealth === "online"
+  const useVectorEngine = !hasRinex && parsedVectors.length > 0 && apiHealth === "online"
+  const useRealEngine   = useRinexEngine || useVectorEngine
+  const canRun = useRinexEngine
+    ? true
+    : useVectorEngine
+    ? true
     : (obsFiles.length > 0 && projection !== "" && baseCoords.some(b => b.north && b.east))
 
   const run = async () => {
-    setProcessing(true); setProgress(0); setDone(false); setApiError(null); setApiResult(null)
+    setProcessing(true); setProgress(0); setUploadPct(0); setDone(false)
+    setApiError(null); setApiResult(null)
 
-    if (useRealEngine) {
-      /* ── REAL CALL ── */
+    if (useRinexEngine) {
+      /* ── RINEX upload pipeline ── */
       try {
-        // animate progress while the request is in flight
+        // Derive base marker names from the coord TXT (stations the user declared as bases).
+        const baseNames = baseCoords
+          .filter(b => b.name && (b.north || b.east))
+          .map(b => b.name)
+        if (baseNames.length === 0) {
+          setProcessing(false)
+          setApiError("Déclarez au moins une base (Étape 2) pour que le moteur sache quels fichiers RINEX sont des bases")
+          return
+        }
+        // Pass the grid coords through as control stations when the user has entered them.
+        // The API expects ECEF — but grid-to-ECEF is hard without projection lib on the
+        // client, so we mark them as "is_control=false" for now; free adjustment only.
+        const result = await runPipelineFromRinex(
+          {
+            files: [...rinexObsFiles, ...rinexNavFiles],
+            base_marker_names: baseNames,
+            control_stations: [],   // TODO: ECEF conversion from grid coords
+            projection_hint: { lat_deg: REFERENCE_DATASET.lat_deg, lon_deg: REFERENCE_DATASET.lon_deg },
+          },
+          {
+            onProgress: pct => {
+              setUploadPct(pct)
+              // Upload phase = 0-55% of the overall progress bar
+              setProgress(Math.round(pct * 0.55))
+            },
+          }
+        )
+        setProgress(100)
+        setApiResult(result)
+        setTimeout(() => { setProcessing(false); setDone(true) }, 250)
+      } catch (err) {
+        setProcessing(false)
+        setApiError(err instanceof Error ? err.message : String(err))
+      }
+      return
+    }
+
+    if (useVectorEngine) {
+      /* ── Pre-computed vectors pipeline ── */
+      try {
         const fake = setInterval(() => setProgress(p => Math.min(p + 4, 92)), 150)
         const stations = stationsFromBaselines(parsedVectors).map(name => {
           if (name === REFERENCE_DATASET.control.name) {
@@ -247,22 +312,24 @@ export default function GnssPage() {
         setProcessing(false)
         setApiError(err instanceof Error ? err.message : String(err))
       }
-    } else {
-      /* ── DEMO MODE (hardcoded reference data) ── */
-      const t = setInterval(() => {
-        setProgress(p => {
-          if (p >= 100) { clearInterval(t); setProcessing(false); setDone(true); return 100 }
-          return p + 2
-        })
-      }, 120)
+      return
     }
+
+    /* ── DEMO MODE ── */
+    const t = setInterval(() => {
+      setProgress(p => {
+        if (p >= 100) { clearInterval(t); setProcessing(false); setDone(true); return 100 }
+        return p + 2
+      })
+    }, 120)
   }
 
   const reset = () => {
-    setObsFiles([]); setBaseFiles([]); setProjection(""); setCrsInfo(null)
+    setObsFiles([]); setObsFilesRaw([])
+    setBaseFiles([]); setProjection(""); setCrsInfo(null)
     setBaseCoords([{ name: "BASE_01", north: "", east: "", elev: "" }])
     setBaselinesCSV(""); setCsvErrors([]); setApiResult(null); setApiError(null)
-    setProgress(0); setDone(false)
+    setProgress(0); setUploadPct(0); setDone(false)
   }
 
   const loadReferenceDataset = () => {
@@ -389,15 +456,26 @@ export default function GnssPage() {
 
             {/* Step 1 — Raw obs */}
             <Card>
-              <SectionTitle step={1} title="Données brutes d'observation" sub="Fichiers HCN (format CHCNAV) — bases et mobiles" done={step1Done} />
-              <input ref={obsRef} type="file" multiple accept=".hcn,.HCN,.rinex,.obs,.zip" style={{ display: "none" }}
+              <SectionTitle
+                step={1}
+                title="Données brutes d'observation"
+                sub={hasRinex
+                  ? `RINEX détecté : ${rinexObsFiles.length} obs + ${rinexNavFiles.length} nav — le moteur calculera les baselines automatiquement`
+                  : "Fichiers HCN (lecture des en-têtes) ou RINEX (calcul complet via backend)"}
+                done={step1Done}
+              />
+              <input ref={obsRef} type="file" multiple
+                accept=".hcn,.HCN,.rinex,.obs,.nav,.rnx,.22o,.22n,.22p,.22g,.22l,.22c,.23o,.23n,.23p,.23g,.23l,.23c,.24o,.24n,.24p,.24g,.24l,.24c,.25o,.25n,.25p,.25g,.25l,.25c,.26o,.26n,.26p,.26g,.26l,.26c"
+                style={{ display: "none" }}
                 onChange={e => handleObsFiles(e.target.files)} />
               <DropZone
                 onClick={() => obsRef.current?.click()}
                 onDrop={files => handleObsFiles(files)}
                 icon={FileArchive}
-                title="Glissez vos fichiers HCN ici"
-                sub="ou cliquez pour parcourir · formats: .hcn, .rinex, .obs"
+                title={hasRinex ? "Ajouter d'autres fichiers RINEX" : "Glissez vos fichiers HCN ou RINEX ici"}
+                sub={hasRinex
+                  ? "Le backend va lancer rnx2rtkp pour chaque paire (base, mobile)"
+                  : "formats: .hcn · .26o/.26n/.26p (RINEX 2) · .obs/.nav/.rnx (RINEX 3)"}
               />
               {obsFiles.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -610,9 +688,14 @@ B02, Bou3, P1,    415.8936,  7058.6103, 3879.5691, 0.0139, 0.0166, 0.0083
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 3, display: "flex", alignItems: "center", gap: 8 }}>
                       {canRun ? "Prêt à lancer le calcul" : "Complétez les étapes ci-dessus"}
-                      {useRealEngine && (
+                      {useRinexEngine && (
                         <span style={{ fontSize: 10, fontWeight: 700, background: "#10b98114", color: "#10b981", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
-                          MOTEUR RÉEL
+                          RINEX · MOTEUR COMPLET
+                        </span>
+                      )}
+                      {useVectorEngine && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#10b98114", color: "#10b981", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
+                          VECTEURS · AJUSTEMENT
                         </span>
                       )}
                       {!useRealEngine && canRun && (
@@ -622,8 +705,10 @@ B02, Bou3, P1,    415.8936,  7058.6103, 3879.5691, 0.0139, 0.0166, 0.0083
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {useRealEngine
-                        ? `Moindres carrés réels via le backend ETAFAT (${parsedVectors.length} lignes de base).`
+                      {useRinexEngine
+                        ? `Le backend va traiter ${rinexObsFiles.length} obs + ${rinexNavFiles.length} nav via rnx2rtkp, puis calculer loops + ajustement.`
+                        : useVectorEngine
+                        ? `Moindres carrés sur ${parsedVectors.length} lignes de base pré-calculées.`
                         : "Traitement automatique : lignes de base → fermeture → ajustements."}
                     </div>
                     {apiError && (
@@ -652,11 +737,17 @@ B02, Bou3, P1,    415.8936,  7058.6103, 3879.5691, 0.0139, 0.0166, 0.0083
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a" }}>Traitement en cours…</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {progress < 20 ? "Lecture des fichiers HCN…" :
-                         progress < 42 ? "Calcul des lignes de base…" :
-                         progress < 62 ? "Fermeture des boucles…" :
-                         progress < 82 ? "Ajustement libre…" :
-                         progress < 96 ? "Ajustement contraint…" : "Génération du rapport…"}
+                        {useRinexEngine
+                          ? (uploadPct < 100
+                              ? `Téléversement RINEX vers le backend… ${uploadPct}%`
+                              : progress < 70 ? "Calcul des lignes de base via rnx2rtkp (peut prendre 1-2 min)…"
+                              : progress < 92 ? "Fermeture des boucles…"
+                              : "Ajustements…")
+                          : (progress < 20 ? "Lecture des fichiers HCN…" :
+                             progress < 42 ? "Calcul des lignes de base…" :
+                             progress < 62 ? "Fermeture des boucles…" :
+                             progress < 82 ? "Ajustement libre…" :
+                             progress < 96 ? "Ajustement contraint…" : "Génération du rapport…")}
                       </div>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: "#007BFF" }}>{Math.round(progress)} %</div>
@@ -982,7 +1073,7 @@ const CONSTRAINED_ADJ_DATA = [
 /* ── Baselines table ── */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function BaselinesTable({ apiResult, inputVectors, stations, bases }: {
-  apiResult: PipelineOut | null
+  apiResult: PipelineOut | PipelineFromRinexOut | null
   inputVectors: BaselineIn[]
   stations: string[]
   bases: BaseCoord[]
@@ -990,9 +1081,25 @@ function BaselinesTable({ apiResult, inputVectors, stations, bases }: {
   const [page, setPage] = useState(0)
   const PER_PAGE = 10
 
-  /* Prefer the vectors the user submitted (when the real engine ran);
-     fall back to the hardcoded reference rows for demo mode. */
-  const rows = (apiResult && inputVectors.length > 0)
+  /* The from-rinex response ships with baselines_detail (full metadata from
+     rnx2rtkp); the from-vectors response uses the user-submitted CSV as the
+     authoritative baseline list. Demo mode falls back to hardcoded rows. */
+  const fromRinex = apiResult && "baselines_detail" in apiResult
+    ? (apiResult as PipelineFromRinexOut).baselines_detail
+    : null
+
+  const rows = fromRinex
+    ? fromRinex.map(b => ({
+        id:   b.id,
+        from: b.start,
+        to:   b.end,
+        dist: b.length_m.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+        type: b.solution_type,
+        ratio: "—",
+        rms:   (b.rms_m * 1000).toFixed(1) + " mm",
+        ok:    b.solution_type.includes("Fix"),
+      }))
+    : (apiResult && inputVectors.length > 0)
     ? inputVectors.map(v => {
         const len = Math.hypot(v.dx, v.dy, v.dz)
         return {

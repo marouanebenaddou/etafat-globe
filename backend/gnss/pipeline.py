@@ -155,10 +155,21 @@ def _default_opts_conf() -> str:
     ])
 
 
+# Match an rnx2rtkp XYZ-ECEF solution line. Format looks like (columns are
+# space-separated, timestamp format varies):
+#   YYYY/MM/DD HH:MM:SS.fff  X Y Z Q ns sdx sdy sdz ...
+# or
+#   GPST_SEC  X Y Z Q ns sdx sdy sdz ...
+# We hunt for three large-magnitude floats (ECEF coords) followed by Q (1-5) + ns.
 _SOL_LINE = re.compile(
-    r"^\s*(?:\d{4}/\d{2}/\d{2}\s+)?(?:\d+\.\d+|\d+)\s+"
-    r"(?P<x>-?\d+\.\d+)\s+(?P<y>-?\d+\.\d+)\s+(?P<z>-?\d+\.\d+)\s+"
-    r"(?P<Q>\d+)\s+(?P<ns>\d+)\s+(?P<sx>\d+\.\d+)\s+(?P<sy>\d+\.\d+)\s+(?P<sz>\d+\.\d+)"
+    r"\s+(?P<x>-?\d{5,8}\.\d+)\s+"
+    r"(?P<y>-?\d{1,8}\.\d+)\s+"
+    r"(?P<z>-?\d{5,8}\.\d+)\s+"
+    r"(?P<Q>[1-5])\s+"
+    r"(?P<ns>\d+)\s+"
+    r"(?P<sx>\d+\.\d+)\s+"
+    r"(?P<sy>\d+\.\d+)\s+"
+    r"(?P<sz>\d+\.\d+)"
 )
 
 
@@ -214,7 +225,13 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
         if best is None or rec["Q"] < best["Q"] or (rec["Q"] == best["Q"] and rec["ns"] >= best["ns"]):
             best = rec
     if not best:
-        raise RuntimeError("no solution line parsed from rnx2rtkp output")
+        # Surface the raw output so we can debug format mismatches remotely
+        sample = "\n".join(pos_text.splitlines()[:40])
+        raise RuntimeError(
+            f"no solution line parsed from rnx2rtkp output "
+            f"(exit={proc.returncode}, stderr_head={proc.stderr[:200]!r}, "
+            f"pos_head={sample[:800]!r})"
+        )
     return best
 
 

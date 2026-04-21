@@ -229,6 +229,17 @@ async def pipeline_from_rinex(
     h_limit_m: float = Form(1.0),
     v_limit_m: float = Form(2.0),
 ):
+    try:
+        return await _pipeline_from_rinex_impl(files, base_marker_names, control_stations, projection_hint, h_limit_m, v_limit_m)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        raise HTTPException(500, f"{type(e).__name__}: {e}\n{traceback.format_exc()[-2000:]}")
+
+
+async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
+                                     projection_hint, h_limit_m, v_limit_m):
     """Upload RINEX files → we run rnx2rtkp for every (base, rover-session)
     pair → then the usual loops + adjustments pipeline.
 

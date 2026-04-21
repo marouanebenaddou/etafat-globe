@@ -228,6 +228,8 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                   binary: str = _DEFAULT_RNX2RTKP,
                   kinematic: bool = False,
                   output_interval_s: int = 5) -> dict:
+    # output_interval_s is only honoured in kinematic mode — static uses a
+    # single summary solution. Default 5 s matches CHC's output cadence.
     """Run rnx2rtkp for a single baseline.
 
     In static mode (default) returns the single summary solution.
@@ -647,46 +649,24 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not nav:
             warnings.append(f"Kinematic skipped ({rover.station_point}) — no nav for {rover.obs_file}")
             return []
-        # Pre-decimate the rover obs file to 5 s before rnx2rtkp opens it.
-        # rnx2rtkp loads the full observation buffer into RAM before
-        # processing, so a 332 MB 1 Hz file OOMs the Railway container.
-        # We can't go coarser than ~5 s because AR needs continuous phase
-        # tracking: at 15 s between rover epochs the cycle-slip detector
-        # re-initializes ambiguities too often and everything drops to Float.
-        # 5 s is CHC's documented "minimum for static-style AR" cadence and
-        # still cuts the 332 MB K-session down to ~65 MB — well under the
-        # container memory ceiling.
-        # Only the rover gets thinned; the base stays at native resolution.
-        rover_obs_for_rtk = rover.obs_file
-        rover_ti_s = 1   # actual rover cadence after decimation, for -ti below
-        try:
-            size_mb = os.path.getsize(rover.obs_file) / (1024 * 1024)
-            if size_mb > 150.0:
-                thinned = os.path.join(
-                    os.path.dirname(rover.obs_file) or ".",
-                    "_thinned_" + os.path.basename(rover.obs_file),
-                )
-                n_in, n_out = decimate_rinex_obs(rover.obs_file, thinned, interval_s=5.0)
-                thin_mb = os.path.getsize(thinned) / (1024 * 1024)
-                warnings.append(
-                    f"{rover.station_point}: pre-decimated rover obs "
-                    f"{size_mb:.1f}→{thin_mb:.1f} MB ({n_in}→{n_out} epochs @ 5 s)"
-                )
-                rover_obs_for_rtk = thinned
-                rover_ti_s = 5
-        except Exception as e:
-            warnings.append(f"{rover.station_point}: decimation skipped ({type(e).__name__}: {e})")
+        # NB: we experimented with pre-decimating the rover to 5 s to cap
+        # rnx2rtkp's RAM footprint on the 332 MB K session, but thinning
+        # breaks carrier-phase continuity — the cycle-slip detector
+        # re-initialises ambiguities across every gap and every epoch
+        # drops to Float (0 Fix / 6194 measured empirically). We keep the
+        # rover at native 1 Hz and output every 5 s; memory management
+        # for very large sessions should be solved via `-ts/-te` time
+        # windowing instead (see decimate.py for the unused thinner).
         warnings.append(
             f"Kinematic {rover.station_point}: invoking rnx2rtkp "
-            f"(rover={os.path.basename(rover_obs_for_rtk)}, "
+            f"(rover={os.path.basename(rover.obs_file)}, "
             f"base={os.path.basename(primary_base.obs_file)}, "
-            f"nav={[os.path.basename(n) for n in nav]}, -ti {rover_ti_s})"
+            f"nav={[os.path.basename(n) for n in nav]})"
         )
         try:
             sol = _run_rnx2rtkp(
-                base_obs=primary_base.obs_file, rover_obs=rover_obs_for_rtk,
+                base_obs=primary_base.obs_file, rover_obs=rover.obs_file,
                 nav_files=nav, base_pos_xyz=base_pos, kinematic=True,
-                output_interval_s=rover_ti_s,
             )
         except Exception as e:
             warnings.append(f"Kinematic {rover.station_point}: {e}")

@@ -658,20 +658,22 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             )
             if not dup:
                 merged.append(s)
-        # Quality gate: a real occupation's position scatter σ is sub-cm. We
-        # reject any stop whose max single-axis σ exceeds 5 cm — that's an
-        # order of magnitude larger than a clean static point and almost
-        # always indicates a drifting rover rather than a held survey point.
-        MAX_SIGMA_M = 0.05
+        # Post-filter: require cluster to be geometrically tight AND have a
+        # minimum number of epochs. Stops with ≥ 3 epochs are kept unconditionally
+        # (they're evidence-rich). Stops with only 2 epochs must have σ ≤ 3 cm
+        # per axis — this rejects slow-drift 2-point false positives while
+        # keeping the K-session's thin but genuinely-stationary pairs.
         kept: list[dict] = []
         rejected = 0
         for s in merged:
-            if max(s["sx"], s["sy"], s["sz"]) <= MAX_SIGMA_M:
+            if s["n_epochs"] >= 3:
+                kept.append(s)
+            elif max(s["sx"], s["sy"], s["sz"]) <= 0.03:
                 kept.append(s)
             else:
                 rejected += 1
         if rejected:
-            warnings.append(f"{rover.station_point}: filtered {rejected} stops with σ > 5 cm (drift)")
+            warnings.append(f"{rover.station_point}: filtered {rejected} 2-epoch stops with >3 cm scatter")
         kept.sort(key=lambda s: s["t_start"])
         stops = kept
         n_fix = sum(1 for e in epochs if e["Q"] == 1)

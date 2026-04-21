@@ -309,9 +309,11 @@ class PipelineInput:
 
 
 def _detect_stops(epochs: list[dict],
-                  speed_threshold_ms: float = 0.10,
-                  min_duration_s: float = 20.0,
-                  min_fix_epochs: int = 2,
+                  speed_threshold_ms: float = 0.08,
+                  min_duration_s: float = 10.0,
+                  min_fix_epochs: int = 3,
+                  min_fix_ratio: float = 0.30,
+                  max_spread_m:   float = 0.15,
                   q_accept: set[int] = frozenset({1, 2})) -> list[dict]:
     """Segment a kinematic trajectory into stationary occupations.
 
@@ -336,17 +338,26 @@ def _detect_stops(epochs: list[dict],
         duration = current[-1]["t"] - current[0]["t"]
         if duration < min_duration_s:
             return
-        # Quality gate: a "stop" must include at least ``min_fix_epochs``
-        # integer-Fix observations. Pure-Float sequences are typically just
-        # areas where rnx2rtkp lost lock — CHC drops those from its output
-        # and so do we.
+        # Quality gate 1 — minimum Fix count + Fix ratio. Stop must include
+        # ≥ min_fix_epochs Q=1 observations AND ≥ min_fix_ratio of epochs
+        # must be Fix. Pure-Float sequences get dropped.
         n_fix = sum(1 for e in current if e["Q"] == 1)
         if n_fix < min_fix_epochs:
+            return
+        if n_fix / len(current) < min_fix_ratio:
             return
         xs = [e["x"] for e in current]
         ys = [e["y"] for e in current]
         zs = [e["z"] for e in current]
         mx, my, mz = sum(xs)/len(xs), sum(ys)/len(ys), sum(zs)/len(zs)
+
+        # Quality gate 2 — spatial spread. Real occupations are tight clusters
+        # (a few cm); if the points are spread over more than max_spread_m the
+        # rover was either drifting or we've captured a false plateau.
+        max_diag = max(max(xs)-min(xs), max(ys)-min(ys), max(zs)-min(zs))
+        if max_diag > max_spread_m:
+            return
+
         # Spread-based σ (1-sigma of the scatter)
         def _sd(vals, m):
             if len(vals) < 2: return 0.0

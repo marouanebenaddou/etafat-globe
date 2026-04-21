@@ -252,11 +252,11 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                  f"{base_pos_xyz[1]:.4f}",
                  f"{base_pos_xyz[2]:.4f}",
         ]
-        if kinematic:
-            # Decimate to 5 s — any shorter and we spend forever processing
-            # multi-hour 1 Hz RINEX files. Stop detection still works fine
-            # at this sampling since survey dwell times are ≥ 5 s.
-            args += ["-ti", "5"]
+        # NB: we used to add `-ti 5` here, but the upstream pipeline now
+        # pre-decimates the rover RINEX file to 15 s (see decimate.py) to
+        # cap rnx2rtkp's RAM footprint. Re-decimating at the output stage
+        # with a different interval makes rnx2rtkp search for base epochs
+        # at times that the rover doesn't cover → 0 Fix.
         args += [rover_obs, base_obs, *nav_files]
         proc = subprocess.run(args, capture_output=True, text=True, timeout=1800)
         if proc.returncode != 0:

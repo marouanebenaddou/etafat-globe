@@ -332,24 +332,29 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
     for s in mobiles:
         merged_name = point_map.get(s.station_point, s.station_point)
         s.station_point = merged_name
-        # Prefer the session with the highest-rate (smallest interval, more obs) —
-        # longer/denser sessions usually produce better Fix quality.
         prev = representative.get(merged_name)
-        if (prev is None
-            or (s.interval_s < prev.interval_s)
-            or (s.interval_s == prev.interval_s and len(s.obs_file) > len(prev.obs_file))):
+        # Prefer the session with the longest recording window (more epochs = better Fix).
+        # Fall back to session code ordering so results are stable.
+        if prev is None:
             representative[merged_name] = s
+        else:
+            # Heuristic: keep the session whose obs file is larger (proxy for more epochs)
+            import os as _o
+            if _o.path.getsize(s.obs_file) > _o.path.getsize(prev.obs_file):
+                representative[merged_name] = s
     mobiles = list(representative.values())
 
     baselines: list[Baseline] = []
     warnings:  list[str] = []
-    merged_sessions = [k for k, v in point_map.items() if k != v]
-    if merged_sessions:
-        grouping = {}
-        for k, v in point_map.items():
-            grouping.setdefault(v, []).append(k)
-        merged_info = [f"{v} = {{{', '.join(sorted(ks))}}}" for v, ks in grouping.items() if len(ks) > 1]
-        warnings.append("Sessions merged by proximity (<5m): " + " ; ".join(merged_info))
+    # Always emit the grouping for transparency
+    grouping: dict[str, list[str]] = {}
+    for k, v in point_map.items():
+        grouping.setdefault(v, []).append(k)
+    warnings.append("Session → point grouping: " +
+                    " ; ".join(f"{v} ← [{', '.join(sorted(ks))}]" for v, ks in grouping.items()))
+    # And which representative session was picked for each point
+    warnings.append("Representatives: " +
+                    " ; ".join(f"{n} = {os.path.basename(s.obs_file)}" for n, s in representative.items()))
 
     def _bl(b: Session, r: Session, bid: str) -> Optional[Baseline]:
         """Solve a baseline from base ``b`` to rover ``r``."""

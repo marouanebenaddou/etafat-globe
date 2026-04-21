@@ -59,9 +59,12 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
           height: 68, display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between",
           padding: collapsed ? 0 : "0 20px", borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => router.push("/v2")}>
-            <img src="/etafat-globe.png" alt="Etafat" style={{ height: 32, filter: "brightness(0) invert(1)" }} />
-            {!collapsed && <span style={{ color: "#fff", fontWeight: 800, fontSize: 15, letterSpacing: -0.3 }}>etafat</span>}
+          <div style={{ display: "flex", alignItems: "center", cursor: "pointer" }} onClick={() => router.push("/v2")}>
+            {collapsed ? (
+              <img src="/etafat-globe.png" alt="Etafat" style={{ height: 30, filter: "brightness(0) invert(1)" }} />
+            ) : (
+              <img src="/etafat.png" alt="Etafat" style={{ height: 26, width: "auto", display: "block" }} />
+            )}
           </div>
           {!collapsed && (
             <button onClick={() => setCollapsed(true)} style={{ color: "rgba(255,255,255,0.35)", display: "flex" }}>

@@ -710,13 +710,16 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         return stops
 
     def _is_kinematic(s: Session) -> bool:
-        """Heuristic: mobile sessions recorded at ≤ 1 s with obs file > 10 MB
-        are treated as stop-and-go PPK. Short occupation files stay static."""
-        try:
-            size_mb = os.path.getsize(s.obs_file) / (1024 * 1024)
-        except OSError:
-            size_mb = 0
-        return s.interval_s <= 1.01 and size_mb > 10.0
+        """Every mobile session gets the kinematic treatment.
+
+        Rationale: short mobile occupations (< 10 min) used to go through
+        static rnx2rtkp, but on this dataset the 4-min Tiahoue session
+        mis-converges the integer ambiguity search (session too short for
+        reliable AR). Treating it as kinematic with a single "stop"
+        aligns the whole rover chain onto one code path and keeps the
+        network adjustment clean (only bases adjust).
+        """
+        return True
 
     n = 0
     # Inter-base baselines (if ≥ 2 bases)

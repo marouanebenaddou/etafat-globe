@@ -202,23 +202,32 @@ def _run_pipeline_after_baselines(
     ]
 
     # Only run the network adjustment when there's an actual network of
-    # redundant static observations. A single static baseline (B01 alone)
-    # has no redundancy and trivially reproduces the control coordinates;
-    # we skip rather than emit zeros.
+    # redundant static observations.
     free_out: Optional[dict[str, Any]] = None
     constrained_out: Optional[dict[str, Any]] = None
-    if len(static_baselines) >= 1 and len(static_stations) >= 2:
+
+    def _safe_adjust(fn, stations, bls, label):
+        if len(bls) < 1 or len(stations) < 2:
+            return None
         try:
-            free = free_adjustment(static_stations, static_baselines)
-            free_out = _report_to_dict(free)
+            rep = fn(stations, bls)
+            out = _report_to_dict(rep)
+            # If σ₀ blew up, the baselines are internally inconsistent —
+            # surface the problem instead of pretending everything's fine.
+            if out.get("sigma0", 0.0) > 100.0:
+                out["warning"] = (
+                    f"adjustment σ₀ = {out['sigma0']:.1f} — baselines are "
+                    "inconsistent (bad AR fix on a short session?). Coordinates "
+                    "shown but accuracy estimates are not reliable."
+                )
+            return out
         except Exception as e:
-            free_out = {"error": f"free adjustment failed: {type(e).__name__}: {e}"}
-        if any(s.is_control for s in static_stations):
-            try:
-                constrained = constrained_adjustment(static_stations, static_baselines)
-                constrained_out = _report_to_dict(constrained)
-            except Exception as e:
-                constrained_out = {"error": f"constrained adjustment failed: {type(e).__name__}: {e}"}
+            return {"error": f"{label} adjustment failed: {type(e).__name__}: {e}"}
+
+    free_out = _safe_adjust(free_adjustment, static_stations, static_baselines, "free")
+    if any(s.is_control for s in static_stations):
+        constrained_out = _safe_adjust(constrained_adjustment, static_stations,
+                                        static_baselines, "constrained")
 
     out = PipelineOut(
         n_baselines=len(baselines),

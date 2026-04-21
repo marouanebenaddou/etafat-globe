@@ -38,8 +38,8 @@ from gnss.loops import detect_loops, refine_closures_enu
 from gnss.pipeline import PipelineInput, StopDetectorOpts, compute_all_baselines
 from gnss.rinex import is_obs, is_nav
 from gnss.grid import (
-    parse_bases_coords, parse_crs_definition, grid_to_ecef,
-    match_marker_to_coord,
+    parse_bases_coords, parse_crs_definition, grid_to_ecef, ecef_to_grid,
+    match_marker_to_coord, CRSDef,
 )
 
 
@@ -317,11 +317,15 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
         # If the user supplied grid-coord + CRS text, convert to precise ECEF
         # and merge into control_list. This seeds rnx2rtkp with decimetre-level
         # base positions instead of the RINEX header's ~3 m SPP estimate.
+        # We also keep the parsed CRS around so the response can expose every
+        # output ECEF as (North, East, Elevation) for surveyors who work in grid.
         grid_diagnostics: list[str] = []
+        crs_for_output: Optional[CRSDef] = None
         if base_coords_txt.strip() and crs_def_txt.strip():
             try:
                 coords_grid = parse_bases_coords(base_coords_txt)
                 crs_def     = parse_crs_definition(crs_def_txt)
+                crs_for_output = crs_def
                 ecefs       = grid_to_ecef(coords_grid, crs_def)
                 grid_diagnostics.append(
                     f"Parsed CRS: {crs_def.projection_type} "
@@ -377,7 +381,10 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
         h_limit_m=h_limit_m, v_limit_m=v_limit_m,
     )
     # Surface the warnings + per-baseline metadata to the client
-    return {
+    # When we have a CRS, add a `grid` block to every adjusted point so the
+    # client doesn't have to carry pyproj itself. This turns ECEF into the
+    # (North, East, Elevation) the surveyor uses.
+    response: dict[str, Any] = {
         **out.model_dump(),
         "baselines_detail": [
             {
@@ -400,6 +407,24 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
         ],
         "warnings": warnings,
     }
+
+    if crs_for_output is not None:
+        for report_key in ("free", "constrained"):
+            rep = response.get(report_key)
+            if not rep:
+                continue
+            for p in rep.get("points", []):
+                try:
+                    north, east, elev = ecef_to_grid((p["x"], p["y"], p["z"]), crs_for_output)
+                    p["grid"] = {
+                        "north": float(north),
+                        "east":  float(east),
+                        "elev":  float(elev),
+                    }
+                except Exception:
+                    p["grid"] = None
+
+    return response
 
 
 # ═══════════════════════════════  helpers  ═════════════════════════════════

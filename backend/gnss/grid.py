@@ -151,6 +151,25 @@ def crs_def_to_proj_string(c: CRSDef) -> str:
     )
 
 
+def ecef_to_grid(ecef: tuple[float, float, float], crs: CRSDef
+                 ) -> tuple[float, float, float]:
+    """Convert one ECEF triple back into (North, East, Elevation) in the
+    project's local grid. Inverse of :func:`grid_to_ecef`, used to render
+    adjusted coordinates for surveyors who think in grid, not ECEF.
+    """
+    try:
+        from pyproj import Transformer
+    except ImportError as e:
+        raise RuntimeError(f"pyproj is required for ECEF→grid conversion: {e}")
+    inv = Transformer.from_crs(
+        "+proj=geocent +ellps=GRS80 +units=m +no_defs",
+        crs_def_to_proj_string(crs),
+        always_xy=True,
+    )
+    east, north, elev = inv.transform(ecef[0], ecef[1], ecef[2])
+    return (north, east, elev)
+
+
 def grid_to_ecef(bases: list[BaseCoordLine], crs: CRSDef
                  ) -> list[tuple[str, float, float, float]]:
     """Convert every (north, east, elev) into ECEF (X, Y, Z).

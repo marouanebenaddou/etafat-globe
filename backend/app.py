@@ -35,7 +35,7 @@ from pydantic import BaseModel, Field
 from gnss.models import Baseline, Station
 from gnss.adjust import free_adjustment, constrained_adjustment
 from gnss.loops import detect_loops, refine_closures_enu
-from gnss.pipeline import PipelineInput, compute_all_baselines
+from gnss.pipeline import PipelineInput, StopDetectorOpts, compute_all_baselines
 from gnss.rinex import is_obs, is_nav
 from gnss.grid import (
     parse_bases_coords, parse_crs_definition, grid_to_ecef,
@@ -234,11 +234,26 @@ async def pipeline_from_rinex(
     v_limit_m: float = Form(2.0),
     base_coords_txt: str = Form("", description="Contents of bases_xyz.txt: 'name,North,East,Elev' per base"),
     crs_def_txt:     str = Form("", description="Contents of the CRS definition file (e.g. CIV.txt)"),
+    # ── Kinematic stop-detector knobs (optional, sensible defaults) ─────────
+    stop_speed_threshold_ms: float = Form(0.10, description="Max rover speed inside a stop (m/s)"),
+    stop_min_duration_s:     float = Form(10.0, description="Min dwell time for a time-detected stop (s)"),
+    stop_cluster_radius_m:   float = Form(0.10, description="Max spatial scatter within one Fix-cluster (m)"),
+    stop_min_cluster_size:   int   = Form(2,    description="Min Fix epochs to form a spatial-detected stop"),
+    stop_max_time_span_s:    float = Form(600.0,description="Same-cluster time-span ceiling (splits revisits) (s)"),
+    stop_sigma_floor_m:      float = Form(0.03, description="2-epoch clusters must have σ ≤ this per axis (m)"),
 ):
     try:
         return await _pipeline_from_rinex_impl(
             files, base_marker_names, control_stations, projection_hint,
             h_limit_m, v_limit_m, base_coords_txt, crs_def_txt,
+            StopDetectorOpts(
+                speed_threshold_ms=stop_speed_threshold_ms,
+                min_duration_s=stop_min_duration_s,
+                cluster_radius_m=stop_cluster_radius_m,
+                min_cluster_size=stop_min_cluster_size,
+                max_time_span_s=stop_max_time_span_s,
+                sigma_floor_m=stop_sigma_floor_m,
+            ),
         )
     except HTTPException:
         raise
@@ -249,7 +264,8 @@ async def pipeline_from_rinex(
 
 async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
                                      projection_hint, h_limit_m, v_limit_m,
-                                     base_coords_txt="", crs_def_txt=""):
+                                     base_coords_txt="", crs_def_txt="",
+                                     stop_opts: Optional[StopDetectorOpts] = None):
     """Upload RINEX files → we run rnx2rtkp for every (base, rover-session)
     pair → then the usual loops + adjustments pipeline.
 
@@ -335,6 +351,7 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
             base_marker_names=base_names,
             control_stations=control_list,
             projection_hint_latlon_deg=(hint_obj.lat_deg, hint_obj.lon_deg) if hint_obj else None,
+            stop_opts=stop_opts or StopDetectorOpts(),
         )
         try:
             baselines, stations, warnings = compute_all_baselines(pin)

@@ -300,12 +300,31 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
 # ═════════════════════════════  pipeline  ═══════════════════════════════════
 
 @dataclass
+class StopDetectorOpts:
+    """Knobs for the kinematic stop detector. Defaults tuned against the
+    2026-01-06 CHC dataset; projects with quieter rovers can tighten them,
+    noisier ones can relax.
+    """
+    speed_threshold_ms: float = 0.10     # m/s, max step-to-step speed inside a stop
+    min_duration_s:     float = 10.0     # seconds, min dwell time
+    cluster_radius_m:   float = 0.10     # m, max spatial scatter within a cluster
+    min_cluster_size:   int   = 2        # min Fix epochs per spatial cluster
+    max_time_span_s:    float = 600.0    # s, split revisits older than this
+    sigma_floor_m:      float = 0.03     # m, 2-epoch clusters need σ ≤ this to pass
+
+
+@dataclass
 class PipelineInput:
     obs_files: list[str]
     nav_files: list[str]
     base_marker_names: list[str]
     control_stations: list[Station]         # may be empty
     projection_hint_latlon_deg: Optional[tuple[float, float]] = None
+    stop_opts: StopDetectorOpts = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        if self.stop_opts is None:
+            self.stop_opts = StopDetectorOpts()
 
 
 def _cluster_fix_positions(epochs: list[dict],
@@ -645,10 +664,15 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         #     Fix epochs at the same physical location, useful when rnx2rtkp
         #     flickers between Fix and Float during long sessions
         # We run both and merge, de-duplicating by centroid proximity.
-        stops_time  = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
-        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.10,
-                                              min_cluster_size=2,
-                                              max_time_span_s=600.0)
+        stops_time  = _detect_stops(epochs,
+            speed_threshold_ms=pin.stop_opts.speed_threshold_ms,
+            min_duration_s=pin.stop_opts.min_duration_s,
+        )
+        stops_space = _cluster_fix_positions(epochs,
+            cluster_radius_m=pin.stop_opts.cluster_radius_m,
+            min_cluster_size=pin.stop_opts.min_cluster_size,
+            max_time_span_s=pin.stop_opts.max_time_span_s,
+        )
         merged = list(stops_time)
         import math as _m
         for s in stops_space:
@@ -665,15 +689,17 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         # keeping the K-session's thin but genuinely-stationary pairs.
         kept: list[dict] = []
         rejected = 0
+        sigma_floor = pin.stop_opts.sigma_floor_m
         for s in merged:
             if s["n_epochs"] >= 3:
                 kept.append(s)
-            elif max(s["sx"], s["sy"], s["sz"]) <= 0.03:
+            elif max(s["sx"], s["sy"], s["sz"]) <= sigma_floor:
                 kept.append(s)
             else:
                 rejected += 1
         if rejected:
-            warnings.append(f"{rover.station_point}: filtered {rejected} 2-epoch stops with >3 cm scatter")
+            warnings.append(f"{rover.station_point}: filtered {rejected} 2-epoch stops "
+                            f"with σ > {sigma_floor*100:.0f} cm scatter")
         kept.sort(key=lambda s: s["t_start"])
         stops = kept
         n_fix = sum(1 for e in epochs if e["Q"] == 1)

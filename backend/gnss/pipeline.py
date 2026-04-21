@@ -310,7 +310,8 @@ class PipelineInput:
 
 def _detect_stops(epochs: list[dict],
                   speed_threshold_ms: float = 0.10,
-                  min_duration_s: float = 10.0,
+                  min_duration_s: float = 20.0,
+                  min_fix_epochs: int = 2,
                   q_accept: set[int] = frozenset({1, 2})) -> list[dict]:
     """Segment a kinematic trajectory into stationary occupations.
 
@@ -334,6 +335,13 @@ def _detect_stops(epochs: list[dict],
             return
         duration = current[-1]["t"] - current[0]["t"]
         if duration < min_duration_s:
+            return
+        # Quality gate: a "stop" must include at least ``min_fix_epochs``
+        # integer-Fix observations. Pure-Float sequences are typically just
+        # areas where rnx2rtkp lost lock — CHC drops those from its output
+        # and so do we.
+        n_fix = sum(1 for e in current if e["Q"] == 1)
+        if n_fix < min_fix_epochs:
             return
         xs = [e["x"] for e in current]
         ys = [e["y"] for e in current]

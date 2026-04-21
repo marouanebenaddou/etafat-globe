@@ -379,13 +379,20 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
     with _tempfile.TemporaryDirectory() as tmp:
         obs_paths: list[str] = []
         nav_paths: list[str] = []
+        CHUNK = 1 << 20   # 1 MB
         for up in files:
             dest = _os.path.join(tmp, _os.path.basename(up.filename or ""))
             if not dest:
                 continue
-            data = await up.read()
+            # Stream to disk in 1 MB chunks — loading a 60 MB RINEX file
+            # entirely into RAM via `up.read()` was hitting Railway's
+            # container memory cap when multiple uploads were processed.
             with open(dest, "wb") as f:
-                f.write(data)
+                while True:
+                    chunk = await up.read(CHUNK)
+                    if not chunk:
+                        break
+                    f.write(chunk)
             if   is_obs(dest): obs_paths.append(dest)
             elif is_nav(dest): nav_paths.append(dest)
 

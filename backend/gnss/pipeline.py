@@ -309,19 +309,19 @@ class PipelineInput:
 
 
 def _detect_stops(epochs: list[dict],
-                  speed_threshold_ms: float = 0.15,
-                  min_duration_s: float = 5.0,
-                  q_accept: set[int] = frozenset({1})) -> list[dict]:
+                  speed_threshold_ms: float = 0.10,
+                  min_duration_s: float = 10.0,
+                  q_accept: set[int] = frozenset({1, 2})) -> list[dict]:
     """Segment a kinematic trajectory into stationary occupations.
 
-    A "stop" is a run of consecutive Fix epochs whose inter-epoch distance
-    stays below ``speed_threshold_ms`` for at least ``min_duration_s``. The
-    returned dicts give the mean position of each stop, with σ from the
-    spread of its epochs (min of spread vs mean epoch σ).
+    A "stop" is a run of consecutive accepted epochs whose inter-epoch
+    distance stays below ``speed_threshold_ms`` for at least
+    ``min_duration_s``. Both Fix (Q=1) and Float (Q=2) solutions are
+    accepted by default so we don't lose occupations during periods where
+    rnx2rtkp couldn't maintain an integer fix.
 
-    Algorithm is deliberately simple — robust to short 1-2 epoch outliers
-    but makes no attempt at median filtering. A dedicated cycle-slip pass
-    or RAIM check would be nice to add later.
+    A stop's ``fix_ratio`` reports the fraction of its epochs that were Q=1
+    — the UI can decide to flag it as provisional below some threshold.
     """
     import math
     if not epochs:
@@ -348,11 +348,13 @@ def _detect_stops(epochs: list[dict],
         esx = sum(e["sx"] for e in current) / len(current)
         esy = sum(e["sy"] for e in current) / len(current)
         esz = sum(e["sz"] for e in current) / len(current)
+        n_fix = sum(1 for e in current if e["Q"] == 1)
         stops.append({
             "t_start":  current[0]["t"],
             "t_end":    current[-1]["t"],
             "duration": duration,
             "n_epochs": len(current),
+            "fix_ratio": n_fix / len(current) if current else 0.0,
             "x": mx, "y": my, "z": mz,
             "sx": max(sx, esx), "sy": max(sy, esy), "sz": max(sz, esz),
             "ns":    round(sum(e["ns"] for e in current) / len(current)),
@@ -556,10 +558,11 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not epochs:
             warnings.append(f"Kinematic {rover.station_point}: 0 epochs parsed")
             return []
-        # Tight thresholds to match CHC's occupation detection: a real stop
-        # dwells ≥ 15 s at ≤ 0.08 m/s (almost stationary). With 5 s sampling
-        # that's ≥ 3 epochs per stop.
-        stops = _detect_stops(epochs, speed_threshold_ms=0.08, min_duration_s=15.0)
+        # Thresholds matching CHC's stop-and-go detection: ≤ 0.10 m/s for
+        # ≥ 10 s. Accept Float (Q=2) alongside Fix (Q=1) because long kinematic
+        # sessions often lose Fix momentarily even when the rover is stopped;
+        # the fix_ratio of each stop tells us the quality downstream.
+        stops = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
         n_fix = sum(1 for e in epochs if e["Q"] == 1)
         warnings.append(
             f"Kinematic {rover.station_point}: {len(epochs)} epochs "
@@ -605,6 +608,12 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                     base_pos = control_ecef.get(base.station_point) or base.approx_xyz
                     if base_pos is None:
                         continue
+                    # Quality label: 'Kine Fix' if most epochs were integer-fixed,
+                    # otherwise 'Kine Float' — surfaces stop quality to the UI.
+                    fix_ratio = st.get("fix_ratio", 0.0)
+                    if fix_ratio >= 0.70:   sol_tag = "Kine Fix"
+                    elif fix_ratio >= 0.20: sol_tag = "Kine Mixed"
+                    else:                    sol_tag = "Kine Float"
                     baselines.append(Baseline(
                         id=f"B{n:02d}",
                         start=base.station_point,
@@ -613,7 +622,7 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                         dy=st["y"] - base_pos[1],
                         dz=st["z"] - base_pos[2],
                         sdx=st["sx"], sdy=st["sy"], sdz=st["sz"],
-                        solution_type="Kine Fix" if st["ns"] >= 4 else "Kine Float",
+                        solution_type=sol_tag,
                         rms=(st["sx"]**2 + st["sy"]**2 + st["sz"]**2) ** 0.5,
                         ratio=st["ratio"],
                     ))

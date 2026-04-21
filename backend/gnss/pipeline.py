@@ -252,11 +252,13 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                  f"{base_pos_xyz[1]:.4f}",
                  f"{base_pos_xyz[2]:.4f}",
         ]
-        # NB: we used to add `-ti 5` here, but the upstream pipeline now
-        # pre-decimates the rover RINEX file to 15 s (see decimate.py) to
-        # cap rnx2rtkp's RAM footprint. Re-decimating at the output stage
-        # with a different interval makes rnx2rtkp search for base epochs
-        # at times that the rover doesn't cover → 0 Fix.
+        if kinematic:
+            # Rover RINEX is pre-decimated to 15 s upstream (see decimate.py);
+            # lock rnx2rtkp's output grid to the same 15 s cadence so every
+            # output slot has a matching rover epoch for AR. Using `-ti 5`
+            # here would triple the number of output slots, 2/3 of which
+            # would have no rover data → 0 Fix.
+            args += ["-ti", "15"]
         args += [rover_obs, base_obs, *nav_files]
         proc = subprocess.run(args, capture_output=True, text=True, timeout=1800)
         if proc.returncode != 0:
@@ -670,6 +672,12 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 rover_obs_for_rtk = thinned
         except Exception as e:
             warnings.append(f"{rover.station_point}: decimation skipped ({type(e).__name__}: {e})")
+        warnings.append(
+            f"Kinematic {rover.station_point}: invoking rnx2rtkp "
+            f"(rover={os.path.basename(rover_obs_for_rtk)}, "
+            f"base={os.path.basename(primary_base.obs_file)}, "
+            f"nav={[os.path.basename(n) for n in nav]}, -ti 15)"
+        )
         try:
             sol = _run_rnx2rtkp(
                 base_obs=primary_base.obs_file, rover_obs=rover_obs_for_rtk,

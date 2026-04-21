@@ -131,15 +131,18 @@ def pick_nav_files(obs_path: str, all_nav_files: list[str],
 
 # ═════════════════════════════  rnx2rtkp driver  ═══════════════════════════
 
-def _default_opts_conf() -> str:
-    """CHC-equivalent static processing defaults.
+def _default_opts_conf(kinematic: bool = False) -> str:
+    """rnx2rtkp option block.
 
-    Tuned against the 2026-01-06 dataset: these yielded 5-6 mm RMS Fix
-    solutions on the Tiahoue_I / I5 sessions. Stricter settings (arthres=3,
-    fix-and-hold) mis-converged on the long K session — kept back off.
+    ``kinematic=False`` (default) gives one static position summary per run —
+    used for inter-base lines and short occupations (≤ ~10 min).
+
+    ``kinematic=True`` emits one solution per epoch, used when the rover
+    moves between multiple survey points in a single RINEX file (stop-and-go
+    PPK). The caller downstream is responsible for segmenting the resulting
+    trajectory into stationary occupations.
     """
-    return "\n".join([
-        "pos1-posmode       =static",
+    shared = [
         "pos1-frequency     =l1+l2",
         "pos1-soltype       =forward",
         "pos1-elmask        =10",
@@ -153,11 +156,17 @@ def _default_opts_conf() -> str:
         "out-solformat      =xyz",
         "out-outhead        =off",
         "out-outopt         =off",
-        "out-solstatic      =single",
         "stats-eratio1      =100.0",
         "stats-eratio2      =100.0",
-        "",
-    ])
+    ]
+    mode = [
+        "pos1-posmode       =kinematic",
+        "out-solstatic      =all",
+    ] if kinematic else [
+        "pos1-posmode       =static",
+        "out-solstatic      =single",
+    ]
+    return "\n".join(mode + shared + [""])
 
 
 # Match an rnx2rtkp XYZ-ECEF solution line. rnx2rtkp output looks like:
@@ -166,6 +175,38 @@ def _default_opts_conf() -> str:
 # X and Z are ECEF coords in metres → always ≥ 5-digit magnitudes. The
 # negative-lookbehind stops the match from starting in the middle of the
 # timestamp fractional seconds.
+_EPOCH_LINE = re.compile(
+    r"^(?P<ts>\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)"
+    r"\s+(?P<x>-?\d+\.\d+)\s+(?P<y>-?\d+\.\d+)\s+(?P<z>-?\d+\.\d+)"
+    r"\s+(?P<Q>\d+)\s+(?P<ns>\d+)"
+    r"\s+(?P<sx>\d+\.\d+)\s+(?P<sy>\d+\.\d+)\s+(?P<sz>\d+\.\d+)"
+    r"(?:\s+-?\d+\.\d+){3}"
+    r"\s+(?P<age>-?\d+\.\d+)"
+    r"\s+(?P<ratio>\d+\.\d+)"
+)
+
+
+def _parse_all_epochs(pos_text: str, proc=None) -> list[dict]:
+    """Parse every non-comment line as a per-epoch solution dict."""
+    import datetime as _dt
+    out: list[dict] = []
+    for line in pos_text.splitlines():
+        if not line or line.startswith("%"):
+            continue
+        m = _EPOCH_LINE.match(line)
+        if not m:
+            continue
+        ts = _dt.datetime.strptime(m["ts"][:19], "%Y/%m/%d %H:%M:%S").timestamp()
+        out.append({
+            "t":  ts,
+            "x":  float(m["x"]), "y":  float(m["y"]), "z":  float(m["z"]),
+            "sx": float(m["sx"]), "sy": float(m["sy"]), "sz": float(m["sz"]),
+            "Q":  int(m["Q"]), "ns": int(m["ns"]),
+            "ratio": float(m["ratio"]),
+        })
+    return out
+
+
 _SOL_LINE = re.compile(
     r"(?<![\d.])(?P<x>-?\d{5,8}\.\d+)\s+"
     r"(?P<y>-?\d{1,8}\.\d+)\s+"
@@ -183,8 +224,12 @@ _SOL_LINE = re.compile(
 
 def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                   base_pos_xyz: tuple[float, float, float],
-                  binary: str = _DEFAULT_RNX2RTKP) -> dict:
-    """Run rnx2rtkp for a single baseline. Returns the parsed final solution.
+                  binary: str = _DEFAULT_RNX2RTKP,
+                  kinematic: bool = False) -> dict:
+    """Run rnx2rtkp for a single baseline.
+
+    In static mode (default) returns the single summary solution.
+    In kinematic mode returns ``{"epochs": [...]}`` with one entry per epoch.
 
     rnx2rtkp convention:
       - First OBS arg = rover
@@ -195,13 +240,13 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
         conf_path = os.path.join(tmp, "opts.conf")
         pos_path  = os.path.join(tmp, "out.pos")
         with open(conf_path, "w") as f:
-            f.write(_default_opts_conf())
+            f.write(_default_opts_conf(kinematic=kinematic))
 
         args = [
             binary,
             "-k", conf_path,
             "-o", pos_path,
-            "-p", "3",
+            "-p", "2" if kinematic else "3",
             "-r", f"{base_pos_xyz[0]:.4f}",
                  f"{base_pos_xyz[1]:.4f}",
                  f"{base_pos_xyz[2]:.4f}",
@@ -209,7 +254,7 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
             base_obs,
             *nav_files,
         ]
-        proc = subprocess.run(args, capture_output=True, text=True, timeout=1200)
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=1800)
         if proc.returncode != 0:
             raise RuntimeError(
                 f"rnx2rtkp exited {proc.returncode}\n"
@@ -217,6 +262,9 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
             )
         with open(pos_path) as f:
             pos_text = f.read()
+
+    if kinematic:
+        return {"epochs": _parse_all_epochs(pos_text, proc)}
 
     best: Optional[dict] = None
     for line in pos_text.splitlines():
@@ -255,6 +303,79 @@ class PipelineInput:
     base_marker_names: list[str]
     control_stations: list[Station]         # may be empty
     projection_hint_latlon_deg: Optional[tuple[float, float]] = None
+
+
+def _detect_stops(epochs: list[dict],
+                  speed_threshold_ms: float = 0.15,
+                  min_duration_s: float = 5.0,
+                  q_accept: set[int] = frozenset({1})) -> list[dict]:
+    """Segment a kinematic trajectory into stationary occupations.
+
+    A "stop" is a run of consecutive Fix epochs whose inter-epoch distance
+    stays below ``speed_threshold_ms`` for at least ``min_duration_s``. The
+    returned dicts give the mean position of each stop, with σ from the
+    spread of its epochs (min of spread vs mean epoch σ).
+
+    Algorithm is deliberately simple — robust to short 1-2 epoch outliers
+    but makes no attempt at median filtering. A dedicated cycle-slip pass
+    or RAIM check would be nice to add later.
+    """
+    import math
+    if not epochs:
+        return []
+    stops: list[dict] = []
+    current: list[dict] = []
+
+    def _flush():
+        if len(current) < 2:
+            return
+        duration = current[-1]["t"] - current[0]["t"]
+        if duration < min_duration_s:
+            return
+        xs = [e["x"] for e in current]
+        ys = [e["y"] for e in current]
+        zs = [e["z"] for e in current]
+        mx, my, mz = sum(xs)/len(xs), sum(ys)/len(ys), sum(zs)/len(zs)
+        # Spread-based σ (1-sigma of the scatter)
+        def _sd(vals, m):
+            if len(vals) < 2: return 0.0
+            return (sum((v - m) ** 2 for v in vals) / (len(vals) - 1)) ** 0.5
+        sx, sy, sz = _sd(xs, mx), _sd(ys, my), _sd(zs, mz)
+        # Also take the mean of per-epoch σ as a sanity floor
+        esx = sum(e["sx"] for e in current) / len(current)
+        esy = sum(e["sy"] for e in current) / len(current)
+        esz = sum(e["sz"] for e in current) / len(current)
+        stops.append({
+            "t_start":  current[0]["t"],
+            "t_end":    current[-1]["t"],
+            "duration": duration,
+            "n_epochs": len(current),
+            "x": mx, "y": my, "z": mz,
+            "sx": max(sx, esx), "sy": max(sy, esy), "sz": max(sz, esz),
+            "ns":    round(sum(e["ns"] for e in current) / len(current)),
+            "ratio": sum(e["ratio"] for e in current) / len(current),
+        })
+
+    prev: dict | None = None
+    for e in epochs:
+        if e["Q"] not in q_accept:
+            _flush(); current = []; prev = None
+            continue
+        if prev is None:
+            current = [e]; prev = e; continue
+        dt = max(e["t"] - prev["t"], 1e-6)
+        dx = e["x"] - prev["x"]; dy = e["y"] - prev["y"]; dz = e["z"] - prev["z"]
+        dist = math.sqrt(dx*dx + dy*dy + dz*dz)
+        speed = dist / dt
+        # 60 s gap → new session chunk; > threshold → rover moved, split
+        if dt > 60 or speed > speed_threshold_ms:
+            _flush()
+            current = [e]
+        else:
+            current.append(e)
+        prev = e
+    _flush()
+    return stops
 
 
 def _group_mobile_sessions_by_position(
@@ -406,6 +527,49 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                         f"σ=({sol['sx']*1000:.1f},{sol['sy']*1000:.1f},{sol['sz']*1000:.1f})mm")
         return bl
 
+    def _kinematic_stops(rover: Session, primary_base: Session) -> list[dict]:
+        """Run rnx2rtkp in kinematic mode against the primary base, then
+        segment the per-epoch trajectory into stationary occupations. The
+        stops come out as absolute ECEF coordinates calibrated to
+        ``primary_base``'s precise position."""
+        base_pos = control_ecef.get(primary_base.station_point) or primary_base.approx_xyz
+        if base_pos is None:
+            warnings.append(f"Kinematic skipped ({rover.station_point}) — "
+                            f"no reference position for {primary_base.station_point}")
+            return []
+        nav = pick_nav_files(rover.obs_file, pin.nav_files)
+        if not nav:
+            warnings.append(f"Kinematic skipped ({rover.station_point}) — no nav for {rover.obs_file}")
+            return []
+        try:
+            sol = _run_rnx2rtkp(
+                base_obs=primary_base.obs_file, rover_obs=rover.obs_file,
+                nav_files=nav, base_pos_xyz=base_pos, kinematic=True,
+            )
+        except Exception as e:
+            warnings.append(f"Kinematic {rover.station_point}: {e}")
+            return []
+        epochs = sol.get("epochs", [])
+        if not epochs:
+            warnings.append(f"Kinematic {rover.station_point}: 0 epochs parsed")
+            return []
+        stops = _detect_stops(epochs, speed_threshold_ms=0.15, min_duration_s=5.0)
+        n_fix = sum(1 for e in epochs if e["Q"] == 1)
+        warnings.append(
+            f"Kinematic {rover.station_point}: {len(epochs)} epochs "
+            f"({n_fix} Fix) → {len(stops)} stops (primary base: {primary_base.station_point})"
+        )
+        return stops
+
+    def _is_kinematic(s: Session) -> bool:
+        """Heuristic: mobile sessions recorded at ≤ 1 s with obs file > 10 MB
+        are treated as stop-and-go PPK. Short occupation files stay static."""
+        try:
+            size_mb = os.path.getsize(s.obs_file) / (1024 * 1024)
+        except OSError:
+            size_mb = 0
+        return s.interval_s <= 1.01 and size_mb > 10.0
+
     n = 0
     # Inter-base baselines (if ≥ 2 bases)
     for i, a in enumerate(bases):
@@ -415,11 +579,43 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             if bl: baselines.append(bl)
 
     # Base-to-mobile baselines: every mobile session gets connected to every base
+    # Mobile sessions: static for short occupations, kinematic for long ones
+    # (stop-and-go PPK). For static sessions we run rnx2rtkp per (base, rover)
+    # pair. For kinematic sessions we run it ONCE against a primary base to
+    # establish absolute stop positions, then fan out to all bases via
+    # vector subtraction — ensuring every base sees the same stops with the
+    # same numbering.
     for rover in mobiles:
-        for base in bases:
-            n += 1
-            bl = _bl(base, rover, f"B{n:02d}")
-            if bl: baselines.append(bl)
+        if _is_kinematic(rover):
+            size_mb = os.path.getsize(rover.obs_file) / 1e6
+            warnings.append(f"{rover.station_point}: kinematic mode "
+                            f"(interval={rover.interval_s}s, file={size_mb:.1f} MB)")
+            primary_base = bases[0]
+            stops = _kinematic_stops(rover, primary_base)
+            for i, st in enumerate(stops, start=1):
+                point_name = f"{rover.station_point}_S{i}"
+                for base in bases:
+                    n += 1
+                    base_pos = control_ecef.get(base.station_point) or base.approx_xyz
+                    if base_pos is None:
+                        continue
+                    baselines.append(Baseline(
+                        id=f"B{n:02d}",
+                        start=base.station_point,
+                        end=point_name,
+                        dx=st["x"] - base_pos[0],
+                        dy=st["y"] - base_pos[1],
+                        dz=st["z"] - base_pos[2],
+                        sdx=st["sx"], sdy=st["sy"], sdz=st["sz"],
+                        solution_type="Kine Fix" if st["ns"] >= 4 else "Kine Float",
+                        rms=(st["sx"]**2 + st["sy"]**2 + st["sz"]**2) ** 0.5,
+                        ratio=st["ratio"],
+                    ))
+        else:
+            for base in bases:
+                n += 1
+                bl = _bl(base, rover, f"B{n:02d}")
+                if bl: baselines.append(bl)
 
     # Build station list: one per unique endpoint referenced in baselines
     station_map: dict[str, Station] = {}

@@ -511,7 +511,26 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
                 except Exception:
                     p["grid"] = None
 
-    return response
+    return _sanitize_floats(response)
+
+
+def _sanitize_floats(obj):
+    """Walk the response and replace NaN/Inf floats with None.
+
+    The default Python `json.dumps` refuses non-finite floats
+    (`ValueError: Out of range float values are not JSON compliant`), but
+    the adjustment can produce NaN/Inf when a baseline has zero Fix
+    epochs or a matrix is singular. We surface those as `null` so the
+    client can still display the rest of the report.
+    """
+    import math
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _sanitize_floats(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_floats(v) for v in obj]
+    return obj
 
 
 # ═══════════════════════════════  helpers  ═════════════════════════════════

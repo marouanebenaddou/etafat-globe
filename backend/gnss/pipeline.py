@@ -226,7 +226,8 @@ _SOL_LINE = re.compile(
 def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                   base_pos_xyz: tuple[float, float, float],
                   binary: str = _DEFAULT_RNX2RTKP,
-                  kinematic: bool = False) -> dict:
+                  kinematic: bool = False,
+                  output_interval_s: int = 5) -> dict:
     """Run rnx2rtkp for a single baseline.
 
     In static mode (default) returns the single summary solution.
@@ -253,12 +254,10 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
                  f"{base_pos_xyz[2]:.4f}",
         ]
         if kinematic:
-            # Rover RINEX is pre-decimated to 15 s upstream (see decimate.py);
-            # lock rnx2rtkp's output grid to the same 15 s cadence so every
-            # output slot has a matching rover epoch for AR. Using `-ti 5`
-            # here would triple the number of output slots, 2/3 of which
-            # would have no rover data → 0 Fix.
-            args += ["-ti", "15"]
+            # Lock rnx2rtkp's output grid to the rover's actual cadence
+            # (matches decimate.py). Mismatched -ti means most output
+            # slots have no matching rover epoch → 0 Fix.
+            args += ["-ti", str(output_interval_s)]
         args += [rover_obs, base_obs, *nav_files]
         proc = subprocess.run(args, capture_output=True, text=True, timeout=1800)
         if proc.returncode != 0:
@@ -648,14 +647,18 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not nav:
             warnings.append(f"Kinematic skipped ({rover.station_point}) — no nav for {rover.obs_file}")
             return []
-        # Pre-decimate the rover obs file to 15 s before rnx2rtkp opens it.
+        # Pre-decimate the rover obs file to 5 s before rnx2rtkp opens it.
         # rnx2rtkp loads the full observation buffer into RAM before
         # processing, so a 332 MB 1 Hz file OOMs the Railway container.
-        # CHC's stop-and-go workflow dwells on every point for ≥30 s, so 15 s
-        # sampling still captures each occupation with enough redundancy for
-        # the cluster detector. We only decimate the rover — the base stays
-        # at native resolution because it drives integer ambiguity resolution.
+        # We can't go coarser than ~5 s because AR needs continuous phase
+        # tracking: at 15 s between rover epochs the cycle-slip detector
+        # re-initializes ambiguities too often and everything drops to Float.
+        # 5 s is CHC's documented "minimum for static-style AR" cadence and
+        # still cuts the 332 MB K-session down to ~65 MB — well under the
+        # container memory ceiling.
+        # Only the rover gets thinned; the base stays at native resolution.
         rover_obs_for_rtk = rover.obs_file
+        rover_ti_s = 1   # actual rover cadence after decimation, for -ti below
         try:
             size_mb = os.path.getsize(rover.obs_file) / (1024 * 1024)
             if size_mb > 20.0:
@@ -663,25 +666,27 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                     os.path.dirname(rover.obs_file) or ".",
                     "_thinned_" + os.path.basename(rover.obs_file),
                 )
-                n_in, n_out = decimate_rinex_obs(rover.obs_file, thinned, interval_s=15.0)
+                n_in, n_out = decimate_rinex_obs(rover.obs_file, thinned, interval_s=5.0)
                 thin_mb = os.path.getsize(thinned) / (1024 * 1024)
                 warnings.append(
                     f"{rover.station_point}: pre-decimated rover obs "
-                    f"{size_mb:.1f}→{thin_mb:.1f} MB ({n_in}→{n_out} epochs @ 15 s)"
+                    f"{size_mb:.1f}→{thin_mb:.1f} MB ({n_in}→{n_out} epochs @ 5 s)"
                 )
                 rover_obs_for_rtk = thinned
+                rover_ti_s = 5
         except Exception as e:
             warnings.append(f"{rover.station_point}: decimation skipped ({type(e).__name__}: {e})")
         warnings.append(
             f"Kinematic {rover.station_point}: invoking rnx2rtkp "
             f"(rover={os.path.basename(rover_obs_for_rtk)}, "
             f"base={os.path.basename(primary_base.obs_file)}, "
-            f"nav={[os.path.basename(n) for n in nav]}, -ti 15)"
+            f"nav={[os.path.basename(n) for n in nav]}, -ti {rover_ti_s})"
         )
         try:
             sol = _run_rnx2rtkp(
                 base_obs=primary_base.obs_file, rover_obs=rover_obs_for_rtk,
                 nav_files=nav, base_pos_xyz=base_pos, kinematic=True,
+                output_interval_s=rover_ti_s,
             )
         except Exception as e:
             warnings.append(f"Kinematic {rover.station_point}: {e}")

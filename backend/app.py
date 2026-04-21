@@ -389,6 +389,12 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
                 "solution_type": b.solution_type,
                 "rms_m":         b.rms,
                 "sdx_m":         b.sdx, "sdy_m": b.sdy, "sdz_m": b.sdz,
+                "ratio":         b.ratio,
+                # Kinematic-only fields (None for static baselines)
+                "duration_s":    b.duration_s,
+                "n_epochs":      b.n_epochs,
+                "fix_ratio":     b.fix_ratio,
+                "n_sat":         b.n_sat,
             }
             for b in baselines
         ],

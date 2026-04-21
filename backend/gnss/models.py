@@ -37,9 +37,16 @@ class Baseline:
     sdx: float = 0.005
     sdy: float = 0.005
     sdz: float = 0.005
-    solution_type: str = "Fix"   # "Fix" | "Lc Fix" | "Float"
+    solution_type: str = "Fix"   # "Fix" | "Lc Fix" | "Kine Fix" | "Kine Mixed" | ...
     rms: float = 0.0
     ratio: float = 0.0
+    # Optional — populated only for kinematic (stop-and-go) baselines so the
+    # frontend can show dwell time, how many epochs the rover held still, and
+    # how integer-clean those epochs were.
+    duration_s: Optional[float] = None     # observation time at the stop
+    n_epochs:   Optional[int]   = None     # Fix + Float epochs counted as "stopped"
+    fix_ratio:  Optional[float] = None     # 0..1, share of epochs that were Q=1
+    n_sat:      Optional[int]   = None     # mean satellite count over the stop
 
     @property
     def length(self) -> float:

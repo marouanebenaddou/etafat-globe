@@ -764,6 +764,10 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                         solution_type=sol_tag,
                         rms=(st["sx"]**2 + st["sy"]**2 + st["sz"]**2) ** 0.5,
                         ratio=st["ratio"],
+                        duration_s=st.get("duration"),
+                        n_epochs=st.get("n_epochs"),
+                        fix_ratio=st.get("fix_ratio"),
+                        n_sat=st.get("ns"),
                     ))
         else:
             for base in bases:

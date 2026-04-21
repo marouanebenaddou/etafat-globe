@@ -134,24 +134,22 @@ def pick_nav_files(obs_path: str, all_nav_files: list[str],
 def _default_opts_conf() -> str:
     """CHC-equivalent static processing defaults.
 
-    `out-solstatic=all` (not `single`) is important when sessions are short:
-    it emits one position per epoch instead of one global best estimate,
-    letting us see whether rnx2rtkp stays locked on a Fix solution or
-    oscillates. We pick the last `single` line downstream.
+    Tuned against the 2026-01-06 dataset: these yielded 5-6 mm RMS Fix
+    solutions on the Tiahoue_I / I5 sessions. Stricter settings (arthres=3,
+    fix-and-hold) mis-converged on the long K session — kept back off.
     """
     return "\n".join([
         "pos1-posmode       =static",
         "pos1-frequency     =l1+l2",
-        "pos1-soltype       =combined",   # forward + backward then combine
+        "pos1-soltype       =forward",
         "pos1-elmask        =10",
         "pos1-ionoopt       =dual-freq",
         "pos1-tropopt       =saas",
         "pos1-sateph        =brdc",
-        "pos1-navsys        =63",          # GPS+GLO+GAL+QZS+BDS
-        "pos2-armode        =fix-and-hold",
-        "pos2-arthres       =3.0",         # CHC-style stricter than default
+        "pos1-navsys        =63",
+        "pos2-armode        =continuous",
+        "pos2-arthres       =1.8",
         "pos2-gloarmode     =on",
-        "pos2-arminfix      =20",          # need 20 fixed epochs before holding
         "out-solformat      =xyz",
         "out-outhead        =off",
         "out-outopt         =off",
@@ -177,8 +175,8 @@ _SOL_LINE = re.compile(
     r"(?P<sx>\d+\.\d+)\s+"
     r"(?P<sy>\d+\.\d+)\s+"
     r"(?P<sz>\d+\.\d+)"
-    r"(?:\s+-?\d+\.\d+){3}"                 # sdxy sdyz sdzx
-    r"\s+(?P<age>\d+\.\d+)"
+    r"(?:\s+-?\d+\.\d+){3}"                 # sdxy sdyz sdzx (can be signed)
+    r"\s+(?P<age>-?\d+\.\d+)"               # age may be negative (rnx2rtkp quirk)
     r"\s+(?P<ratio>\d+\.\d+)"
 )
 
@@ -259,6 +257,55 @@ class PipelineInput:
     projection_hint_latlon_deg: Optional[tuple[float, float]] = None
 
 
+def _group_mobile_sessions_by_position(
+    mobiles: list["Session"],
+    merge_threshold_m: float = 5.0,
+) -> dict[str, str]:
+    """Group mobile sessions whose approximate positions (from the RINEX header
+    APPROX POSITION XYZ) are within ``merge_threshold_m`` metres of each
+    other. Returns a mapping session_point → merged_point_name.
+
+    This mirrors what CHC Geomatics Office does automatically: if a rover is
+    restarted at the same physical location (e.g. session I then I5 after a
+    brief file rollover), both files should resolve to the same point name
+    rather than two independent unknowns in the network.
+
+    The APPROX POSITION XYZ in the RINEX header is the receiver's own SPP
+    estimate — accurate to a few metres — which is more than enough to tell
+    co-located sessions apart from sessions metres away.
+    """
+    by_marker: dict[str, list["Session"]] = {}
+    for s in mobiles:
+        if not s.approx_xyz:
+            continue
+        by_marker.setdefault(s.marker_name, []).append(s)
+
+    mapping: dict[str, str] = {s.station_point: s.station_point for s in mobiles}
+    for marker, sessions in by_marker.items():
+        # Sort by start time so the earliest session claims the canonical name
+        sessions.sort(key=lambda s: s.start_utc)
+        clusters: list[list["Session"]] = []
+        for s in sessions:
+            placed = False
+            for c in clusters:
+                ref = c[0]
+                if ref.approx_xyz is None:
+                    continue
+                d = sum((a - b) ** 2 for a, b in zip(s.approx_xyz, ref.approx_xyz)) ** 0.5
+                if d <= merge_threshold_m:
+                    c.append(s)
+                    placed = True
+                    break
+            if not placed:
+                clusters.append([s])
+
+        for i, c in enumerate(clusters):
+            canonical = c[0].marker_name if i == 0 else f"{c[0].marker_name}_{i}"
+            for s in c:
+                mapping[s.station_point] = canonical
+    return mapping
+
+
 def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Station], list[str]]:
     """Run rnx2rtkp for every (base, rover-session) pair plus every pair of
     distinct bases. Returns baselines, the station list (with control coords
@@ -277,8 +324,32 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             "Need at least one mobile session, or two bases to form an inter-base baseline."
         )
 
+    # Merge mobile sessions that belong to the same physical point (CHC does this).
+    # For each resulting point, keep only ONE representative session so the network
+    # doesn't end up with two parallel edges between the same pair of stations.
+    point_map = _group_mobile_sessions_by_position(mobiles, merge_threshold_m=5.0)
+    representative: dict[str, "Session"] = {}
+    for s in mobiles:
+        merged_name = point_map.get(s.station_point, s.station_point)
+        s.station_point = merged_name
+        # Prefer the session with the highest-rate (smallest interval, more obs) —
+        # longer/denser sessions usually produce better Fix quality.
+        prev = representative.get(merged_name)
+        if (prev is None
+            or (s.interval_s < prev.interval_s)
+            or (s.interval_s == prev.interval_s and len(s.obs_file) > len(prev.obs_file))):
+            representative[merged_name] = s
+    mobiles = list(representative.values())
+
     baselines: list[Baseline] = []
     warnings:  list[str] = []
+    merged_sessions = [k for k, v in point_map.items() if k != v]
+    if merged_sessions:
+        grouping = {}
+        for k, v in point_map.items():
+            grouping.setdefault(v, []).append(k)
+        merged_info = [f"{v} = {{{', '.join(sorted(ks))}}}" for v, ks in grouping.items() if len(ks) > 1]
+        warnings.append("Sessions merged by proximity (<5m): " + " ; ".join(merged_info))
 
     def _bl(b: Session, r: Session, bid: str) -> Optional[Baseline]:
         """Solve a baseline from base ``b`` to rover ``r``."""

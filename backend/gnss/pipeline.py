@@ -356,11 +356,24 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
     warnings.append("Representatives: " +
                     " ; ".join(f"{n} = {os.path.basename(s.obs_file)}" for n, s in representative.items()))
 
+    # Build a lookup of precise ECEF for any station the user provided as a
+    # control point — we prefer these over the RINEX APPROX XYZ (SPP-level)
+    # when seeding rnx2rtkp. A 2-3 m error on the base drastically hurts AR
+    # on short sessions.
+    control_ecef: dict[str, tuple[float, float, float]] = {
+        s.name: (s.x, s.y, s.z)
+        for s in pin.control_stations
+        if s.x or s.y or s.z   # skip placeholder zeros
+    }
+
     def _bl(b: Session, r: Session, bid: str) -> Optional[Baseline]:
         """Solve a baseline from base ``b`` to rover ``r``."""
-        if b.approx_xyz is None:
-            warnings.append(f"{bid} skipped — {b.station_point} has no APPROX POSITION XYZ in its RINEX header")
+        # Prefer precise ECEF from control_stations, fall back to RINEX header.
+        base_pos = control_ecef.get(b.station_point) or b.approx_xyz
+        if base_pos is None:
+            warnings.append(f"{bid} skipped — {b.station_point} has no reference position (neither precise nor APPROX POSITION XYZ)")
             return None
+        precise_tag = "precise" if b.station_point in control_ecef else "approx"
         nav = pick_nav_files(r.obs_file, pin.nav_files)
         if not nav:
             warnings.append(f"{bid} skipped — no matching NAV file for {r.obs_file}")
@@ -370,14 +383,14 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 base_obs=b.obs_file,
                 rover_obs=r.obs_file,
                 nav_files=nav,
-                base_pos_xyz=b.approx_xyz,
+                base_pos_xyz=base_pos,
             )
         except Exception as e:
             warnings.append(f"{bid} failed: {e}")
             return None
-        dx = sol["x"] - b.approx_xyz[0]
-        dy = sol["y"] - b.approx_xyz[1]
-        dz = sol["z"] - b.approx_xyz[2]
+        dx = sol["x"] - base_pos[0]
+        dy = sol["y"] - base_pos[1]
+        dz = sol["z"] - base_pos[2]
         sol_type = {1: "Fix", 2: "Float", 4: "DGPS", 5: "Single"}.get(sol["Q"], "Unknown")
         bl = Baseline(
             id=bid,
@@ -389,7 +402,7 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             rms=(sol["sx"]**2 + sol["sy"]**2 + sol["sz"]**2) ** 0.5,
             ratio=sol["ratio"],
         )
-        warnings.append(f"{bid} solved: {sol_type} ratio={sol['ratio']:.1f} ns={sol['ns']} "
+        warnings.append(f"{bid} solved ({precise_tag} base): {sol_type} ratio={sol['ratio']:.1f} ns={sol['ns']} "
                         f"σ=({sol['sx']*1000:.1f},{sol['sy']*1000:.1f},{sol['sz']*1000:.1f})mm")
         return bl
 

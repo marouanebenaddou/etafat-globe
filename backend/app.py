@@ -37,6 +37,10 @@ from gnss.adjust import free_adjustment, constrained_adjustment
 from gnss.loops import detect_loops, refine_closures_enu
 from gnss.pipeline import PipelineInput, compute_all_baselines
 from gnss.rinex import is_obs, is_nav
+from gnss.grid import (
+    parse_bases_coords, parse_crs_definition, grid_to_ecef,
+    match_marker_to_coord,
+)
 
 
 def _find_rtklib_binary() -> Path:
@@ -228,9 +232,14 @@ async def pipeline_from_rinex(
     projection_hint: str = Form("null", description="Optional JSON {lat_deg, lon_deg} for proper ENU loop closures"),
     h_limit_m: float = Form(1.0),
     v_limit_m: float = Form(2.0),
+    base_coords_txt: str = Form("", description="Contents of bases_xyz.txt: 'name,North,East,Elev' per base"),
+    crs_def_txt:     str = Form("", description="Contents of the CRS definition file (e.g. CIV.txt)"),
 ):
     try:
-        return await _pipeline_from_rinex_impl(files, base_marker_names, control_stations, projection_hint, h_limit_m, v_limit_m)
+        return await _pipeline_from_rinex_impl(
+            files, base_marker_names, control_stations, projection_hint,
+            h_limit_m, v_limit_m, base_coords_txt, crs_def_txt,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -239,7 +248,8 @@ async def pipeline_from_rinex(
 
 
 async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
-                                     projection_hint, h_limit_m, v_limit_m):
+                                     projection_hint, h_limit_m, v_limit_m,
+                                     base_coords_txt="", crs_def_txt=""):
     """Upload RINEX files → we run rnx2rtkp for every (base, rover-session)
     pair → then the usual loops + adjustments pipeline.
 
@@ -288,6 +298,37 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
         if not nav_paths:
             raise HTTPException(400, "need at least one navigation file")
 
+        # If the user supplied grid-coord + CRS text, convert to precise ECEF
+        # and merge into control_list. This seeds rnx2rtkp with decimetre-level
+        # base positions instead of the RINEX header's ~3 m SPP estimate.
+        grid_diagnostics: list[str] = []
+        if base_coords_txt.strip() and crs_def_txt.strip():
+            try:
+                coords_grid = parse_bases_coords(base_coords_txt)
+                crs_def     = parse_crs_definition(crs_def_txt)
+                ecefs       = grid_to_ecef(coords_grid, crs_def)
+                grid_diagnostics.append(
+                    f"Parsed CRS: {crs_def.projection_type} "
+                    f"λ₀={crs_def.central_meridian_deg}° k={crs_def.scale_factor} "
+                    f"({len(coords_grid)} base coord{'s' if len(coords_grid) > 1 else ''})"
+                )
+                # Map each grid coord onto a declared base marker via fuzzy match
+                for coord_name, X, Y, Z in ecefs:
+                    for marker in base_names:
+                        if match_marker_to_coord(marker, coord_name):
+                            # Replace any pre-existing entry for this marker
+                            control_list = [s for s in control_list if s.name != marker]
+                            control_list.append(Station(
+                                name=marker, x=X, y=Y, z=Z, is_control=True,
+                            ))
+                            grid_diagnostics.append(
+                                f"→ {marker} ← {coord_name}: ECEF "
+                                f"({X:.3f}, {Y:.3f}, {Z:.3f})"
+                            )
+                            break
+            except Exception as e:
+                grid_diagnostics.append(f"⚠ grid→ECEF failed: {type(e).__name__}: {e}")
+
         pin = PipelineInput(
             obs_files=obs_paths,
             nav_files=nav_paths,
@@ -301,6 +342,10 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
             raise HTTPException(400, str(e))
         except RuntimeError as e:
             raise HTTPException(500, f"baseline computation failed: {e}")
+
+        # Prepend grid diagnostics to the warnings list (above rnx2rtkp messages)
+        if grid_diagnostics:
+            warnings = grid_diagnostics + warnings
 
     if not baselines:
         raise HTTPException(

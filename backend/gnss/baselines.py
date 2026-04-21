@@ -25,7 +25,16 @@ from typing import Sequence
 
 from .models import Baseline
 
-_DEFAULT_RNX2RTKP = str(Path(__file__).resolve().parent.parent / "rtklib_bin" / "rnx2rtkp")
+def _resolve_rnx2rtkp() -> str:
+    """Locate the rnx2rtkp binary — tries unix name first, then Windows .exe."""
+    base = Path(__file__).resolve().parent.parent / "rtklib_bin"
+    for candidate in ("rnx2rtkp", "rnx2rtkp.exe"):
+        p = base / candidate
+        if p.is_file():
+            return str(p)
+    return str(base / "rnx2rtkp")  # fall back to unix name (will error on call)
+
+_DEFAULT_RNX2RTKP = _resolve_rnx2rtkp()
 
 
 @dataclass

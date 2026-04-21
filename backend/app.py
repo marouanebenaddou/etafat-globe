@@ -37,7 +37,16 @@ from gnss.adjust import free_adjustment, constrained_adjustment
 from gnss.loops import detect_loops, refine_closures_enu
 
 
-RTKLIB_BIN = Path(__file__).resolve().parent / "rtklib_bin" / "rnx2rtkp"
+def _find_rtklib_binary() -> Path:
+    """Support both Linux/macOS (`rnx2rtkp`) and Windows (`rnx2rtkp.exe`)."""
+    base = Path(__file__).resolve().parent / "rtklib_bin"
+    for name in ("rnx2rtkp", "rnx2rtkp.exe"):
+        candidate = base / name
+        if candidate.is_file():
+            return candidate
+    return base / "rnx2rtkp"  # default (health endpoint will report missing)
+
+RTKLIB_BIN = _find_rtklib_binary()
 
 app = FastAPI(
     title="ETAFAT GNSS Processing API",

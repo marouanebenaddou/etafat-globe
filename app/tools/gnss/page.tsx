@@ -231,30 +231,51 @@ export default function GnssPage() {
     setObsFiles(prev    => [...prev, ...parsed])
     setObsFilesRaw(prev => [...prev, ...newRaw])
 
-    // Auto-populate Étape 2 with each unique detected marker. The user can
-    // then remove the ones that are rovers rather than bases. We only seed
-    // rows that aren't already in the table; user edits win on conflicts.
-    const detected = parsed
-      .map(p => (p.markerName || "").trim())
-      .filter(Boolean)
-    if (detected.length > 0) {
-      setBaseCoords(prev => {
-        const existingNames = new Set(prev.map(b => b.name.trim().toLowerCase()))
-        // If the only existing row is the placeholder (name="BASE_01", empty coords),
-        // replace it outright instead of appending.
-        const isPlaceholderRow = (b: BaseCoord) =>
-          b.name === "BASE_01" && !b.north && !b.east && !b.elev
-        const start = (prev.length === 1 && isPlaceholderRow(prev[0])) ? [] : prev
-        const next = [...start]
-        for (const name of detected) {
-          if (!next.some(b => b.name.trim().toLowerCase() === name.toLowerCase())) {
-            next.push({ name, north: "", east: "", elev: "" })
-          }
+    // Auto-populate Étape 2 only with LIKELY bases. Heuristic: a marker
+    // that appears in exactly ONE observation file is probably a static
+    // base (one continuous recording); a marker that appears in multiple
+    // files is probably a roving rover (different occupations during the
+    // day). The user can still add rover markers manually via + Ajouter.
+    //
+    // Apply across ALL known obs files (existing + new) so adding a 2nd
+    // file for the same marker auto-demotes it from the base list.
+    setBaseCoords(prev => {
+      const isPlaceholderRow = (b: BaseCoord) =>
+        b.name === "BASE_01" && !b.north && !b.east && !b.elev
+      const allFiles = [...obsFiles, ...parsed]
+      const counts = new Map<string, number>()
+      for (const f of allFiles) {
+        const m = (f.markerName || "").trim()
+        if (!m) continue
+        counts.set(m.toLowerCase(), (counts.get(m.toLowerCase()) || 0) + 1)
+      }
+      // Likely bases = markers seen in exactly one file
+      const bases = Array.from(counts.entries())
+        .filter(([, n]) => n === 1)
+        .map(([name]) => allFiles.find(f => (f.markerName || "").trim().toLowerCase() === name)?.markerName?.trim())
+        .filter((s): s is string => Boolean(s))
+      // If the only existing row is the placeholder, start from empty
+      const start = (prev.length === 1 && isPlaceholderRow(prev[0])) ? [] : prev
+      const existingLower = new Set(start.map(b => b.name.trim().toLowerCase()))
+      const next = [...start]
+      for (const name of bases) {
+        if (!existingLower.has(name.toLowerCase())) {
+          next.push({ name, north: "", east: "", elev: "" })
+          existingLower.add(name.toLowerCase())
         }
-        return next
+      }
+      // Auto-demote rows that have become rovers (marker now in 2+ files)
+      // but only if the user hadn't typed coords. We leave manually-edited
+      // rows alone.
+      return next.filter(b => {
+        const nameLower = b.name.trim().toLowerCase()
+        const count = counts.get(nameLower) || 0
+        const userHasEditedCoords = Boolean(b.north || b.east || b.elev)
+        if (count >= 2 && !userHasEditedCoords) return false
+        return true
       })
-    }
-  }, [])
+    })
+  }, [obsFiles])
 
   /* ── Handle base coordinate TXT files ── */
   const handleBaseFiles = useCallback(async (list: FileList | null) => {

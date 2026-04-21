@@ -802,9 +802,21 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         return s.interval_s <= 1.01 and size_mb > 10.0
 
     n = 0
-    # Inter-base baselines (if ≥ 2 bases)
+    # Inter-base baselines (if ≥ 2 bases). Defensive: never pair two
+    # sessions with the same marker — they're the same physical receiver
+    # declared as a base twice (probably from the auto-detection not being
+    # pruned). Baselining a marker against itself produces meaningless
+    # cross-session "vectors" that pollute the report.
     for i, a in enumerate(bases):
         for b in bases[i+1:]:
+            if a.marker_name.strip().lower() == b.marker_name.strip().lower():
+                warnings.append(
+                    f"Skipping same-marker inter-base pair "
+                    f"{a.station_point} × {b.station_point} — probably "
+                    f"{a.marker_name} was declared as a base but has multiple "
+                    f"session files (it's more likely a rover)."
+                )
+                continue
             n += 1
             bl = _bl(a, b, f"B{n:02d}", inter_base=True)
             if bl: baselines.append(bl)

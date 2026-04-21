@@ -245,7 +245,37 @@ def _loops_section(styles, result: dict) -> list:
 def _adjustment_section(styles, label: str, section_n: int, rep: dict | None) -> list:
     if not rep:
         return []
-    # KPIs
+    # When the adjustment ran on a network without redundancy
+    # (DoF = 0, no observations), the numeric report is meaningless —
+    # swap the tables for a plain-French explanation so the PDF doesn't
+    # show misleading zeros.
+    n_obs = int(rep.get("n_obs", 0) or 0)
+    dof   = int(rep.get("dof",   0) or 0)
+    if n_obs == 0 or dof == 0:
+        return [
+            PageBreak(),
+            Paragraph(f"{section_n}. Ajustement {label.lower()}", styles["section"]),
+            Paragraph(
+                "Réseau non redondant — ajustement non applicable.",
+                styles["normal"]),
+            Spacer(1, 6),
+            Paragraph(
+                "Pour qu'un ajustement libre par moindres carrés soit significatif, "
+                "il faut au minimum plus de vecteurs de ligne de base que d'inconnues "
+                "(chaque station libre = 3 inconnues X/Y/Z). Ce calcul n'a pas atteint "
+                "ce seuil : seules les lignes reliant des bases déclarées "
+                "(is_control = True) entrent dans le système, et les lignes cinématiques "
+                "(stop-and-go PPK) sont délibérément exclues car elles représentent des "
+                "mesures directes isolées, pas des observations redondantes entre "
+                "points connus.",
+                styles["caption"]),
+            Spacer(1, 6),
+            Paragraph(
+                "Pour obtenir un véritable ajustement, ajoutez au moins une base "
+                "supplémentaire (les vecteurs base↔base fourniront la redondance) "
+                "ou occupez plusieurs points de contrôle sur lesquels ancrer le réseau.",
+                styles["caption"]),
+        ]
     chi2_pass = "✓ validé" if rep.get("chi2_pass") else "✗ échoué"
     kpis = [
         ["Type", label],

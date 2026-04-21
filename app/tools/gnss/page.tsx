@@ -127,6 +127,75 @@ function readAsText(file: File): Promise<string> {
   })
 }
 
+/* ── Recursively collect Files from a DataTransfer drop event ────────────────
+   Works when the user drops individual files (flat) OR an entire folder
+   (we walk subfolders via webkitGetAsEntry + FileSystemDirectoryReader).
+   Browser coverage: Chrome, Safari, Firefox, Edge — all support the entry
+   API on drop events. We fall back to the flat `dataTransfer.files` when
+   the entry API isn't available (rare).
+*/
+async function readAllEntries(dirEntry: FileSystemDirectoryEntry): Promise<File[]> {
+  const files: File[] = []
+  const reader = dirEntry.createReader()
+  // readEntries is paginated (typically 100/batch). Loop until we get an
+  // empty batch — otherwise very deep folders silently truncate at 100 files.
+  while (true) {
+    const batch: FileSystemEntry[] = await new Promise((resolve, reject) => {
+      reader.readEntries(resolve, reject)
+    })
+    if (batch.length === 0) break
+    for (const entry of batch) {
+      if (entry.isFile) {
+        const file: File = await new Promise((resolve, reject) =>
+          (entry as FileSystemFileEntry).file(resolve, reject)
+        )
+        files.push(file)
+      } else if (entry.isDirectory) {
+        const sub = await readAllEntries(entry as FileSystemDirectoryEntry)
+        files.push(...sub)
+      }
+    }
+  }
+  return files
+}
+
+async function filesFromDrop(dt: DataTransfer): Promise<File[]> {
+  const out: File[] = []
+  const items = dt.items
+  // Entry API path — supports folder traversal
+  if (items && items.length && typeof (items[0] as unknown as {
+    webkitGetAsEntry?: () => FileSystemEntry | null
+  }).webkitGetAsEntry === "function") {
+    const promises: Promise<void>[] = []
+    for (let i = 0; i < items.length; i++) {
+      const entry = (items[i] as unknown as {
+        webkitGetAsEntry(): FileSystemEntry | null
+      }).webkitGetAsEntry()
+      if (!entry) {
+        const f = items[i].getAsFile()
+        if (f) out.push(f)
+        continue
+      }
+      if (entry.isFile) {
+        promises.push(new Promise<void>((resolve) => {
+          (entry as FileSystemFileEntry).file((file) => {
+            out.push(file); resolve()
+          })
+        }))
+      } else if (entry.isDirectory) {
+        promises.push((async () => {
+          const sub = await readAllEntries(entry as FileSystemDirectoryEntry)
+          out.push(...sub)
+        })())
+      }
+    }
+    await Promise.all(promises)
+    return out
+  }
+  // Fallback: flat FileList
+  return Array.from(dt.files)
+}
+
 /* ── UI primitives ── */
 const Card = ({ children, style, padding = 24 }: { children: React.ReactNode; style?: React.CSSProperties; padding?: number }) => (
   <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8edf3", padding, ...style }}>{children}</div>
@@ -209,10 +278,23 @@ export default function GnssPage() {
     : { baselines: [] as BaselineIn[], errors: [] as { line: number; msg: string }[] }
   const parsedVectors = parsedCSV.baselines
 
-  /* ── Handle observation files (HCN or RINEX) ── */
-  const handleObsFiles = useCallback(async (list: FileList | null) => {
+  /* ── Handle observation files (HCN or RINEX).
+         Accepts:
+           • FileList            (flat <input> selection or single-file drop)
+           • File[]              (already-walked tree from filesFromDrop())
+         When a folder is dropped we get hundreds of files — .DS_Store,
+         images, PDFs, etc. Filter to GNSS-relevant extensions so the user
+         doesn't have to curate. HCN stays allowed because ETAFAT receivers
+         emit them as an alternative to RINEX.
+  */
+  const handleObsFiles = useCallback(async (list: FileList | File[] | null) => {
     if (!list) return
-    const newRaw: File[] = Array.from(list)
+    const all: File[] = Array.isArray(list) ? list : Array.from(list)
+    const newRaw: File[] = all.filter(f => {
+      const lower = f.name.toLowerCase()
+      return isRinexObs(f.name) || isRinexNav(f.name) ||
+             lower.endsWith(".hcn")
+    })
     const parsed: ParsedHCNFile[] = []
     for (const file of newRaw) {
       const lower = file.name.toLowerCase()
@@ -278,11 +360,15 @@ export default function GnssPage() {
   }, [obsFiles])
 
   /* ── Handle base coordinate TXT files ── */
-  const handleBaseFiles = useCallback(async (list: FileList | null) => {
+  const handleBaseFiles = useCallback(async (list: FileList | File[] | null) => {
     if (!list) return
     const infos: { name: string; size: number }[] = []
     const allCoords: BaseCoord[] = []
-    for (const file of Array.from(list)) {
+    const all: File[] = Array.isArray(list) ? list : Array.from(list)
+    // Only .txt / .csv / .xyz are valid coord files — skip anything else the
+    // user may have dropped (e.g. a whole project folder).
+    const filtered = all.filter(f => /\.(txt|csv|xyz)$/i.test(f.name))
+    for (const file of filtered) {
       infos.push({ name: file.name, size: file.size })
       const text = await readAsText(file)
       const coords = parseCoordsTXT(text)
@@ -290,17 +376,10 @@ export default function GnssPage() {
     }
     setBaseFiles(prev => [...prev, ...infos])
     if (allCoords.length > 0) setBaseCoords(allCoords)
-    // Keep the raw text around — the backend re-parses it to build precise
-    // control-point ECEF via pyproj (more accurate than our TXT→grid split).
-    setBasesCoordsRawText(prev => {
-      const blobs: string[] = []
-      for (const file of Array.from(list)) blobs.push(file.name)
-      return prev // placeholder; replaced below when we read text
-    })
-    // Actually re-read the files as text and concat — we already got the
-    // coords parsed, but the backend wants the raw file contents.
+    // The backend re-parses the raw TXT to build precise control-point
+    // ECEF via pyproj — re-read the filtered files and concat.
     const texts: string[] = []
-    for (const file of Array.from(list)) {
+    for (const file of filtered) {
       const t = await readAsText(file)
       texts.push(t)
     }
@@ -621,11 +700,12 @@ export default function GnssPage() {
               <DropZone
                 onClick={() => obsRef.current?.click()}
                 onDrop={files => handleObsFiles(files)}
+                onFolderPick={files => handleObsFiles(files)}
                 icon={FileArchive}
-                title={hasRinex ? "Ajouter d'autres fichiers RINEX" : "Glissez vos fichiers HCN ou RINEX ici"}
+                title={hasRinex ? "Ajouter d'autres fichiers RINEX" : "Glissez vos fichiers HCN / RINEX ou un dossier entier"}
                 sub={hasRinex
                   ? "Le backend va lancer rnx2rtkp pour chaque paire (base, mobile)"
-                  : "formats: .hcn · .26o/.26n/.26p (RINEX 2) · .obs/.nav/.rnx (RINEX 3)"}
+                  : "formats: .hcn · .26o/.26n/.26p (RINEX 2) · .obs/.nav/.rnx (RINEX 3). Dossier avec sous-dossiers supporté."}
               />
               {obsFiles.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1076,21 +1156,36 @@ function ApiBadge({ health }: { health: "checking" | "online" | "offline" }) {
   )
 }
 
-function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
+function DropZone({ onClick, onDrop, icon: Icon, title, sub, onFolderPick }: {
   onClick: () => void
-  onDrop: (f: FileList | null) => void
+  onDrop: (f: File[]) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any
   title: string
   sub: string
+  /** Optional handler invoked when the user picks a folder via the
+      native "Sélectionner un dossier" button. Called with the flat list
+      of File objects found by walking the folder tree. */
+  onFolderPick?: (f: File[]) => void
 }) {
   const [over, setOver] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const folderRef = useRef<HTMLInputElement>(null)
   return (
     <div
       onClick={onClick}
       onDragOver={e => { e.preventDefault(); setOver(true) }}
       onDragLeave={() => setOver(false)}
-      onDrop={e => { e.preventDefault(); setOver(false); onDrop(e.dataTransfer.files) }}
+      onDrop={async e => {
+        e.preventDefault(); setOver(false)
+        setBusy(true)
+        try {
+          const files = await filesFromDrop(e.dataTransfer)
+          onDrop(files)
+        } finally {
+          setBusy(false)
+        }
+      }}
       style={{
         border: `2px dashed ${over ? "#007BFF" : "#cbd5e1"}`,
         background: over ? "#f0f7ff" : "#fafbfc",
@@ -1104,7 +1199,42 @@ function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{title}</div>
         <div style={{ fontSize: 11.5, color: "#64748b" }}>{sub}</div>
+        {busy && (
+          <div style={{ fontSize: 10.5, color: "#94a3b8", marginTop: 4 }}>
+            Lecture du dossier…
+          </div>
+        )}
       </div>
+      {onFolderPick && (
+        <>
+          <input ref={folderRef} type="file"
+                 /* webkitdirectory + directory tells Chrome/Safari/FF to
+                    open a folder picker and include every descendant file. */
+                 // @ts-expect-error — non-standard but widely supported
+                 webkitdirectory=""
+                 directory=""
+                 multiple
+                 style={{ display: "none" }}
+                 onChange={e => {
+                   const files = e.target.files
+                   if (!files) return
+                   onFolderPick(Array.from(files))
+                   e.target.value = "" // allow re-picking the same folder
+                 }} />
+          <button
+            onClick={e => { e.stopPropagation(); folderRef.current?.click() }}
+            style={{
+              marginTop: 4, padding: "6px 14px",
+              background: over ? "#fff" : "#f1f5f9",
+              border: "1px solid #e2e8f0", borderRadius: 7,
+              fontSize: 11.5, fontWeight: 600, color: "#334155",
+              cursor: "pointer",
+            }}
+          >
+            Sélectionner un dossier…
+          </button>
+        </>
+      )}
     </div>
   )
 }

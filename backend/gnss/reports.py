@@ -120,6 +120,22 @@ def _fmt(v: Any, digits: int = 3) -> str:
     return str(v)
 
 
+def _num(v: Any, default: float = 0.0) -> float:
+    """Coerce a dict value that might be None/NaN back into a plain float so
+    it's safe to pass through f-string formatters like ``{x:.1f}``.
+    Our JSON response sanitiser (app._sanitize_floats) replaces NaN/Inf
+    with None — without this coercion the downstream PDF formatters raise
+    TypeError on None.
+    """
+    try:
+        f = float(v)
+        if f != f:  # NaN
+            return default
+        return f
+    except (TypeError, ValueError):
+        return default
+
+
 # ──────────────────────────────── sections ──────────────────────────────────
 
 def _cover_section(styles, result: dict, meta: dict) -> list:
@@ -137,9 +153,9 @@ def _cover_section(styles, result: dict, meta: dict) -> list:
         kpi_rows.append(["σ₀ ajustement libre",
                          _fmt(free.get("sigma0"), 3)])
         kpi_rows.append(["Précision planimétrique (2σ)",
-                         f"{free.get('horiz_accuracy_mm', 0):.1f} mm"])
+                         f"{_num(free.get('horiz_accuracy_mm')):.1f} mm"])
         kpi_rows.append(["Précision altimétrique (2σ)",
-                         f"{free.get('vert_accuracy_mm',  0):.1f} mm"])
+                         f"{_num(free.get('vert_accuracy_mm')):.1f} mm"])
     if cons:
         kpi_rows.append(["σ₀ ajustement contraint",
                          _fmt(cons.get("sigma0"), 3)])
@@ -180,15 +196,17 @@ def _baselines_section(styles, result: dict) -> list:
         "RMS (mm)", "σ X/Y/Z (mm)", "Dwell", "Fix %", "Sat",
     ]]
     for b in bls:
-        sx, sy, sz = b.get("sdx_m", 0)*1000, b.get("sdy_m", 0)*1000, b.get("sdz_m", 0)*1000
-        dwell = f"{b['duration_s']:.0f} s" if b.get("duration_s") else "—"
-        fr    = f"{b['fix_ratio']*100:.0f}%" if b.get("fix_ratio") is not None else "—"
+        sx = _num(b.get("sdx_m")) * 1000
+        sy = _num(b.get("sdy_m")) * 1000
+        sz = _num(b.get("sdz_m")) * 1000
+        dwell = f"{_num(b.get('duration_s')):.0f} s" if b.get("duration_s") else "—"
+        fr    = f"{_num(b.get('fix_ratio'))*100:.0f}%" if b.get("fix_ratio") is not None else "—"
         ns    = str(b["n_sat"]) if b.get("n_sat") is not None else "—"
         rows.append([
             b.get("id", ""), b.get("start", ""), b.get("end", ""),
-            f"{b.get('length_m', 0):.3f}",
+            f"{_num(b.get('length_m')):.3f}",
             b.get("solution_type", ""),
-            f"{b.get('rms_m', 0)*1000:.2f}",
+            f"{_num(b.get('rms_m'))*1000:.2f}",
             f"{sx:.1f}/{sy:.1f}/{sz:.1f}",
             dwell, fr, ns,
         ])
@@ -218,10 +236,10 @@ def _loops_section(styles, result: dict) -> list:
             lp.get("id", ""),
             " · ".join(lp.get("baselines", [])[:6])
              + (" …" if len(lp.get("baselines", [])) > 6 else ""),
-            f"{lp.get('length_m', 0):.2f}",
-            f"{lp.get('dh_m', 0)*1000:.2f} mm",
-            f"{lp.get('dv_m', 0)*1000:.2f} mm",
-            f"{lp.get('ppm', 0):.2f}",
+            f"{_num(lp.get('length_m')):.2f}",
+            f"{_num(lp.get('dh_m'))*1000:.2f} mm",
+            f"{_num(lp.get('dv_m'))*1000:.2f} mm",
+            f"{_num(lp.get('ppm')):.2f}",
             status,
         ])
     t = Table(rows, colWidths=[14*mm, 60*mm, 22*mm, 22*mm, 22*mm, 14*mm, 24*mm])
@@ -269,6 +287,9 @@ def _tracking_section(styles, result: dict, section_n: int) -> list:
             styles["caption"]),
         Spacer(1, 6),
     ]
+    from PIL import Image as _PILImage
+    max_w = 180 * mm
+    max_h = 240 * mm   # leaves room for the caption on A4
     for i, ch in enumerate(charts):
         try:
             png_bytes = base64.b64decode(ch.get("png_b64", ""))
@@ -279,9 +300,18 @@ def _tracking_section(styles, result: dict, section_n: int) -> list:
         caption = (f"{ch.get('station','—')} · "
                    f"{ch.get('n_sats', 0)} satellites · "
                    f"{ch.get('n_epochs', 0)} epochs · "
-                   f"Δt={ch.get('interval_s', 0):.1f} s")
-        img = Image(io.BytesIO(png_bytes), width=180*mm, height=None,
-                    kind="proportional")
+                   f"Δt={_num(ch.get('interval_s')):.1f} s")
+        # Read native dimensions so we can preserve aspect ratio on A4.
+        with _PILImage.open(io.BytesIO(png_bytes)) as pil:
+            pw, ph = pil.size
+        aspect = pw / max(ph, 1)
+        if aspect >= max_w / max_h:
+            img_w = max_w
+            img_h = max_w / aspect
+        else:
+            img_h = max_h
+            img_w = max_h * aspect
+        img = Image(io.BytesIO(png_bytes), width=img_w, height=img_h)
         flow.append(img)
         flow.append(Paragraph(caption, styles["caption"]))
         # Page break between stations so each chart is legible on its own page
@@ -327,12 +357,12 @@ def _adjustment_section(styles, label: str, section_n: int, rep: dict | None) ->
     chi2_pass = "✓ validé" if rep.get("chi2_pass") else "✗ échoué"
     kpis = [
         ["Type", label],
-        ["σ₀",   f"{rep.get('sigma0', 0):.3f}"],
-        ["χ²",   f"{rep.get('chi2', 0):.3f}  ({chi2_pass})"],
-        ["DoF",  str(rep.get("dof", 0))],
-        ["n obs", str(rep.get("n_obs", 0))],
-        ["Précision H (2σ)", f"{rep.get('horiz_accuracy_mm', 0):.1f} mm"],
-        ["Précision V (2σ)", f"{rep.get('vert_accuracy_mm',  0):.1f} mm"],
+        ["σ₀",   f"{_num(rep.get('sigma0')):.3f}"],
+        ["χ²",   f"{_num(rep.get('chi2')):.3f}  ({chi2_pass})"],
+        ["DoF",  str(rep.get("dof") or 0)],
+        ["n obs", str(rep.get("n_obs") or 0)],
+        ["Précision H (2σ)", f"{_num(rep.get('horiz_accuracy_mm')):.1f} mm"],
+        ["Précision V (2σ)", f"{_num(rep.get('vert_accuracy_mm')):.1f} mm"],
     ]
     kpi_table = Table(kpis, colWidths=[55*mm, 50*mm])
     kpi_table.setStyle(TableStyle([
@@ -356,12 +386,12 @@ def _adjustment_section(styles, label: str, section_n: int, rep: dict | None) ->
             g = p.get("grid") or {}
             data.append([
                 p.get("name", ""),
-                f"{g.get('north', 0):.4f}",
-                f"{g.get('east',  0):.4f}",
-                f"{g.get('elev',  0):.4f}",
-                f"{p.get('sx', 0)*1000:.1f}",
-                f"{p.get('sy', 0)*1000:.1f}",
-                f"{p.get('sz', 0)*1000:.1f}",
+                f"{_num(g.get('north')):.4f}",
+                f"{_num(g.get('east')):.4f}",
+                f"{_num(g.get('elev')):.4f}",
+                f"{_num(p.get('sx'))*1000:.1f}",
+                f"{_num(p.get('sy'))*1000:.1f}",
+                f"{_num(p.get('sz'))*1000:.1f}",
                 "Contrôle" if p.get("is_control") else "Ajusté",
             ])
         widths = [26*mm, 26*mm, 26*mm, 22*mm, 16*mm, 16*mm, 16*mm, 20*mm]
@@ -372,12 +402,12 @@ def _adjustment_section(styles, label: str, section_n: int, rep: dict | None) ->
         for p in pts:
             data.append([
                 p.get("name", ""),
-                f"{p.get('x', 0):.4f}",
-                f"{p.get('y', 0):.4f}",
-                f"{p.get('z', 0):.4f}",
-                f"{p.get('sx', 0)*1000:.1f}",
-                f"{p.get('sy', 0)*1000:.1f}",
-                f"{p.get('sz', 0)*1000:.1f}",
+                f"{_num(p.get('x')):.4f}",
+                f"{_num(p.get('y')):.4f}",
+                f"{_num(p.get('z')):.4f}",
+                f"{_num(p.get('sx'))*1000:.1f}",
+                f"{_num(p.get('sy'))*1000:.1f}",
+                f"{_num(p.get('sz'))*1000:.1f}",
                 "Contrôle" if p.get("is_control") else "Ajusté",
             ])
         widths = [26*mm, 30*mm, 30*mm, 30*mm, 14*mm, 14*mm, 14*mm, 20*mm]

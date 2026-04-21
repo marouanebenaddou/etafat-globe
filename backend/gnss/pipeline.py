@@ -308,6 +308,61 @@ class PipelineInput:
     projection_hint_latlon_deg: Optional[tuple[float, float]] = None
 
 
+def _cluster_fix_positions(epochs: list[dict],
+                           cluster_radius_m: float = 0.5,
+                           min_cluster_size: int = 3) -> list[dict]:
+    """Spatial-first clustering: group Fix epochs that land within
+    ``cluster_radius_m`` of each other regardless of time gaps.
+
+    Much more forgiving than consecutive-epoch segmentation — it catches
+    stops even when rnx2rtkp's Fix quality flickers through a long
+    occupation and the epochs aren't contiguous.
+    """
+    import math
+    fix_epochs = [e for e in epochs if e["Q"] == 1]
+    if len(fix_epochs) < min_cluster_size:
+        return []
+
+    # Simple greedy clustering: walk time-ordered epochs, add to an existing
+    # cluster if its centroid is within the radius, else start a new one.
+    clusters: list[list[dict]] = []
+    for e in fix_epochs:
+        placed = False
+        for c in clusters:
+            # Centroid of existing cluster
+            cx = sum(x["x"] for x in c) / len(c)
+            cy = sum(x["y"] for x in c) / len(c)
+            cz = sum(x["z"] for x in c) / len(c)
+            d = math.sqrt((e["x"]-cx)**2 + (e["y"]-cy)**2 + (e["z"]-cz)**2)
+            if d <= cluster_radius_m:
+                c.append(e); placed = True; break
+        if not placed:
+            clusters.append([e])
+
+    stops: list[dict] = []
+    for c in clusters:
+        if len(c) < min_cluster_size:
+            continue
+        xs = [e["x"] for e in c]; ys = [e["y"] for e in c]; zs = [e["z"] for e in c]
+        mx, my, mz = sum(xs)/len(xs), sum(ys)/len(ys), sum(zs)/len(zs)
+        def _sd(vals, m):
+            if len(vals) < 2: return 0.0
+            return (sum((v - m) ** 2 for v in vals) / (len(vals) - 1)) ** 0.5
+        sx, sy, sz = _sd(xs, mx), _sd(ys, my), _sd(zs, mz)
+        stops.append({
+            "t_start":  c[0]["t"], "t_end": c[-1]["t"],
+            "duration": c[-1]["t"] - c[0]["t"],
+            "n_epochs": len(c),
+            "fix_ratio": 1.0,      # all cluster members are Q=1 by construction
+            "x": mx, "y": my, "z": mz,
+            "sx": max(sx, 0.003), "sy": max(sy, 0.003), "sz": max(sz, 0.003),
+            "ns":    round(sum(e["ns"] for e in c) / len(c)),
+            "ratio": sum(e["ratio"] for e in c) / len(c),
+        })
+    stops.sort(key=lambda s: s["t_start"])
+    return stops
+
+
 def _detect_stops(epochs: list[dict],
                   speed_threshold_ms: float = 0.08,
                   min_duration_s: float = 10.0,
@@ -577,11 +632,29 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         if not epochs:
             warnings.append(f"Kinematic {rover.station_point}: 0 epochs parsed")
             return []
-        # Thresholds matching CHC's stop-and-go detection: ≤ 0.10 m/s for
-        # ≥ 10 s. Accept Float (Q=2) alongside Fix (Q=1) because long kinematic
-        # sessions often lose Fix momentarily even when the rover is stopped;
-        # the fix_ratio of each stop tells us the quality downstream.
-        stops = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
+        # Dual strategy:
+        #   • consecutive-epoch segmentation (_detect_stops) captures clean
+        #     occupations with mostly-Fix epochs in a row
+        #   • spatial clustering (_cluster_fix_positions) groups scattered
+        #     Fix epochs at the same physical location, useful when rnx2rtkp
+        #     flickers between Fix and Float during long sessions
+        # We run both and merge, de-duplicating by centroid proximity.
+        stops_time  = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
+        stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.5,
+                                              min_cluster_size=3)
+        # Deduplicate: keep a stop from the spatial run only if it's not already
+        # covered (≤ 2 m) by one from the time run.
+        merged = list(stops_time)
+        import math as _m
+        for s in stops_space:
+            dup = any(
+                _m.sqrt((s["x"]-t["x"])**2 + (s["y"]-t["y"])**2 + (s["z"]-t["z"])**2) < 2.0
+                for t in merged
+            )
+            if not dup:
+                merged.append(s)
+        merged.sort(key=lambda s: s["t_start"])
+        stops = merged
         n_fix = sum(1 for e in epochs if e["Q"] == 1)
         warnings.append(
             f"Kinematic {rover.station_point}: {len(epochs)} epochs "

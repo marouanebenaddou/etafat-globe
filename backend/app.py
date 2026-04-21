@@ -28,13 +28,15 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from gnss.models import Baseline, Station
 from gnss.adjust import free_adjustment, constrained_adjustment
 from gnss.loops import detect_loops, refine_closures_enu
+from gnss.pipeline import PipelineInput, compute_all_baselines
+from gnss.rinex import is_obs, is_nav
 
 
 def _find_rtklib_binary() -> Path:
@@ -139,35 +141,32 @@ def rtklib_version() -> dict:
     return {"ok": True, "banner": banner}
 
 
-@app.post("/pipeline/from-vectors", response_model=PipelineOut)
-def pipeline_from_vectors(inp: PipelineIn) -> PipelineOut:
-    """Full pipeline from pre-computed baseline vectors.
+def _run_pipeline_after_baselines(
+    baselines: list[Baseline],
+    stations:  list[Station],
+    projection_hint: Optional["ProjectionHint"] = None,
+    h_limit_m: float = 1.0,
+    v_limit_m: float = 2.0,
+    extra: Optional[dict] = None,
+) -> PipelineOut:
+    """The part of the pipeline that runs on already-computed baseline vectors.
 
-    Steps:
-      1. Convert request → domain models.
-      2. Build the baseline graph, detect fundamental loops.
-      3. Compute closures in ECEF then refine in local ENU using the
-         projection hint (if provided).
-      4. Run free adjustment (always).
-      5. If any station is flagged as control, run constrained adjustment.
+    Used by both `/pipeline/from-vectors` (client supplies vectors) and
+    `/pipeline/from-rinex` (we compute vectors via rnx2rtkp first).
     """
-    if len(inp.baselines) < 1:
+    if len(baselines) < 1:
         raise HTTPException(400, "at least one baseline is required")
-    if len(inp.stations) < 2:
+    if len(stations) < 2:
         raise HTTPException(400, "at least two stations are required")
 
-    stations = [Station(**s.model_dump()) for s in inp.stations]
-    baselines = [Baseline(**b.model_dump()) for b in inp.baselines]
-
-    # Loops
     loops = detect_loops(baselines)
-    if inp.projection_hint:
+    if projection_hint is not None:
         import math
         refine_closures_enu(
             loops, {b.id: b for b in baselines},
-            math.radians(inp.projection_hint.lat_deg),
-            math.radians(inp.projection_hint.lon_deg),
-            h_limit=inp.h_limit_m, v_limit=inp.v_limit_m,
+            math.radians(projection_hint.lat_deg),
+            math.radians(projection_hint.lon_deg),
+            h_limit=h_limit_m, v_limit=v_limit_m,
         )
     loops_out = [
         {
@@ -182,23 +181,146 @@ def pipeline_from_vectors(inp: PipelineIn) -> PipelineOut:
         for lp in loops
     ]
 
-    # Free adjustment
     free = free_adjustment(stations, baselines)
     free_out = _report_to_dict(free)
 
-    # Constrained adjustment (only if any control station)
     constrained_out: Optional[dict[str, Any]] = None
     if any(s.is_control for s in stations):
         constrained = constrained_adjustment(stations, baselines)
         constrained_out = _report_to_dict(constrained)
 
-    return PipelineOut(
+    out = PipelineOut(
         n_baselines=len(baselines),
         n_stations=len(stations),
         loops=loops_out,
         free=free_out,
         constrained=constrained_out,
     )
+    if extra:
+        # pydantic v2 lets us attach extra data via model_copy(update=...)
+        return out.model_copy(update={"extra": extra}) if "extra" in out.model_fields else out
+    return out
+
+
+@app.post("/pipeline/from-vectors", response_model=PipelineOut)
+def pipeline_from_vectors(inp: PipelineIn) -> PipelineOut:
+    """Full pipeline from pre-computed baseline vectors."""
+    stations  = [Station(**s.model_dump()) for s in inp.stations]
+    baselines = [Baseline(**b.model_dump()) for b in inp.baselines]
+    return _run_pipeline_after_baselines(
+        baselines, stations,
+        projection_hint=inp.projection_hint,
+        h_limit_m=inp.h_limit_m, v_limit_m=inp.v_limit_m,
+    )
+
+
+# ───── from-rinex ──────────────────────────────────────────────────────────
+import json as _json
+import os as _os
+import tempfile as _tempfile
+
+
+@app.post("/pipeline/from-rinex")
+async def pipeline_from_rinex(
+    files: list[UploadFile] = File(..., description="RINEX observation + navigation files"),
+    base_marker_names: str = Form(..., description="JSON array of marker names treated as base stations, e.g. [\"moyen2\",\"Moyen3\"]"),
+    control_stations: str = Form("[]", description="JSON array of {name, x, y, z, is_control} for known control points"),
+    projection_hint: str = Form("null", description="Optional JSON {lat_deg, lon_deg} for proper ENU loop closures"),
+    h_limit_m: float = Form(1.0),
+    v_limit_m: float = Form(2.0),
+):
+    """Upload RINEX files → we run rnx2rtkp for every (base, rover-session)
+    pair → then the usual loops + adjustments pipeline.
+
+    The multipart body carries RINEX obs and nav files mixed in one `files`
+    list; we sort them by extension. At least two observation files and one
+    navigation file are required.
+    """
+    # Parse JSON form fields
+    try:
+        base_names = _json.loads(base_marker_names)
+        controls_raw = _json.loads(control_stations)
+        proj_raw = _json.loads(projection_hint)
+    except _json.JSONDecodeError as e:
+        raise HTTPException(400, f"malformed JSON in form field: {e}")
+    if not isinstance(base_names, list) or not base_names:
+        raise HTTPException(400, "base_marker_names must be a non-empty JSON array")
+
+    control_list = [Station(
+        name=str(c["name"]),
+        x=float(c.get("x", 0.0)),
+        y=float(c.get("y", 0.0)),
+        z=float(c.get("z", 0.0)),
+        is_control=bool(c.get("is_control", True)),
+    ) for c in controls_raw]
+
+    hint_obj: Optional[ProjectionHint] = None
+    if proj_raw:
+        hint_obj = ProjectionHint(**proj_raw)
+
+    # Save uploads, preserving original filename (rnx2rtkp looks at the extension)
+    with _tempfile.TemporaryDirectory() as tmp:
+        obs_paths: list[str] = []
+        nav_paths: list[str] = []
+        for up in files:
+            dest = _os.path.join(tmp, _os.path.basename(up.filename or ""))
+            if not dest:
+                continue
+            data = await up.read()
+            with open(dest, "wb") as f:
+                f.write(data)
+            if   is_obs(dest): obs_paths.append(dest)
+            elif is_nav(dest): nav_paths.append(dest)
+
+        if len(obs_paths) < 2:
+            raise HTTPException(400, f"need ≥ 2 observation files (got {len(obs_paths)})")
+        if not nav_paths:
+            raise HTTPException(400, "need at least one navigation file")
+
+        pin = PipelineInput(
+            obs_files=obs_paths,
+            nav_files=nav_paths,
+            base_marker_names=base_names,
+            control_stations=control_list,
+            projection_hint_latlon_deg=(hint_obj.lat_deg, hint_obj.lon_deg) if hint_obj else None,
+        )
+        try:
+            baselines, stations, warnings = compute_all_baselines(pin)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except RuntimeError as e:
+            raise HTTPException(500, f"baseline computation failed: {e}")
+
+    if not baselines:
+        raise HTTPException(
+            500,
+            "rnx2rtkp produced no baselines — check the server logs. "
+            f"Warnings: {warnings}"
+        )
+
+    out = _run_pipeline_after_baselines(
+        baselines, stations,
+        projection_hint=hint_obj,
+        h_limit_m=h_limit_m, v_limit_m=v_limit_m,
+    )
+    # Surface the warnings + per-baseline metadata to the client
+    return {
+        **out.model_dump(),
+        "baselines_detail": [
+            {
+                "id":            b.id,
+                "start":         b.start,
+                "end":           b.end,
+                "dx":            b.dx, "dy": b.dy, "dz": b.dz,
+                "length_m":      b.length,
+                "solution_type": b.solution_type,
+                "rms_m":         b.rms,
+                "sdx_m":         b.sdx, "sdy_m": b.sdy, "sdz_m": b.sdz,
+            }
+            for b in baselines
+        ],
+        "warnings": warnings,
+    }
 
 
 # ═══════════════════════════════  helpers  ═════════════════════════════════

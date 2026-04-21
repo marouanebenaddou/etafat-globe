@@ -155,14 +155,14 @@ def _default_opts_conf() -> str:
     ])
 
 
-# Match an rnx2rtkp XYZ-ECEF solution line. Format looks like (columns are
-# space-separated, timestamp format varies):
-#   YYYY/MM/DD HH:MM:SS.fff  X Y Z Q ns sdx sdy sdz ...
-# or
-#   GPST_SEC  X Y Z Q ns sdx sdy sdz ...
-# We hunt for three large-magnitude floats (ECEF coords) followed by Q (1-5) + ns.
+# Match an rnx2rtkp XYZ-ECEF solution line. rnx2rtkp output looks like:
+#   2026/01/06 08:52:46.000   6250798.1907   -830364.9192    958687.6367   1   5   0.0049   0.0018   0.0019  -0.0020  -0.0008   0.0020   4.00    2.3
+# (timestamp ·  X Y Z · Q · ns · sdx sdy sdz sdxy sdyz sdzx · age · ratio)
+# X and Z are ECEF coords in metres → always ≥ 5-digit magnitudes. The
+# negative-lookbehind stops the match from starting in the middle of the
+# timestamp fractional seconds.
 _SOL_LINE = re.compile(
-    r"\s+(?P<x>-?\d{5,8}\.\d+)\s+"
+    r"(?<![\d.])(?P<x>-?\d{5,8}\.\d+)\s+"
     r"(?P<y>-?\d{1,8}\.\d+)\s+"
     r"(?P<z>-?\d{5,8}\.\d+)\s+"
     r"(?P<Q>[1-5])\s+"
@@ -214,7 +214,7 @@ def _run_rnx2rtkp(base_obs: str, rover_obs: str, nav_files: list[str],
     for line in pos_text.splitlines():
         if not line or line.startswith("%"):
             continue
-        m = _SOL_LINE.match(line)
+        m = _SOL_LINE.search(line)
         if not m:
             continue
         rec = {

@@ -646,16 +646,9 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
         #     flickers between Fix and Float during long sessions
         # We run both and merge, de-duplicating by centroid proximity.
         stops_time  = _detect_stops(epochs, speed_threshold_ms=0.10, min_duration_s=10.0)
-        # Spatial clustering: 10 cm radius (real occupations are sub-5 cm;
-        # 10 cm gives margin for multipath + AR jitter), 2-epoch minimum
-        # (just 2 Fix at the same spot count — catches K's sparse stops),
-        # 10-min max time span (revisits split).
         stops_space = _cluster_fix_positions(epochs, cluster_radius_m=0.10,
                                               min_cluster_size=2,
                                               max_time_span_s=600.0)
-        # Deduplicate: spatial stop kept only if > 3 m from every time-run stop.
-        # At 3 m two Fix clusters most likely represent the same occupation
-        # captured by both detectors.
         merged = list(stops_time)
         import math as _m
         for s in stops_space:
@@ -665,8 +658,22 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             )
             if not dup:
                 merged.append(s)
-        merged.sort(key=lambda s: s["t_start"])
-        stops = merged
+        # Quality gate: a real occupation's position scatter σ is sub-cm. We
+        # reject any stop whose max single-axis σ exceeds 5 cm — that's an
+        # order of magnitude larger than a clean static point and almost
+        # always indicates a drifting rover rather than a held survey point.
+        MAX_SIGMA_M = 0.05
+        kept: list[dict] = []
+        rejected = 0
+        for s in merged:
+            if max(s["sx"], s["sy"], s["sz"]) <= MAX_SIGMA_M:
+                kept.append(s)
+            else:
+                rejected += 1
+        if rejected:
+            warnings.append(f"{rover.station_point}: filtered {rejected} stops with σ > 5 cm (drift)")
+        kept.sort(key=lambda s: s["t_start"])
+        stops = kept
         n_fix = sum(1 for e in epochs if e["Q"] == 1)
         warnings.append(
             f"Kinematic {rover.station_point}: {len(epochs)} epochs "

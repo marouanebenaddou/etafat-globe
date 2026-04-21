@@ -170,9 +170,18 @@ def _run_pipeline_after_baselines(
     if len(stations) < 2:
         raise HTTPException(400, "at least two stations are required")
 
+    # Only the inter-base baselines feed the LS network adjustment.
+    # Rover-to-base vectors (static OR kinematic) are independent direct
+    # measurements; mixing them in would produce wild σ₀ because the
+    # rover positions don't share network redundancy with each other.
+    # An "inter-base" baseline is one whose endpoints are both declared
+    # as control stations (is_control=True) — that matches what CHC does
+    # internally for its Free Adjustment report.
+    control_names = {s.name for s in stations if s.is_control}
     static_baselines = [
         b for b in baselines
-        if not (b.solution_type or "").lower().startswith("kine")
+        if b.start in control_names and b.end in control_names
+        and not (b.solution_type or "").lower().startswith("kine")
     ]
     static_station_names = {s for b in static_baselines for s in (b.start, b.end)}
     static_stations = [s for s in stations if s.name in static_station_names]

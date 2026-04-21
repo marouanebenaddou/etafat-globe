@@ -1,13 +1,18 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import {
   ChevronRight, FileArchive, FileText, MapPin, Globe2,
   PlayCircle, CheckCircle2, AlertTriangle, XCircle,
   Layers, Activity, Satellite, Radio, Anchor, Target,
   Loader2, Info, Trash2, FileDown, Eye,
-  Clock, Signal, Cpu, Database,
+  Clock, Signal, Cpu, Database, Wifi, WifiOff, Calculator, Wand2,
 } from "lucide-react"
+import {
+  checkHealth, runPipeline, parseBaselinesCSV, stationsFromBaselines,
+  REFERENCE_DATASET, API_URL,
+  type PipelineOut, type BaselineIn,
+} from "./api"
 
 /* ── Types ── */
 type ParsedHCNFile = {
@@ -138,6 +143,29 @@ export default function GnssPage() {
   const [done,       setDone]       = useState(false)
   const [activeTab,  setActiveTab]  = useState<"baselines" | "loops" | "free" | "constrained">("baselines")
 
+  /* ── Backend integration state ── */
+  const [apiHealth, setApiHealth] = useState<"checking" | "online" | "offline">("checking")
+  const [baselinesCSV, setBaselinesCSV] = useState<string>("")
+  const [csvErrors, setCsvErrors] = useState<{ line: number; msg: string }[]>([])
+  const [apiResult, setApiResult] = useState<PipelineOut | null>(null)
+  const [apiError,  setApiError]  = useState<string | null>(null)
+
+  /* Ping the backend on mount (and when API URL changes) */
+  useEffect(() => {
+    const ctrl = new AbortController()
+    setApiHealth("checking")
+    checkHealth(ctrl.signal)
+      .then(() => setApiHealth("online"))
+      .catch(() => setApiHealth("offline"))
+    return () => ctrl.abort()
+  }, [])
+
+  /* Parsed baseline vectors — derived, not stored, to avoid state drift */
+  const parsedCSV = baselinesCSV.trim()
+    ? parseBaselinesCSV(baselinesCSV)
+    : { baselines: [] as BaselineIn[], errors: [] as { line: number; msg: string }[] }
+  const parsedVectors = parsedCSV.baselines
+
   /* ── Handle HCN obs files ── */
   const handleObsFiles = useCallback(async (list: FileList | null) => {
     if (!list) return
@@ -185,22 +213,61 @@ export default function GnssPage() {
     setBaseCoords(prev => { const a = [...prev]; a[i] = { ...a[i], [field]: v }; return a })
   }
 
-  const canRun  = obsFiles.length > 0 && projection !== "" && baseCoords.some(b => b.north && b.east)
+  /* With vectors ⇒ real calculation via backend. Without ⇒ demo mode (reference PDF data). */
+  const useRealEngine = parsedVectors.length > 0 && apiHealth === "online"
+  const canRun        = parsedVectors.length > 0
+    ? apiHealth === "online"
+    : (obsFiles.length > 0 && projection !== "" && baseCoords.some(b => b.north && b.east))
 
-  const run = () => {
-    setProcessing(true); setProgress(0); setDone(false)
-    const t = setInterval(() => {
-      setProgress(p => {
-        if (p >= 100) { clearInterval(t); setProcessing(false); setDone(true); return 100 }
-        return p + 2
-      })
-    }, 120)
+  const run = async () => {
+    setProcessing(true); setProgress(0); setDone(false); setApiError(null); setApiResult(null)
+
+    if (useRealEngine) {
+      /* ── REAL CALL ── */
+      try {
+        // animate progress while the request is in flight
+        const fake = setInterval(() => setProgress(p => Math.min(p + 4, 92)), 150)
+        const stations = stationsFromBaselines(parsedVectors).map(name => {
+          if (name === REFERENCE_DATASET.control.name) {
+            return { name, x: REFERENCE_DATASET.control.x, y: REFERENCE_DATASET.control.y,
+                     z: REFERENCE_DATASET.control.z, is_control: true }
+          }
+          return { name }
+        })
+        const result = await runPipeline({
+          baselines: parsedVectors,
+          stations,
+          projection_hint: { lat_deg: REFERENCE_DATASET.lat_deg, lon_deg: REFERENCE_DATASET.lon_deg },
+        })
+        clearInterval(fake)
+        setProgress(100)
+        setApiResult(result)
+        setTimeout(() => { setProcessing(false); setDone(true) }, 250)
+      } catch (err) {
+        setProcessing(false)
+        setApiError(err instanceof Error ? err.message : String(err))
+      }
+    } else {
+      /* ── DEMO MODE (hardcoded reference data) ── */
+      const t = setInterval(() => {
+        setProgress(p => {
+          if (p >= 100) { clearInterval(t); setProcessing(false); setDone(true); return 100 }
+          return p + 2
+        })
+      }, 120)
+    }
   }
 
   const reset = () => {
     setObsFiles([]); setBaseFiles([]); setProjection(""); setCrsInfo(null)
     setBaseCoords([{ name: "BASE_01", north: "", east: "", elev: "" }])
+    setBaselinesCSV(""); setCsvErrors([]); setApiResult(null); setApiError(null)
     setProgress(0); setDone(false)
+  }
+
+  const loadReferenceDataset = () => {
+    setBaselinesCSV(REFERENCE_DATASET.csv)
+    setCsvErrors([])
   }
 
   const step1Done = obsFiles.length > 0
@@ -231,12 +298,15 @@ export default function GnssPage() {
             <p style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Calcul automatique · Lignes de base · Fermeture des boucles · Ajustements</p>
           </div>
         </div>
-        {done && (
-          <button onClick={reset}
-            style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b", border: "1px solid #e2e8f0", padding: "9px 16px", borderRadius: 8, background: "#fff", display: "flex", alignItems: "center", gap: 7 }}>
-            <Trash2 size={13} /> Nouveau calcul
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <ApiBadge health={apiHealth} />
+          {done && (
+            <button onClick={reset}
+              style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b", border: "1px solid #e2e8f0", padding: "9px 16px", borderRadius: 8, background: "#fff", display: "flex", alignItems: "center", gap: 7 }}>
+              <Trash2 size={13} /> Nouveau calcul
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── RESULTS VIEW ── */}
@@ -248,11 +318,18 @@ export default function GnssPage() {
                 <CheckCircle2 size={28} color="#fff" />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3 }}>Calcul terminé avec succès</div>
-                <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  {obsFiles.length} fichier{obsFiles.length > 1 ? "s" : ""} traité{obsFiles.length > 1 ? "s" : ""} ·{" "}
-                  {baseCoords.filter(b => b.north && b.east).length} base{baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} ·{" "}
-                  Tolérances respectées
+                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3, display: "flex", alignItems: "center", gap: 10 }}>
+                  Calcul terminé avec succès
+                  {apiResult && (
+                    <span style={{ fontSize: 10, fontWeight: 800, background: "rgba(255,255,255,0.25)", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
+                      <Calculator size={9} style={{ display: "inline", marginRight: 4 }} />MOTEUR RÉEL
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.9 }}>
+                  {apiResult
+                    ? `${apiResult.n_baselines} lignes de base · ${apiResult.loops.length} boucles · σ₀ ajust. libre = ${apiResult.free.sigma0.toFixed(3)} · précision H/V = ${apiResult.free.horiz_accuracy_mm.toFixed(1)}/${apiResult.free.vert_accuracy_mm.toFixed(1)} mm (2σ)`
+                    : `${obsFiles.length} fichier${obsFiles.length > 1 ? "s" : ""} · ${baseCoords.filter(b => b.north && b.east).length} base${baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} · Tolérances respectées`}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -269,10 +346,10 @@ export default function GnssPage() {
           <Card padding={0} style={{ overflow: "hidden" }}>
             <div style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
               {([
-                { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: 22 },
-                { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: 9  },
-                { id: "free",        label: "Ajustement libre",   Icon: Target,   count: 14 },
-                { id: "constrained", label: "Ajust. contraint",   Icon: Anchor,   count: 14 },
+                { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: apiResult?.n_baselines ?? 22 },
+                { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: apiResult?.loops.length ?? 9 },
+                { id: "free",        label: "Ajustement libre",   Icon: Target,   count: apiResult?.free.points.length ?? 14 },
+                { id: "constrained", label: "Ajust. contraint",   Icon: Anchor,   count: apiResult?.constrained?.points.length ?? 14 },
               ] as const).map(t => (
                 <button key={t.id}
                   onClick={() => setActiveTab(t.id)}
@@ -294,10 +371,10 @@ export default function GnssPage() {
               ))}
             </div>
             <div style={{ padding: 24 }}>
-              {activeTab === "baselines"   && <BaselinesTable stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "loops"       && <LoopsTable     stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "free"        && <AdjustmentTable type="free"        stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "constrained" && <AdjustmentTable type="constrained" stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "baselines"   && <BaselinesTable apiResult={apiResult} inputVectors={parsedVectors} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "loops"       && <LoopsTable     apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "free"        && <AdjustmentTable type="free"        apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "constrained" && <AdjustmentTable type="constrained" apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
             </div>
           </Card>
         </>
@@ -458,17 +535,102 @@ export default function GnssPage() {
               )}
             </Card>
 
+            {/* Step 4 — Baseline vectors (real engine input) */}
+            <Card>
+              <SectionTitle
+                step={4}
+                title="Vecteurs de lignes de base"
+                sub="Collez les vecteurs ECEF calculés par CHC (ou votre logiciel de baseline). Sans vecteurs, le calcul utilise le jeu de démonstration."
+                done={parsedVectors.length > 0}
+              />
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+                <button onClick={loadReferenceDataset}
+                  style={{
+                    fontSize: 12, fontWeight: 600, color: "#8b5cf6",
+                    border: "1px solid #8b5cf640", background: "#8b5cf610",
+                    padding: "8px 14px", borderRadius: 7,
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}>
+                  <Wand2 size={13} /> Charger le jeu de test (24/12/2025)
+                </button>
+                {parsedVectors.length > 0 && (
+                  <span style={{
+                    fontSize: 11.5, color: "#10b981", fontWeight: 600, background: "#10b98114",
+                    padding: "5px 10px", borderRadius: 6,
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}>
+                    <CheckCircle2 size={11} /> {parsedVectors.length} vecteur{parsedVectors.length > 1 ? "s" : ""} détecté{parsedVectors.length > 1 ? "s" : ""}
+                  </span>
+                )}
+                {parsedCSV.errors.length > 0 && (
+                  <span style={{
+                    fontSize: 11.5, color: "#f59e0b", fontWeight: 600, background: "#f59e0b14",
+                    padding: "5px 10px", borderRadius: 6,
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}>
+                    <AlertTriangle size={11} /> {parsedCSV.errors.length} ligne{parsedCSV.errors.length > 1 ? "s" : ""} invalide{parsedCSV.errors.length > 1 ? "s" : ""}
+                  </span>
+                )}
+                <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#94a3b8", fontFamily: "ui-monospace" }}>
+                  format : <code>id, start, end, dx, dy, dz [, sdx, sdy, sdz]</code>
+                </span>
+              </div>
+
+              <textarea
+                value={baselinesCSV}
+                onChange={e => { setBaselinesCSV(e.target.value); setCsvErrors([]) }}
+                placeholder={`B01, Bou3, Tia2, -97.5765, 6939.8432, 7715.4264, 0.0035, 0.0018, 0.0019
+B02, Bou3, P1,    415.8936,  7058.6103, 3879.5691, 0.0139, 0.0166, 0.0083
+# une ligne par ligne de base — # pour commentaire`}
+                rows={8}
+                style={{
+                  width: "100%", fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                  fontSize: 11.5, lineHeight: 1.6,
+                  padding: "10px 12px", border: "1px solid #e2e8f0", borderRadius: 8,
+                  background: "#fafbfc", color: "#0f172a", outline: "none", resize: "vertical",
+                }}
+              />
+
+              {apiHealth === "offline" && parsedVectors.length > 0 && (
+                <div style={{ marginTop: 10, padding: 12, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <WifiOff size={14} color="#d97706" style={{ marginTop: 1, flexShrink: 0 }} />
+                  <div style={{ fontSize: 11.5, color: "#92400e", lineHeight: 1.5 }}>
+                    Le moteur de calcul n&apos;est pas accessible à <code style={{ fontFamily: "ui-monospace" }}>{API_URL}</code>.
+                    Démarrez le backend&nbsp;: <code style={{ fontFamily: "ui-monospace", background: "#fff", padding: "1px 5px", borderRadius: 4 }}>cd backend && uvicorn app:app --port 8000</code>
+                  </div>
+                </div>
+              )}
+            </Card>
+
             {/* Run */}
             <Card style={{ background: processing ? "#f6f8fb" : "#fff" }}>
               {!processing ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a", marginBottom: 3, display: "flex", alignItems: "center", gap: 8 }}>
                       {canRun ? "Prêt à lancer le calcul" : "Complétez les étapes ci-dessus"}
+                      {useRealEngine && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#10b98114", color: "#10b981", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
+                          MOTEUR RÉEL
+                        </span>
+                      )}
+                      {!useRealEngine && canRun && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#8b5cf614", color: "#8b5cf6", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
+                          DÉMO
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      Traitement automatique : lignes de base → fermeture → ajustements.
+                      {useRealEngine
+                        ? `Moindres carrés réels via le backend ETAFAT (${parsedVectors.length} lignes de base).`
+                        : "Traitement automatique : lignes de base → fermeture → ajustements."}
                     </div>
+                    {apiError && (
+                      <div style={{ marginTop: 8, fontSize: 11.5, color: "#dc2626", fontFamily: "ui-monospace" }}>
+                        {apiError}
+                      </div>
+                    )}
                   </div>
                   <button onClick={run} disabled={!canRun}
                     style={{
@@ -608,6 +770,25 @@ const inputStyle: React.CSSProperties = {
   padding: "9px 10px",
   border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12.5, color: "#0f172a",
   background: "#fff", outline: "none", width: "100%",
+}
+
+/* ── Backend health indicator ── */
+function ApiBadge({ health }: { health: "checking" | "online" | "offline" }) {
+  const spec = {
+    checking: { color: "#94a3b8", bg: "#f1f5f9", label: "Connexion…",    Icon: Loader2,  spin: true  },
+    online:   { color: "#10b981", bg: "#10b98114", label: "Moteur en ligne", Icon: Wifi,     spin: false },
+    offline:  { color: "#d97706", bg: "#f59e0b14", label: "Mode démo",      Icon: WifiOff, spin: false },
+  }[health]
+  return (
+    <div title={`Backend: ${API_URL}`} style={{
+      display: "flex", alignItems: "center", gap: 7,
+      fontSize: 11.5, fontWeight: 600, color: spec.color, background: spec.bg,
+      padding: "6px 12px", borderRadius: 8, border: `1px solid ${spec.color}30`,
+    }}>
+      <spec.Icon size={12} style={spec.spin ? { animation: "gnssSpin 1s linear infinite" } : undefined} />
+      {spec.label}
+    </div>
+  )
 }
 
 function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
@@ -770,12 +951,39 @@ const CONSTRAINED_ADJ_DATA = [
 
 /* ── Baselines table ── */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function BaselinesTable({ stations, bases }: { stations: string[]; bases: BaseCoord[] }) {
+function BaselinesTable({ apiResult, inputVectors, stations, bases }: {
+  apiResult: PipelineOut | null
+  inputVectors: BaselineIn[]
+  stations: string[]
+  bases: BaseCoord[]
+}) {
   const [page, setPage] = useState(0)
   const PER_PAGE = 10
-  const rows = BASELINES_DATA
+
+  /* Prefer the vectors the user submitted (when the real engine ran);
+     fall back to the hardcoded reference rows for demo mode. */
+  const rows = (apiResult && inputVectors.length > 0)
+    ? inputVectors.map(v => {
+        const len = Math.hypot(v.dx, v.dy, v.dz)
+        return {
+          id:   v.id,
+          from: v.start,
+          to:   v.end,
+          dist: len.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+          type: v.solution_type ?? "Fix",
+          ratio: v.ratio ? v.ratio.toFixed(1) : "—",
+          rms:   v.rms   ? (v.rms * 1000).toFixed(1) + " mm" : "—",
+          ok:    true,
+        }
+      })
+    : BASELINES_DATA
+
   const paged = rows.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
   const pages = Math.ceil(rows.length / PER_PAGE)
+  const longest = rows.reduce((m, r) => {
+    const v = parseFloat(r.dist.replace(/[\s ]/g, "").replace(",", "."))
+    return v > m ? v : m
+  }, 0)
 
   return (
     <>
@@ -785,7 +993,7 @@ function BaselinesTable({ stations, bases }: { stations: string[]; bases: BaseCo
           { label: "Total lignes de base",  value: rows.length,                       color: "#007BFF" },
           { label: "Validées",              value: rows.filter(r => r.ok).length,     color: "#10b981" },
           { label: "À vérifier",            value: rows.filter(r => !r.ok).length,    color: "#f59e0b" },
-          { label: "Longue base (inter)",   value: "10 377.8 m",                      color: "#8b5cf6" },
+          { label: "Plus longue base",      value: longest.toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " m", color: "#8b5cf6" },
         ].map(s => (
           <div key={s.label} style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>{s.label}</div>
@@ -838,15 +1046,35 @@ function BaselinesTable({ stations, bases }: { stations: string[]; bases: BaseCo
 
 /* ── Loop closure table ── */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function LoopsTable({ stations, bases }: { stations: string[]; bases: BaseCoord[] }) {
+function LoopsTable({ apiResult, stations, bases }: {
+  apiResult: PipelineOut | null
+  stations: string[]
+  bases: BaseCoord[]
+}) {
+  /* Map API loops to row shape, fall back to hardcoded data otherwise. */
+  const rows = apiResult
+    ? apiResult.loops.map(lp => ({
+        id:  lp.id,
+        pts: lp.baselines.join(" → "),
+        len: lp.length_m.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+        dh:  lp.dh_m.toFixed(4),
+        dv:  lp.dv_m.toFixed(4),
+        ppm: lp.ppm.toFixed(3),
+        ok:  lp.conform,
+      }))
+    : LOOPS_DATA
+
+  const conform = rows.filter(r => r.ok).length
+  const fail    = rows.length - conform
+
   return (
     <>
       <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
         {[
-          { label: "Boucles calculées",  value: 9,        color: "#007BFF" },
-          { label: "Conformes",          value: 9,        color: "#10b981" },
-          { label: "Hors tolérance",     value: 0,        color: "#ef4444" },
-          { label: "Limite ΔH (m)",      value: "1.000",  color: "#64748b" },
+          { label: "Boucles calculées", value: rows.length, color: "#007BFF" },
+          { label: "Conformes",         value: conform,     color: "#10b981" },
+          { label: "Hors tolérance",    value: fail,        color: fail ? "#ef4444" : "#64748b" },
+          { label: "Limite ΔH (m)",     value: "1.000",     color: "#64748b" },
         ].map(s => (
           <div key={s.label} style={{ flex: 1, minWidth: 110, padding: "10px 14px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>{s.label}</div>
@@ -865,7 +1093,7 @@ function LoopsTable({ stations, bases }: { stations: string[]; bases: BaseCoord[
             </tr>
           </thead>
           <tbody>
-            {LOOPS_DATA.map((r, i) => (
+            {rows.map((r, i) => (
               <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 700 }}>{r.id}</td>
                 <td style={{ padding: "10px 12px", color: "#475569", fontSize: 11.5 }}>{r.pts}</td>
@@ -874,9 +1102,15 @@ function LoopsTable({ stations, bases }: { stations: string[]; bases: BaseCoord[
                 <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dv}</td>
                 <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.ppm}</td>
                 <td style={{ padding: "10px 12px" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
-                    <CheckCircle2 size={10} /> Conforme
-                  </span>
+                  {r.ok ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
+                      <CheckCircle2 size={10} /> Conforme
+                    </span>
+                  ) : (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "#f59e0b", background: "#f59e0b14", padding: "3px 8px", borderRadius: 5 }}>
+                      <AlertTriangle size={10} /> Tolérance
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -889,11 +1123,36 @@ function LoopsTable({ stations, bases }: { stations: string[]; bases: BaseCoord[
 
 /* ── Adjustment table (free or constrained) ── */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function AdjustmentTable({ type, stations, bases }: { type: "free" | "constrained"; stations: string[]; bases: BaseCoord[] }) {
+function AdjustmentTable({ type, apiResult, stations, bases }: {
+  type: "free" | "constrained"
+  apiResult: PipelineOut | null
+  stations: string[]
+  bases: BaseCoord[]
+}) {
   const isFree = type === "free"
-  const data   = isFree ? FREE_ADJ_DATA : CONSTRAINED_ADJ_DATA
-  const statsH = isFree ? "19.6" : "20.5"
-  const statsV = isFree ? "18.5" : "19.5"
+  const apiRep = apiResult ? (isFree ? apiResult.free : apiResult.constrained) : null
+
+  /* Map API points (ECEF) into the table row shape. Grid projection isn't
+     done client-side yet, so we show ECEF XYZ and their σ when API data is
+     used. Demo mode keeps showing the published grid Nord/Est/Élév. */
+  const data = apiRep
+    ? apiRep.points.map(p => ({
+        name: p.name,
+        north: p.x.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+        east:  p.y.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+        elev:  p.z.toLocaleString("fr-FR", { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
+        sn:    p.sx.toFixed(4),
+        se:    p.sy.toFixed(4),
+        sh:    p.sz.toFixed(4),
+        isControl: p.is_control,
+      }))
+    : (isFree ? FREE_ADJ_DATA : CONSTRAINED_ADJ_DATA)
+
+  const statsH = apiRep ? apiRep.horiz_accuracy_mm.toFixed(1) : (isFree ? "19.6" : "20.5")
+  const statsV = apiRep ? apiRep.vert_accuracy_mm.toFixed(1)  : (isFree ? "18.5" : "19.5")
+  const chi2Val = apiRep ? apiRep.chi2.toFixed(3)  : "28.977"
+  const chi2Pass = apiRep ? apiRep.chi2_pass        : true
+  const coordLabel = apiRep ? ["X ECEF (m)", "Y ECEF (m)", "Z ECEF (m)"] : ["Nord (m)", "Est (m)", "Élév. (m)"]
 
   return (
     <>
@@ -911,9 +1170,14 @@ function AdjustmentTable({ type, stations, bases }: { type: "free" | "constraine
           </div>
           <div style={{ fontSize: 11.5, color: "#64748b" }}>
             {isFree
-              ? `Aucune contrainte extérieure. χ² = 28.977 (test validé) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
-              : `Calé sur Tia2 (coordonnées connues). χ² = 28.977 (test validé) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
+              ? `Aucune contrainte extérieure. χ² = ${chi2Val} (test ${chi2Pass ? "validé" : "échoué"}) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
+              : `Calé sur le(s) point(s) de contrôle. χ² = ${chi2Val} (test ${chi2Pass ? "validé" : "échoué"}) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
             }
+            {apiRep && (
+              <div style={{ marginTop: 4, fontSize: 10.5, color: "#94a3b8", fontFamily: "ui-monospace" }}>
+                σ₀ = {apiRep.sigma0.toFixed(3)} · n_obs = {apiRep.n_obs} · n_unk = {apiRep.n_unk} · dof = {apiRep.dof}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -922,7 +1186,7 @@ function AdjustmentTable({ type, stations, bases }: { type: "free" | "constraine
         <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f6f8fb" }}>
-              {["Point", "Nord (m)", "Est (m)", "Élév. (m)", "σN (m)", "σE (m)", "σH (m)"].map(h => (
+              {["Point", coordLabel[0], coordLabel[1], coordLabel[2], "σ₁ (m)", "σ₂ (m)", "σ₃ (m)"].map(h => (
                 <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 10.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>

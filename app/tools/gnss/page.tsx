@@ -288,12 +288,12 @@ export default function GnssPage() {
       </div>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: "#007BFF14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="gnss-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: "#007BFF14", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Satellite size={22} color="#007BFF" strokeWidth={1.75} />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", letterSpacing: -0.4 }}>Traitement GNSS</h1>
             <p style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Calcul automatique · Lignes de base · Fermeture des boucles · Ajustements</p>
           </div>
@@ -313,12 +313,12 @@ export default function GnssPage() {
       {done && (
         <>
           <Card style={{ marginBottom: 20, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", border: "none", color: "#fff" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div className="gnss-success" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ width: 52, height: 52, borderRadius: 12, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <CheckCircle2 size={28} color="#fff" />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3, display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   Calcul terminé avec succès
                   {apiResult && (
                     <span style={{ fontSize: 10, fontWeight: 800, background: "rgba(255,255,255,0.25)", padding: "2px 8px", borderRadius: 5, letterSpacing: 0.4 }}>
@@ -332,7 +332,7 @@ export default function GnssPage() {
                     : `${obsFiles.length} fichier${obsFiles.length > 1 ? "s" : ""} · ${baseCoords.filter(b => b.north && b.east).length} base${baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} · Tolérances respectées`}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button style={{ background: "rgba(255,255,255,0.2)", color: "#fff", padding: "9px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7 }}>
                   <Eye size={14} /> Aperçu
                 </button>
@@ -344,7 +344,7 @@ export default function GnssPage() {
           </Card>
 
           <Card padding={0} style={{ overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
+            <div className="gnss-tabs" style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
               {([
                 { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: apiResult?.n_baselines ?? 22 },
                 { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: apiResult?.loops.length ?? 9 },
@@ -441,20 +441,20 @@ export default function GnssPage() {
                   <label style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>Coordonnées des bases <span style={{ color: "#94a3b8", fontWeight: 400 }}>(saisie manuelle ou auto-rempli)</span></label>
                   <button onClick={addBase} style={{ fontSize: 11.5, fontWeight: 600, color: "#007BFF" }}>+ Ajouter</button>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6 }}>
+                <div className="gnss-coords" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="gnss-coords-head" style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6 }}>
                     {["Nom", "Nord (N)", "Est (E)", "Élév.", ""].map(h => (
                       <div key={h} style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingLeft: 2 }}>{h}</div>
                     ))}
                   </div>
                   {baseCoords.map((b, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6, alignItems: "center" }}>
+                    <div key={i} className="gnss-coords-row" style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6, alignItems: "center" }}>
                       <input value={b.name}  onChange={e => updateBase(i, "name",  e.target.value)} placeholder="BASE_01"    style={inputStyle} />
                       <input value={b.north} onChange={e => updateBase(i, "north", e.target.value)} placeholder="902235.673" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
                       <input value={b.east}  onChange={e => updateBase(i, "east",  e.target.value)} placeholder="237230.320" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
                       <input value={b.elev}  onChange={e => updateBase(i, "elev",  e.target.value)} placeholder="521.969"    style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
                       <button onClick={() => removeBaseCoord(i)} disabled={baseCoords.length === 1}
-                        style={{ color: baseCoords.length === 1 ? "#cbd5e1" : "#ef4444", padding: 8 }}>
+                        style={{ color: baseCoords.length === 1 ? "#cbd5e1" : "#ef4444", padding: 8 }} aria-label="Supprimer cette base">
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -760,6 +760,36 @@ B02, Bou3, P1,    415.8936,  7058.6103, 3879.5691, 0.0139, 0.0166, 0.0083
       <style>{`
         @keyframes gnssSpin { to { transform: rotate(360deg); } }
         @media (max-width: 1100px) { .gnss-split { grid-template-columns: 1fr !important; } }
+
+        /* ── Mobile / narrow screens ────────────────────────────────── */
+        @media (max-width: 640px) {
+          /* Coord input rows: stack as labelled mini-form with Name+Trash on top row */
+          .gnss-coords-head { display: none !important; }
+          .gnss-coords-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6px !important;
+            padding: 10px;
+            border: 1px solid #e8edf3;
+            border-radius: 8px;
+            background: #fafbfc;
+          }
+          .gnss-coords-row > input:nth-child(1) { grid-column: 1 / -2; }  /* Nom full width */
+          .gnss-coords-row > button { grid-column: -2 / -1; grid-row: 1; justify-self: end; }
+          .gnss-coords-row > input:nth-child(2)::placeholder { content: "Nord"; }
+
+          /* Tab counts shrink */
+          .gnss-tabs button { padding: 14px 10px !important; font-size: 12px !important; }
+
+          /* Result table cells: smaller padding and text */
+          .gnss-result-table th,
+          .gnss-result-table td { padding: 8px 10px !important; font-size: 11.5px !important; }
+        }
+
+        /* Fine-tune the page header + step buttons for small phones */
+        @media (max-width: 480px) {
+          .gnss-header h1 { font-size: 18px !important; }
+          .gnss-header p  { font-size: 11.5px !important; }
+        }
       `}</style>
     </div>
   )
@@ -1003,7 +1033,7 @@ function BaselinesTable({ apiResult, inputVectors, stations, bases }: {
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+        <table className="gnss-result-table" style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f6f8fb" }}>
               {["ID", "De", "Vers", "Dist. ellipsoïde (m)", "Type", "Précision", "RMS", "Statut"].map(h => (
@@ -1084,7 +1114,7 @@ function LoopsTable({ apiResult, stations, bases }: {
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+        <table className="gnss-result-table" style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f6f8fb" }}>
               {["Boucle","Stations","Longueur (m)","ΔH (m)","ΔV (m)","PPM","Statut"].map(h => (
@@ -1183,7 +1213,7 @@ function AdjustmentTable({ type, apiResult, stations, bases }: {
       </div>
 
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+        <table className="gnss-result-table" style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f6f8fb" }}>
               {["Point", coordLabel[0], coordLabel[1], coordLabel[2], "σ₁ (m)", "σ₂ (m)", "σ₃ (m)"].map(h => (

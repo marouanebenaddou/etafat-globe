@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard, Satellite, Box, Map, Database, FileText,
@@ -24,6 +24,9 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const sidebarW = collapsed ? 76 : 248
+
+  /* Auto-close mobile sidebar on route change */
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   const grouped = navItems.reduce<Record<string, typeof navItems>>((acc, item) => {
     (acc[item.section] ||= []).push(item)
@@ -152,33 +155,56 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
+      {/* ── BACKDROP (mobile only when sidebar open) ── */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(10,22,40,0.5)",
+            zIndex: 35, backdropFilter: "blur(2px)",
+          }}
+          className="tools-backdrop"
+        />
+      )}
+
       {/* ── MAIN ── */}
-      <div style={{ flex: 1, marginLeft: sidebarW, minWidth: 0, transition: "margin 0.3s cubic-bezier(0.16,1,0.3,1)" }}>
+      <div
+        className="tools-main"
+        style={{
+          flex: 1,
+          marginLeft: sidebarW,
+          minWidth: 0,
+          transition: "margin 0.3s cubic-bezier(0.16,1,0.3,1)",
+        }}
+      >
 
         {/* Header */}
         <header style={{
           height: 68,
           background: "#fff",
           borderBottom: "1px solid #e8edf3",
-          display: "flex", alignItems: "center", padding: "0 clamp(1.2rem,3vw,2rem)",
-          gap: 16,
+          display: "flex", alignItems: "center", padding: "0 clamp(0.9rem,3vw,2rem)",
+          gap: 12,
           position: "sticky", top: 0, zIndex: 30,
         }}>
-          <button onClick={() => setMobileOpen(!mobileOpen)} style={{ display: "none" }} className="tools-mobile-toggle">
+          <button onClick={() => setMobileOpen(!mobileOpen)} style={{ display: "none" }} className="tools-mobile-toggle" aria-label="Ouvrir le menu">
             <MenuIcon size={18} />
           </button>
 
           {/* Search */}
-          <div style={{
-            flex: 1, maxWidth: 420, display: "flex", alignItems: "center", gap: 10,
-            background: "#f6f8fb", borderRadius: 8, padding: "9px 14px", border: "1px solid transparent",
-          }}>
+          <div
+            className="tools-search"
+            style={{
+              flex: 1, maxWidth: 420, display: "flex", alignItems: "center", gap: 10,
+              background: "#f6f8fb", borderRadius: 8, padding: "9px 14px", border: "1px solid transparent",
+            }}
+          >
             <Search size={15} color="#94a3b8" />
             <input
               placeholder="Rechercher un projet, un fichier…"
-              style={{ flex: 1, background: "transparent", color: "#0f172a", fontSize: 13, border: "none", outline: "none" }}
+              style={{ flex: 1, minWidth: 0, background: "transparent", color: "#0f172a", fontSize: 13, border: "none", outline: "none" }}
             />
-            <kbd style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 10, padding: "2px 5px", color: "#94a3b8", fontFamily: "inherit" }}>⌘K</kbd>
+            <kbd className="tools-kbd" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 4, fontSize: 10, padding: "2px 5px", color: "#94a3b8", fontFamily: "inherit" }}>⌘K</kbd>
           </div>
 
           <div style={{ flex: 1 }} />
@@ -186,25 +212,36 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
           <button style={{
             width: 38, height: 38, borderRadius: 8, background: "#f6f8fb",
             display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative", color: "#64748b",
-          }}>
+            position: "relative", color: "#64748b", flexShrink: 0,
+          }} aria-label="Notifications">
             <Bell size={16} />
             <span style={{ position: "absolute", top: 9, right: 10, width: 6, height: 6, background: "#ef4444", borderRadius: "50%" }} />
           </button>
         </header>
 
         {/* Page content */}
-        <main style={{ padding: "clamp(1.5rem,3vw,2rem)", minHeight: "calc(100vh - 68px)" }}>
+        <main style={{ padding: "clamp(1rem,3vw,2rem)", minHeight: "calc(100vh - 68px)" }}>
           {children}
         </main>
       </div>
 
-      {/* Mobile overlay */}
+      {/* Mobile styles (mustn't collide with the inline marginLeft on .tools-main) */}
       <style>{`
         @media (max-width: 900px) {
           .tools-sidebar { transform: translateX(-100%); }
-          .tools-sidebar-open { transform: translateX(0); }
-          .tools-mobile-toggle { display: flex !important; width: 38px; height: 38px; border-radius: 8px; background: #f6f8fb; align-items: center; justify-content: center; color: #64748b; }
+          .tools-sidebar-open { transform: translateX(0); width: 280px !important; }
+          .tools-main { margin-left: 0 !important; }
+          .tools-mobile-toggle {
+            display: flex !important;
+            width: 38px; height: 38px; border-radius: 8px;
+            background: #f6f8fb;
+            align-items: center; justify-content: center; color: #64748b;
+            flex-shrink: 0;
+          }
+          .tools-kbd { display: none !important; }
+        }
+        @media (max-width: 500px) {
+          .tools-search { background: transparent !important; padding: 6px 0 !important; }
         }
       `}</style>
     </div>

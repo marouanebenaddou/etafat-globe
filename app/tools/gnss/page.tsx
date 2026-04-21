@@ -137,6 +137,8 @@ export default function GnssPage() {
   const [baseFiles,  setBaseFiles]  = useState<{ name: string; size: number }[]>([])
   const [projection, setProjection] = useState("")
   const [crsInfo,    setCrsInfo]    = useState<ParsedCRS | null>(null)
+  const [crsRawText, setCrsRawText] = useState<string>("")
+  const [basesCoordsRawText, setBasesCoordsRawText] = useState<string>("")
   const [baseCoords, setBaseCoords] = useState<BaseCoord[]>([
     { name: "BASE_01", north: "", east: "", elev: "" },
   ])
@@ -204,6 +206,21 @@ export default function GnssPage() {
     }
     setBaseFiles(prev => [...prev, ...infos])
     if (allCoords.length > 0) setBaseCoords(allCoords)
+    // Keep the raw text around — the backend re-parses it to build precise
+    // control-point ECEF via pyproj (more accurate than our TXT→grid split).
+    setBasesCoordsRawText(prev => {
+      const blobs: string[] = []
+      for (const file of Array.from(list)) blobs.push(file.name)
+      return prev // placeholder; replaced below when we read text
+    })
+    // Actually re-read the files as text and concat — we already got the
+    // coords parsed, but the backend wants the raw file contents.
+    const texts: string[] = []
+    for (const file of Array.from(list)) {
+      const t = await readAsText(file)
+      texts.push(t)
+    }
+    if (texts.length) setBasesCoordsRawText(texts.join("\n"))
   }, [])
 
   /* ── Handle CRS / projection file ── */
@@ -211,9 +228,9 @@ export default function GnssPage() {
     if (!list || list.length === 0) return
     const file = list[0]
     const text = await readAsText(file)
+    setCrsRawText(text)   // raw content → backend uses pyproj to convert
     const crs = parseCRS(text)
     setCrsInfo(crs)
-    // Auto-select "custom" since it's a non-standard CRS
     setProjection("custom")
   }, [])
 
@@ -269,8 +286,10 @@ export default function GnssPage() {
           {
             files: [...rinexObsFiles, ...rinexNavFiles],
             base_marker_names: baseNames,
-            control_stations: [],   // TODO: ECEF conversion from grid coords
+            control_stations: [],   // backend converts from base_coords_txt
             projection_hint: { lat_deg: REFERENCE_DATASET.lat_deg, lon_deg: REFERENCE_DATASET.lon_deg },
+            base_coords_txt: basesCoordsRawText || undefined,
+            crs_def_txt:     crsRawText         || undefined,
           },
           {
             onProgress: pct => {

@@ -142,6 +142,10 @@ export type RinexUploadConfig = {
   projection_hint?: { lat_deg: number; lon_deg: number }
   h_limit_m?: number
   v_limit_m?: number
+  /** Raw contents of bases_xyz.txt (Nord/Est/Élév per base station) */
+  base_coords_txt?: string
+  /** Raw contents of the CRS definition (CIV.txt, Merchich.txt, …) */
+  crs_def_txt?: string
 }
 
 export async function runPipelineFromRinex(
@@ -153,8 +157,10 @@ export async function runPipelineFromRinex(
   fd.append("base_marker_names", JSON.stringify(cfg.base_marker_names))
   fd.append("control_stations",  JSON.stringify(cfg.control_stations ?? []))
   fd.append("projection_hint",   JSON.stringify(cfg.projection_hint ?? null))
-  if (cfg.h_limit_m != null) fd.append("h_limit_m", String(cfg.h_limit_m))
-  if (cfg.v_limit_m != null) fd.append("v_limit_m", String(cfg.v_limit_m))
+  if (cfg.h_limit_m != null)     fd.append("h_limit_m", String(cfg.h_limit_m))
+  if (cfg.v_limit_m != null)     fd.append("v_limit_m", String(cfg.v_limit_m))
+  if (cfg.base_coords_txt)       fd.append("base_coords_txt", cfg.base_coords_txt)
+  if (cfg.crs_def_txt)           fd.append("crs_def_txt",     cfg.crs_def_txt)
 
   // Use XHR for upload progress (fetch() still has no browser progress API for
   // request bodies). We fall back to fetch() if there's no onProgress handler.

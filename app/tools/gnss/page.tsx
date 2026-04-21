@@ -1,26 +1,101 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import {
-  ChevronRight, Upload, FileArchive, FileText, MapPin, Globe2,
-  PlayCircle, Download, CheckCircle2, AlertTriangle, XCircle,
+  ChevronRight, FileArchive, FileText, MapPin, Globe2,
+  PlayCircle, CheckCircle2, AlertTriangle, XCircle,
   Layers, Activity, Satellite, Radio, Anchor, Target,
-  Loader2, ArrowRight, Info, Trash2, FileDown, Eye,
+  Loader2, Info, Trash2, FileDown, Eye,
+  Clock, Signal, Cpu, Database,
 } from "lucide-react"
 
+/* ── Types ── */
+type ParsedHCNFile = {
+  name: string
+  size: number
+  markerName?: string
+  receiverId?: string
+  model?: string
+  antHigh?: number
+  interval?: number
+  firstObs?: string
+  date?: string
+}
+
+type BaseCoord = { name: string; north: string; east: string; elev: string }
+type ParsedCRS = { ellipsoid: string; projection: string; datum: string; geoid: string }
+
+/* ── HCN ASCII header parser ── */
+function parseHCNHeader(text: string): Partial<ParsedHCNFile> {
+  const r: Partial<ParsedHCNFile> = {}
+  const lines = text.split("\n").slice(0, 30)
+  for (const line of lines) {
+    const [key, ...rest] = line.split(":")
+    const val = rest.join(":").trim()
+    if (key === "ReceiverID")       r.receiverId  = val
+    if (key === "Date")             r.date        = val
+    if (key === "Model")            r.model       = val
+    if (key === "AntHigh")          r.antHigh     = parseFloat(val)
+    if (key === "MARKER NAME")      r.markerName  = val
+    if (key === "INTERVAL")         r.interval    = parseFloat(val)
+    if (key === "TIME OF FIRST OBS") {
+      const p = val.split("/")
+      if (p.length >= 6)
+        r.firstObs = `${p[0]}/${p[1]}/${p[2]}  ${p[3].padStart(2,"0")}:${p[4].padStart(2,"0")}:${Math.round(parseFloat(p[5]||"0")).toString().padStart(2,"0")}`
+    }
+  }
+  return r
+}
+
+/* ── TXT coordinate parser  (Nom  Nord  Est  Elev) ── */
+function parseCoordsTXT(text: string): BaseCoord[] {
+  return text
+    .trim()
+    .split("\n")
+    .filter(l => l.trim() && !/^Nom/i.test(l))
+    .map(line => {
+      const p = line.trim().split(/\s+/)
+      if (p.length < 3) return null
+      return { name: p[0], north: p[1] ?? "", east: p[2] ?? "", elev: p[3] ?? "" }
+    })
+    .filter(Boolean) as BaseCoord[]
+}
+
+/* ── CRS file parser ── */
+function parseCRS(text: string): ParsedCRS | null {
+  const lines = text.trim().split("\n")
+  if (lines.length < 2) return null
+  const grab = (l: string, prefix: string) =>
+    l.replace(new RegExp(`^${prefix}\\s*`, "i"), "").trim()
+  return {
+    ellipsoid:  grab(lines[0] ?? "", "Ellipsoide"),
+    projection: grab(lines[1] ?? "", "Projection"),
+    datum:      grab(lines[2] ?? "", "Datum Transform"),
+    geoid:      grab(lines[3] ?? "", "Geoid Model"),
+  }
+}
+
+/* ── Read File as UTF-8 text ── */
+function readAsText(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const r = new FileReader()
+    r.onload  = e => resolve((e.target?.result as string) ?? "")
+    r.onerror = () => resolve("")
+    r.readAsText(file, "utf-8")
+  })
+}
+
 /* ── UI primitives ── */
-const Card: React.FC<{ children: React.ReactNode; style?: React.CSSProperties; padding?: number }> = ({ children, style, padding = 24 }) => (
+const Card = ({ children, style, padding = 24 }: { children: React.ReactNode; style?: React.CSSProperties; padding?: number }) => (
   <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e8edf3", padding, ...style }}>{children}</div>
 )
 
-const SectionTitle: React.FC<{ step: number; title: string; sub?: string; done?: boolean }> = ({ step, title, sub, done }) => (
+const SectionTitle = ({ step, title, sub, done }: { step: number; title: string; sub?: string; done?: boolean }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
     <div style={{
       width: 28, height: 28, borderRadius: "50%",
-      background: done ? "#10b981" : "#007BFF14",
-      color: done ? "#fff" : "#007BFF",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: 12, fontWeight: 800, flexShrink: 0,
+      background: done ? "#10b981" : "#007BFF14", color: done ? "#fff" : "#007BFF",
+      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0,
     }}>
       {done ? <CheckCircle2 size={15} /> : step}
     </div>
@@ -31,8 +106,6 @@ const SectionTitle: React.FC<{ step: number; title: string; sub?: string; done?:
   </div>
 )
 
-type UploadedFile = { name: string; size: number; type: string }
-
 const PROJECTIONS = [
   { code: "Merchich / Nord Maroc",   epsg: "26191" },
   { code: "Merchich / Sud Maroc",    epsg: "26192" },
@@ -41,62 +114,101 @@ const PROJECTIONS = [
   { code: "WGS 84 / UTM zone 29N",   epsg: "32629" },
   { code: "WGS 84 / UTM zone 30N",   epsg: "32630" },
   { code: "RGM 2020 / Zone 1",       epsg: "10301" },
-  { code: "ETRS89",                  epsg: "4258" },
+  { code: "ETRS89",                  epsg: "4258"  },
+  { code: "Locale / CRS personnalisé", epsg: "custom" },
 ]
 
+/* ══════════════════════════════════════════════════════ */
 export default function GnssPage() {
-  const obsRef  = useRef<HTMLInputElement>(null)
-  const baseRef = useRef<HTMLInputElement>(null)
+  const obsRef   = useRef<HTMLInputElement>(null)
+  const baseRef  = useRef<HTMLInputElement>(null)
+  const crsRef   = useRef<HTMLInputElement>(null)
   const photoRef = useRef<HTMLInputElement>(null)
 
-  const [obsFiles, setObsFiles]   = useState<UploadedFile[]>([])
-  const [baseFiles, setBaseFiles] = useState<UploadedFile[]>([])
+  const [obsFiles,   setObsFiles]   = useState<ParsedHCNFile[]>([])
+  const [baseFiles,  setBaseFiles]  = useState<{ name: string; size: number }[]>([])
   const [projection, setProjection] = useState("")
-  const [baseCoords, setBaseCoords] = useState<{ name: string; x: string; y: string; z: string }[]>([
-    { name: "BASE_01", x: "", y: "", z: "" },
+  const [crsInfo,    setCrsInfo]    = useState<ParsedCRS | null>(null)
+  const [baseCoords, setBaseCoords] = useState<BaseCoord[]>([
+    { name: "BASE_01", north: "", east: "", elev: "" },
   ])
+
   const [processing, setProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [done, setDone] = useState(false)
-  const [activeTab, setActiveTab] = useState<"baselines" | "loops" | "free" | "constrained">("baselines")
+  const [progress,   setProgress]   = useState(0)
+  const [done,       setDone]       = useState(false)
+  const [activeTab,  setActiveTab]  = useState<"baselines" | "loops" | "free" | "constrained">("baselines")
 
-  const handleFiles = (list: FileList | null, setter: (f: UploadedFile[]) => void, current: UploadedFile[]) => {
+  /* ── Handle HCN obs files ── */
+  const handleObsFiles = useCallback(async (list: FileList | null) => {
     if (!list) return
-    const arr = Array.from(list).map(f => ({ name: f.name, size: f.size, type: f.type }))
-    setter([...current, ...arr])
+    const parsed: ParsedHCNFile[] = []
+    for (const file of Array.from(list)) {
+      const text = await readAsText(file)
+      const meta = parseHCNHeader(text)
+      parsed.push({ name: file.name, size: file.size, ...meta })
+    }
+    setObsFiles(prev => [...prev, ...parsed])
+  }, [])
+
+  /* ── Handle base coordinate TXT files ── */
+  const handleBaseFiles = useCallback(async (list: FileList | null) => {
+    if (!list) return
+    const infos: { name: string; size: number }[] = []
+    const allCoords: BaseCoord[] = []
+    for (const file of Array.from(list)) {
+      infos.push({ name: file.name, size: file.size })
+      const text = await readAsText(file)
+      const coords = parseCoordsTXT(text)
+      allCoords.push(...coords)
+    }
+    setBaseFiles(prev => [...prev, ...infos])
+    if (allCoords.length > 0) setBaseCoords(allCoords)
+  }, [])
+
+  /* ── Handle CRS / projection file ── */
+  const handleCRSFile = useCallback(async (list: FileList | null) => {
+    if (!list || list.length === 0) return
+    const file = list[0]
+    const text = await readAsText(file)
+    const crs = parseCRS(text)
+    setCrsInfo(crs)
+    // Auto-select "custom" since it's a non-standard CRS
+    setProjection("custom")
+  }, [])
+
+  const removeObs  = (i: number) => setObsFiles(prev => prev.filter((_, idx) => idx !== i))
+  const removeBase = (i: number) => setBaseFiles(prev => prev.filter((_, idx) => idx !== i))
+
+  const addBase    = () => setBaseCoords(prev => [...prev, { name: `BASE_${String(prev.length + 1).padStart(2,"0")}`, north: "", east: "", elev: "" }])
+  const removeBaseCoord = (i: number) => setBaseCoords(prev => prev.filter((_, idx) => idx !== i))
+  const updateBase = (i: number, field: keyof BaseCoord, v: string) => {
+    setBaseCoords(prev => { const a = [...prev]; a[i] = { ...a[i], [field]: v }; return a })
   }
 
-  const removeFile = (i: number, arr: UploadedFile[], setter: (f: UploadedFile[]) => void) => {
-    setter(arr.filter((_, idx) => idx !== i))
-  }
-
-  const addBase = () => setBaseCoords([...baseCoords, { name: `BASE_${String(baseCoords.length + 1).padStart(2, "0")}`, x: "", y: "", z: "" }])
-  const removeBase = (i: number) => setBaseCoords(baseCoords.filter((_, idx) => idx !== i))
-  const updateBase = (i: number, field: "name" | "x" | "y" | "z", v: string) => {
-    const arr = [...baseCoords]; arr[i][field] = v; setBaseCoords(arr)
-  }
-
-  const canRun = obsFiles.length > 0 && baseFiles.length > 0 && projection && baseCoords.some(b => b.x && b.y)
+  const canRun  = obsFiles.length > 0 && projection !== "" && baseCoords.some(b => b.north && b.east)
 
   const run = () => {
     setProcessing(true); setProgress(0); setDone(false)
     const t = setInterval(() => {
       setProgress(p => {
         if (p >= 100) { clearInterval(t); setProcessing(false); setDone(true); return 100 }
-        return p + 2.5
+        return p + 2
       })
-    }, 140)
+    }, 120)
   }
 
   const reset = () => {
-    setObsFiles([]); setBaseFiles([]); setProjection("")
-    setBaseCoords([{ name: "BASE_01", x: "", y: "", z: "" }])
+    setObsFiles([]); setBaseFiles([]); setProjection(""); setCrsInfo(null)
+    setBaseCoords([{ name: "BASE_01", north: "", east: "", elev: "" }])
     setProgress(0); setDone(false)
   }
 
   const step1Done = obsFiles.length > 0
-  const step2Done = baseFiles.length > 0
-  const step3Done = !!projection && baseCoords.some(b => b.x && b.y)
+  const step2Done = baseFiles.length > 0 || baseCoords.some(b => b.north && b.east)
+  const step3Done = !!projection
+
+  /* Station names for result tables */
+  const stationNames = obsFiles.map(f => f.markerName || f.name.replace(/\.HCN$/i, ""))
 
   return (
     <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -110,15 +222,13 @@ export default function GnssPage() {
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#007BFF14", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Satellite size={22} color="#007BFF" strokeWidth={1.75} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", letterSpacing: -0.4 }}>Traitement GNSS</h1>
-              <p style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Automatisation du calcul de lignes de base et des ajustements</p>
-            </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, background: "#007BFF14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Satellite size={22} color="#007BFF" strokeWidth={1.75} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", letterSpacing: -0.4 }}>Traitement GNSS</h1>
+            <p style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>Calcul automatique · Lignes de base · Fermeture des boucles · Ajustements</p>
           </div>
         </div>
         {done && (
@@ -132,7 +242,6 @@ export default function GnssPage() {
       {/* ── RESULTS VIEW ── */}
       {done && (
         <>
-          {/* Summary card */}
           <Card style={{ marginBottom: 20, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", border: "none", color: "#fff" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ width: 52, height: 52, borderRadius: 12, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -141,7 +250,9 @@ export default function GnssPage() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 3 }}>Calcul terminé avec succès</div>
                 <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  {obsFiles.length} fichier{obsFiles.length > 1 ? "s" : ""} traité{obsFiles.length > 1 ? "s" : ""} · {baseCoords.length} base{baseCoords.length > 1 ? "s" : ""} · Tolérances respectées
+                  {obsFiles.length} fichier{obsFiles.length > 1 ? "s" : ""} traité{obsFiles.length > 1 ? "s" : ""} ·{" "}
+                  {baseCoords.filter(b => b.north && b.east).length} base{baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} ·{" "}
+                  Tolérances respectées
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -149,30 +260,27 @@ export default function GnssPage() {
                   <Eye size={14} /> Aperçu
                 </button>
                 <button style={{ background: "#fff", color: "#10b981", padding: "9px 16px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
-                  <FileDown size={14} /> Télécharger rapport PDF
+                  <FileDown size={14} /> Rapport PDF
                 </button>
               </div>
             </div>
           </Card>
 
-          {/* Tabs */}
           <Card padding={0} style={{ overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px" }}>
-              {[
-                { id: "baselines",   label: "Lignes de base",  Icon: Activity, count: 12 },
-                { id: "loops",       label: "Fermeture boucles", Icon: Radio,    count: 4  },
-                { id: "free",        label: "Ajustement libre",  Icon: Target,   count: 6  },
-                { id: "constrained", label: "Ajustement contraint", Icon: Anchor, count: 6 },
-              ].map(t => (
+            <div style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
+              {([
+                { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: 22 },
+                { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: 9  },
+                { id: "free",        label: "Ajustement libre",   Icon: Target,   count: 14 },
+                { id: "constrained", label: "Ajust. contraint",   Icon: Anchor,   count: 14 },
+              ] as const).map(t => (
                 <button key={t.id}
-                  onClick={() => setActiveTab(t.id as typeof activeTab)}
+                  onClick={() => setActiveTab(t.id)}
                   style={{
-                    padding: "16px 20px",
-                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "16px 18px", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
                     borderBottom: `2px solid ${activeTab === t.id ? "#007BFF" : "transparent"}`,
                     color: activeTab === t.id ? "#007BFF" : "#64748b",
-                    fontSize: 13, fontWeight: 600,
-                    transition: "all 0.2s ease",
+                    fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
                   }}>
                   <t.Icon size={14} strokeWidth={2} />
                   {t.label}
@@ -181,17 +289,15 @@ export default function GnssPage() {
                     background: activeTab === t.id ? "#007BFF14" : "#f1f5f9",
                     color: activeTab === t.id ? "#007BFF" : "#64748b",
                     padding: "2px 7px", borderRadius: 10,
-                  }}>{t.count}</span>
+                  }}>{Math.round(t.count)}</span>
                 </button>
               ))}
             </div>
-
-            {/* Tab content */}
             <div style={{ padding: 24 }}>
-              {activeTab === "baselines" && <BaselinesTable />}
-              {activeTab === "loops"     && <LoopsTable />}
-              {activeTab === "free"      && <AdjustmentTable type="free" />}
-              {activeTab === "constrained" && <AdjustmentTable type="constrained" />}
+              {activeTab === "baselines"   && <BaselinesTable stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "loops"       && <LoopsTable     stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "free"        && <AdjustmentTable type="free"        stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+              {activeTab === "constrained" && <AdjustmentTable type="constrained" stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
             </div>
           </Card>
         </>
@@ -208,57 +314,100 @@ export default function GnssPage() {
             <Card>
               <SectionTitle step={1} title="Données brutes d'observation" sub="Fichiers HCN (format CHCNAV) — bases et mobiles" done={step1Done} />
               <input ref={obsRef} type="file" multiple accept=".hcn,.HCN,.rinex,.obs,.zip" style={{ display: "none" }}
-                onChange={e => handleFiles(e.target.files, setObsFiles, obsFiles)} />
+                onChange={e => handleObsFiles(e.target.files)} />
               <DropZone
                 onClick={() => obsRef.current?.click()}
-                onDrop={files => handleFiles(files, setObsFiles, obsFiles)}
+                onDrop={files => handleObsFiles(files)}
                 icon={FileArchive}
                 title="Glissez vos fichiers HCN ici"
                 sub="ou cliquez pour parcourir · formats: .hcn, .rinex, .obs"
               />
-              <FileList files={obsFiles} onRemove={i => removeFile(i, obsFiles, setObsFiles)} />
+              {obsFiles.length > 0 && (
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                  {obsFiles.map((f, i) => (
+                    <HCNFileCard key={i} file={f} onRemove={() => removeObs(i)} />
+                  ))}
+                </div>
+              )}
             </Card>
 
             {/* Step 2 — Coords */}
             <Card>
-              <SectionTitle step={2} title="Coordonnées des bases" sub="Fichier TXT contenant les coordonnées de référence" done={step2Done} />
+              <SectionTitle step={2} title="Coordonnées des bases" sub="Fichier TXT — colonnes : Nom  Nord  Est  Élévation" done={step2Done} />
               <input ref={baseRef} type="file" multiple accept=".txt,.csv,.asc" style={{ display: "none" }}
-                onChange={e => handleFiles(e.target.files, setBaseFiles, baseFiles)} />
+                onChange={e => handleBaseFiles(e.target.files)} />
               <DropZone
                 onClick={() => baseRef.current?.click()}
-                onDrop={files => handleFiles(files, setBaseFiles, baseFiles)}
+                onDrop={files => handleBaseFiles(files)}
                 icon={FileText}
                 title="Glissez votre fichier de coordonnées"
-                sub="ou cliquez pour parcourir · formats: .txt, .csv"
+                sub="ou cliquez pour parcourir · format: Nom  Nord(N)  Est(E)  Élév"
               />
-              <FileList files={baseFiles} onRemove={i => removeFile(i, baseFiles, setBaseFiles)} />
-
-              {/* Photo OCR option */}
-              <div style={{ marginTop: 14, padding: 14, background: "#f6f8fb", borderRadius: 9, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 7, background: "#007BFF14", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Info size={14} color="#007BFF" />
+              {baseFiles.length > 0 && (
+                <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {baseFiles.map((f, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "#f0fdf4", borderRadius: 7, border: "1px solid #bbf7d0" }}>
+                      <FileText size={13} color="#10b981" />
+                      <span style={{ flex: 1, fontSize: 12, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                      <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>
+                        {baseCoords.filter(b => b.north && b.east).length} point{baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} détecté{baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""}
+                      </span>
+                      <button onClick={() => removeBase(i)} style={{ color: "#94a3b8", padding: 3 }}><XCircle size={13} /></button>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#0f172a" }}>Notes manuscrites ?</div>
-                  <div style={{ fontSize: 11.5, color: "#64748b" }}>Prenez en photo vos relevés terrain, l'app détectera les points automatiquement.</div>
+              )}
+
+              {/* Base coord table */}
+              <div style={{ marginTop: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>Coordonnées des bases <span style={{ color: "#94a3b8", fontWeight: 400 }}>(saisie manuelle ou auto-rempli)</span></label>
+                  <button onClick={addBase} style={{ fontSize: 11.5, fontWeight: 600, color: "#007BFF" }}>+ Ajouter</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6 }}>
+                    {["Nom", "Nord (N)", "Est (E)", "Élév.", ""].map(h => (
+                      <div key={h} style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, paddingLeft: 2 }}>{h}</div>
+                    ))}
+                  </div>
+                  {baseCoords.map((b, i) => (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 80px auto", gap: 6, alignItems: "center" }}>
+                      <input value={b.name}  onChange={e => updateBase(i, "name",  e.target.value)} placeholder="BASE_01"    style={inputStyle} />
+                      <input value={b.north} onChange={e => updateBase(i, "north", e.target.value)} placeholder="902235.673" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
+                      <input value={b.east}  onChange={e => updateBase(i, "east",  e.target.value)} placeholder="237230.320" style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
+                      <input value={b.elev}  onChange={e => updateBase(i, "elev",  e.target.value)} placeholder="521.969"    style={{ ...inputStyle, fontFamily: "ui-monospace" }} />
+                      <button onClick={() => removeBaseCoord(i)} disabled={baseCoords.length === 1}
+                        style={{ color: baseCoords.length === 1 ? "#cbd5e1" : "#ef4444", padding: 8 }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Photo OCR hint */}
+              <div style={{ marginTop: 14, padding: 12, background: "#f6f8fb", borderRadius: 9, display: "flex", alignItems: "center", gap: 12 }}>
+                <Info size={13} color="#007BFF" />
+                <div style={{ flex: 1, fontSize: 11.5, color: "#64748b" }}>
+                  Notes manuscrites ? Importez une photo — l'app lira les valeurs automatiquement.
                 </div>
                 <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }} />
                 <button onClick={() => photoRef.current?.click()}
-                  style={{ fontSize: 12, fontWeight: 600, color: "#007BFF", border: "1px solid #007BFF40", padding: "7px 13px", borderRadius: 7 }}>
+                  style={{ fontSize: 11.5, fontWeight: 600, color: "#007BFF", border: "1px solid #007BFF40", padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }}>
                   Importer photo
                 </button>
               </div>
             </Card>
 
-            {/* Step 3 — Projection & base coords */}
+            {/* Step 3 — Projection */}
             <Card>
-              <SectionTitle step={3} title="Projection & coordonnées de référence" sub="Système de projection et points de base connus" done={step3Done} />
+              <SectionTitle step={3} title="Système de coordonnées" sub="Sélectionnez la projection ou importez un fichier .txt CRS" done={step3Done} />
 
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6, display: "block" }}>Système de projection</label>
-                <div style={{ position: "relative" }}>
+              <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                {/* Dropdown */}
+                <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
                   <Globe2 size={14} color="#94a3b8" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
-                  <select value={projection} onChange={e => setProjection(e.target.value)}
+                  <select value={projection} onChange={e => { setProjection(e.target.value); if (e.target.value !== "custom") setCrsInfo(null) }}
                     style={{
                       width: "100%", padding: "11px 12px 11px 36px",
                       border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 13, color: "#0f172a",
@@ -268,36 +417,45 @@ export default function GnssPage() {
                     }}>
                     <option value="">Sélectionnez une projection…</option>
                     {PROJECTIONS.map(p => (
-                      <option key={p.epsg} value={p.epsg}>{p.code} · EPSG:{p.epsg}</option>
+                      <option key={p.epsg} value={p.epsg}>{p.code}{p.epsg !== "custom" ? ` · EPSG:${p.epsg}` : ""}</option>
                     ))}
                   </select>
                 </div>
+
+                {/* CRS file import */}
+                <input ref={crsRef} type="file" accept=".txt,.prj" style={{ display: "none" }}
+                  onChange={e => handleCRSFile(e.target.files)} />
+                <button onClick={() => crsRef.current?.click()}
+                  style={{
+                    fontSize: 12.5, fontWeight: 600, color: crsInfo ? "#10b981" : "#64748b",
+                    border: `1px solid ${crsInfo ? "#bbf7d0" : "#e2e8f0"}`,
+                    background: crsInfo ? "#f0fdf4" : "#fff",
+                    padding: "10px 14px", borderRadius: 8, display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
+                  }}>
+                  {crsInfo ? <CheckCircle2 size={13} color="#10b981" /> : <Database size={13} />}
+                  {crsInfo ? "CRS chargé" : "Importer fichier CRS"}
+                </button>
               </div>
 
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>Coordonnées des bases</label>
-                  <button onClick={addBase} style={{ fontSize: 11.5, fontWeight: 600, color: "#007BFF" }}>+ Ajouter une base</button>
+              {/* CRS details panel */}
+              {crsInfo && (
+                <div style={{ padding: 14, background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#10b981", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>Paramètres CRS détectés</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {[
+                      { label: "Ellipsoïde",  value: crsInfo.ellipsoid  },
+                      { label: "Projection",  value: crsInfo.projection  },
+                      { label: "Datum",       value: crsInfo.datum       },
+                      { label: "Géoïde",      value: crsInfo.geoid       },
+                    ].map(row => (
+                      <div key={row.label}>
+                        <div style={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{row.label}</div>
+                        <div style={{ fontSize: 11.5, color: "#0f172a", fontWeight: 500, marginTop: 2 }}>{row.value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {baseCoords.map((b, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "110px 1fr 1fr 1fr auto", gap: 8, alignItems: "center" }}>
-                      <input value={b.name} onChange={e => updateBase(i, "name", e.target.value)} placeholder="BASE_01"
-                        style={inputStyle} />
-                      <input value={b.x} onChange={e => updateBase(i, "x", e.target.value)} placeholder="X (E)" type="number"
-                        style={inputStyle} />
-                      <input value={b.y} onChange={e => updateBase(i, "y", e.target.value)} placeholder="Y (N)" type="number"
-                        style={inputStyle} />
-                      <input value={b.z} onChange={e => updateBase(i, "z", e.target.value)} placeholder="Z (H)" type="number"
-                        style={inputStyle} />
-                      <button onClick={() => removeBase(i)} disabled={baseCoords.length === 1}
-                        style={{ color: baseCoords.length === 1 ? "#cbd5e1" : "#ef4444", padding: 8 }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </Card>
 
             {/* Run */}
@@ -309,11 +467,10 @@ export default function GnssPage() {
                       {canRun ? "Prêt à lancer le calcul" : "Complétez les étapes ci-dessus"}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      Le traitement prend généralement 30 secondes à 3 minutes selon le volume de données.
+                      Traitement automatique : lignes de base → fermeture → ajustements.
                     </div>
                   </div>
-                  <button
-                    onClick={run} disabled={!canRun}
+                  <button onClick={run} disabled={!canRun}
                     style={{
                       background: canRun ? "linear-gradient(135deg, #007BFF, #0057b8)" : "#e2e8f0",
                       color: canRun ? "#fff" : "#94a3b8",
@@ -333,16 +490,26 @@ export default function GnssPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a" }}>Traitement en cours…</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {progress < 25 ? "Lecture des fichiers HCN" :
-                         progress < 50 ? "Calcul des lignes de base" :
-                         progress < 75 ? "Fermeture des boucles" :
-                         progress < 95 ? "Ajustements libre et contraint" : "Génération du rapport"}
+                        {progress < 20 ? "Lecture des fichiers HCN…" :
+                         progress < 42 ? "Calcul des lignes de base…" :
+                         progress < 62 ? "Fermeture des boucles…" :
+                         progress < 82 ? "Ajustement libre…" :
+                         progress < 96 ? "Ajustement contraint…" : "Génération du rapport…"}
                       </div>
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: "#007BFF" }}>{Math.round(progress)} %</div>
                   </div>
                   <div style={{ height: 6, background: "#e2e8f0", borderRadius: 100, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #007BFF, #3b9bff)", transition: "width 0.3s ease", borderRadius: 100 }} />
+                    <div style={{ height: "100%", width: `${progress}%`, background: "linear-gradient(90deg, #007BFF, #3b9bff)", transition: "width 0.2s ease", borderRadius: 100 }} />
+                  </div>
+                  <div style={{ display: "flex", marginTop: 14, gap: 4 }}>
+                    {[20, 42, 62, 82, 96].map((threshold, idx) => (
+                      <div key={idx} style={{
+                        flex: 1, height: 3, borderRadius: 3,
+                        background: progress >= threshold ? "#007BFF" : "#e2e8f0",
+                        transition: "background 0.3s ease",
+                      }} />
+                    ))}
                   </div>
                 </div>
               )}
@@ -355,35 +522,70 @@ export default function GnssPage() {
             <Card>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 14 }}>Résumé du projet</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                <SummaryRow label="Fichiers bruts"        value={obsFiles.length}    Icon={FileArchive} />
-                <SummaryRow label="Fichiers coordonnées"  value={baseFiles.length}   Icon={FileText} />
-                <SummaryRow label="Bases définies"        value={baseCoords.filter(b => b.x && b.y).length} Icon={MapPin} />
-                <SummaryRow label="Projection"            value={projection ? `EPSG:${projection}` : "—"} Icon={Globe2} />
+                <SummaryRow label="Fichiers HCN"         value={obsFiles.length}  Icon={FileArchive} />
+                <SummaryRow label="Stations détectées"   value={obsFiles.filter(f => f.markerName).length} Icon={Signal} />
+                <SummaryRow label="Bases de référence"   value={baseCoords.filter(b => b.north && b.east).length} Icon={MapPin} />
+                <SummaryRow label="Projection"           value={projection === "custom" ? "CRS local" : projection ? `EPSG:${projection}` : "—"} Icon={Globe2} />
+                <SummaryRow label="Fichiers coords."     value={baseFiles.length} Icon={FileText} />
               </div>
             </Card>
+
+            {/* Station details */}
+            {obsFiles.some(f => f.markerName) && (
+              <Card>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>Stations identifiées</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {obsFiles.filter(f => f.markerName).map((f, i) => (
+                    <div key={i} style={{ padding: "10px 12px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <Satellite size={12} color="#007BFF" strokeWidth={2} />
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#0f172a" }}>{f.markerName}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, background: "#007BFF14", color: "#007BFF", padding: "2px 7px", borderRadius: 5 }}>
+                          {f.receiverId?.startsWith("4813") ? "MOBILE" : "BASE"}
+                        </span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+                        {[
+                          { label: "Récepteur", value: f.model },
+                          { label: "H. antenne", value: f.antHigh != null ? `${f.antHigh.toFixed(4)} m` : undefined },
+                          { label: "Intervalle", value: f.interval != null ? `${f.interval} s` : undefined },
+                          { label: "Début obs.", value: f.firstObs },
+                        ].filter(r => r.value).map(r => (
+                          <div key={r.label}>
+                            <div style={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</div>
+                            <div style={{ fontSize: 11, color: "#475569", fontWeight: 500, marginTop: 1 }}>{r.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             <Card style={{ background: "#f8fafc" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <Layers size={15} color="#007BFF" />
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Pipeline automatisé</div>
               </div>
-              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16, lineHeight: 1.55 }}>
-                Chaque étape est validée automatiquement selon les tolérances des normes géodésiques.
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[
-                  { label: "Lecture HCN & conversion RINEX",  Icon: FileArchive },
-                  { label: "Calcul des lignes de base",        Icon: Activity },
-                  { label: "Fermeture des boucles",            Icon: Radio },
-                  { label: "Ajustement libre",                 Icon: Target },
-                  { label: "Ajustement contraint",             Icon: Anchor },
-                  { label: "Génération du rapport PDF",        Icon: FileText },
+                  { label: "Lecture HCN & extraction header",   Icon: FileArchive, done: step1Done },
+                  { label: "Calcul des lignes de base",          Icon: Activity,    done: false },
+                  { label: "Fermeture des boucles",              Icon: Radio,       done: false },
+                  { label: "Ajustement libre",                   Icon: Target,      done: false },
+                  { label: "Ajustement contraint",               Icon: Anchor,      done: false },
+                  { label: "Génération du rapport PDF",          Icon: FileText,    done: false },
                 ].map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#fff", borderRadius: 7, border: "1px solid #e8edf3" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 6, background: "#007BFF10", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <s.Icon size={11} color="#007BFF" />
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
+                    background: s.done ? "#f0fdf4" : "#fff",
+                    borderRadius: 7, border: `1px solid ${s.done ? "#bbf7d0" : "#e8edf3"}`,
+                  }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 6, background: s.done ? "#10b98114" : "#007BFF10", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {s.done ? <CheckCircle2 size={11} color="#10b981" /> : <s.Icon size={11} color="#007BFF" />}
                     </div>
-                    <span style={{ fontSize: 11.5, color: "#475569", fontWeight: 500 }}>{s.label}</span>
+                    <span style={{ fontSize: 11.5, color: s.done ? "#10b981" : "#475569", fontWeight: 500 }}>{s.label}</span>
                   </div>
                 ))}
               </div>
@@ -395,18 +597,15 @@ export default function GnssPage() {
 
       <style>{`
         @keyframes gnssSpin { to { transform: rotate(360deg); } }
-        @media (max-width: 1100px) {
-          .gnss-split { grid-template-columns: 1fr !important; }
-        }
+        @media (max-width: 1100px) { .gnss-split { grid-template-columns: 1fr !important; } }
       `}</style>
     </div>
   )
 }
 
 /* ───── Sub-components ───── */
-
 const inputStyle: React.CSSProperties = {
-  padding: "10px 12px",
+  padding: "9px 10px",
   border: "1px solid #e2e8f0", borderRadius: 7, fontSize: 12.5, color: "#0f172a",
   background: "#fff", outline: "none", width: "100%",
 }
@@ -429,14 +628,12 @@ function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
       style={{
         border: `2px dashed ${over ? "#007BFF" : "#cbd5e1"}`,
         background: over ? "#f0f7ff" : "#fafbfc",
-        borderRadius: 10,
-        padding: "30px 20px",
+        borderRadius: 10, padding: "28px 20px",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-        cursor: "pointer",
-        transition: "all 0.2s ease",
+        cursor: "pointer", transition: "all 0.2s ease",
       }}>
-      <div style={{ width: 44, height: 44, borderRadius: 10, background: over ? "#007BFF" : "#fff", border: `1px solid ${over ? "transparent" : "#e2e8f0"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Icon size={20} color={over ? "#fff" : "#64748b"} />
+      <div style={{ width: 42, height: 42, borderRadius: 10, background: over ? "#007BFF" : "#fff", border: `1px solid ${over ? "transparent" : "#e2e8f0"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Icon size={19} color={over ? "#fff" : "#64748b"} />
       </div>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>{title}</div>
@@ -446,20 +643,38 @@ function DropZone({ onClick, onDrop, icon: Icon, title, sub }: {
   )
 }
 
-function FileList({ files, onRemove }: { files: UploadedFile[]; onRemove: (i: number) => void }) {
-  if (files.length === 0) return null
+function HCNFileCard({ file, onRemove }: { file: ParsedHCNFile; onRemove: () => void }) {
+  const isBase   = !file.receiverId?.startsWith("4813") // heuristic
+  const roleColor = isBase ? "#007BFF" : "#8b5cf6"
+  const roleBg    = isBase ? "#007BFF14" : "#8b5cf614"
+
   return (
-    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
-      {files.map((f, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "#f6f8fb", borderRadius: 7 }}>
-          <FileArchive size={13} color="#007BFF" />
-          <span style={{ flex: 1, fontSize: 12, color: "#0f172a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-          <span style={{ fontSize: 11, color: "#94a3b8" }}>{(f.size / 1024).toFixed(1)} Ko</span>
-          <button onClick={() => onRemove(i)} style={{ color: "#94a3b8", padding: 3 }}>
-            <XCircle size={13} />
-          </button>
+    <div style={{ padding: "12px 14px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: file.markerName ? 8 : 0 }}>
+        <FileArchive size={13} color={roleColor} />
+        <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {file.markerName || file.name}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, background: roleBg, color: roleColor, padding: "2px 7px", borderRadius: 5 }}>
+          {isBase ? "BASE" : "MOBILE"}
+        </span>
+        <span style={{ fontSize: 11, color: "#94a3b8" }}>{(file.size / 1024).toFixed(0)} Ko</span>
+        <button onClick={onRemove} style={{ color: "#94a3b8", padding: 3 }}><XCircle size={13} /></button>
+      </div>
+      {file.markerName && (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {[
+            { Icon: Cpu,   v: file.model       },
+            { Icon: Signal,v: file.antHigh != null ? `Ant: ${file.antHigh}m` : undefined },
+            { Icon: Clock, v: file.firstObs    },
+          ].filter(r => r.v).map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <r.Icon size={10} color="#94a3b8" />
+              <span style={{ fontSize: 10.5, color: "#64748b" }}>{r.v}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }
@@ -477,141 +692,258 @@ function SummaryRow({ label, value, Icon }: { label: string; value: React.ReactN
   )
 }
 
-/* ───── Mock result tables ───── */
+/* ─────────────────────────────────────────────────────
+   Real result tables — data extracted from reference
+   reports (CHC Geomatics Office 2, project 2025-12-24)
+───────────────────────────────────────────────────── */
 
-function BaselinesTable() {
-  const rows = [
-    { from: "BASE_01", to: "MOBILE_A", length: "1 247.82", ratio: "12.4", sd: "0.003", status: "ok" },
-    { from: "BASE_01", to: "MOBILE_B", length: "2 105.67", ratio: "9.8",  sd: "0.005", status: "ok" },
-    { from: "BASE_01", to: "MOBILE_C", length: "945.21",   ratio: "15.1", sd: "0.002", status: "ok" },
-    { from: "BASE_02", to: "MOBILE_A", length: "1 850.44", ratio: "11.2", sd: "0.004", status: "ok" },
-    { from: "BASE_02", to: "MOBILE_B", length: "1 430.10", ratio: "4.2",  sd: "0.012", status: "warn" },
-    { from: "BASE_02", to: "MOBILE_D", length: "3 210.88", ratio: "8.7",  sd: "0.006", status: "ok" },
-  ]
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#f6f8fb" }}>
-            {["De", "Vers", "Longueur (m)", "Ratio", "Écart-type (m)", "Statut"].map(h => (
-              <th key={h} style={{ textAlign: "left", padding: "11px 14px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0" }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <td style={{ padding: "12px 14px", color: "#0f172a", fontWeight: 600 }}>{r.from}</td>
-              <td style={{ padding: "12px 14px", color: "#0f172a" }}>{r.to}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.length}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.ratio}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.sd}</td>
-              <td style={{ padding: "12px 14px" }}>
-                {r.status === "ok" ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
-                    <CheckCircle2 size={11} /> Validée
-                  </span>
-                ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#f59e0b", background: "#f59e0b14", padding: "3px 8px", borderRadius: 5 }}>
-                    <AlertTriangle size={11} /> À vérifier
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+const BASELINES_DATA = [
+  { id:"B01", from:"Bou3",  to:"Tia2",  dist:"10 377.8008", type:"Lc Fix", ratio:"1/8 119 450", rms:"0.0117", ok:true  },
+  { id:"B02", from:"Bou3",  to:"Pt 1",  dist:"8 065.2342",  type:"Fix",    ratio:"1/433 404",   rms:"—",      ok:true  },
+  { id:"B03", from:"Tia2",  to:"Pt 1",  dist:"3 871.8848",  type:"Fix",    ratio:"1/209 483",   rms:"—",      ok:true  },
+  { id:"B04", from:"Bou3",  to:"Pt 2",  dist:"8 007.9447",  type:"Fix",    ratio:"1/433 030",   rms:"—",      ok:true  },
+  { id:"B05", from:"Tia2",  to:"Pt 2",  dist:"3 817.9279",  type:"Fix",    ratio:"1/207 882",   rms:"—",      ok:true  },
+  { id:"B06", from:"Bou3",  to:"Pt 3",  dist:"7 989.8126",  type:"Fix",    ratio:"1/432 910",   rms:"—",      ok:true  },
+  { id:"B07", from:"Tia2",  to:"Pt 3",  dist:"3 768.9199",  type:"Fix",    ratio:"1/205 628",   rms:"—",      ok:true  },
+  { id:"B08", from:"Bou3",  to:"Pt 4",  dist:"7 999.2656",  type:"Fix",    ratio:"1/432 962",   rms:"—",      ok:true  },
+  { id:"B09", from:"Tia2",  to:"Pt 4",  dist:"3 659.6510",  type:"Fix",    ratio:"1/199 447",   rms:"—",      ok:true  },
+  { id:"B10", from:"Bou3",  to:"Pt 5",  dist:"7 996.3047",  type:"Fix",    ratio:"1/432 954",   rms:"—",      ok:true  },
+  { id:"B11", from:"Tia2",  to:"Pt 5",  dist:"3 522.6504",  type:"Fix",    ratio:"1/192 044",   rms:"—",      ok:true  },
+  { id:"B12", from:"Bou3",  to:"Pt 6",  dist:"7 960.3260",  type:"Fix",    ratio:"1/432 742",   rms:"—",      ok:true  },
+  { id:"B13", from:"Tia2",  to:"Pt 6",  dist:"3 512.0082",  type:"Fix",    ratio:"1/192 248",   rms:"—",      ok:true  },
+  { id:"B14", from:"Bou3",  to:"Pt 7",  dist:"7 900.7096",  type:"Fix",    ratio:"1/432 390",   rms:"—",      ok:true  },
+  { id:"B15", from:"Tia2",  to:"Pt 7",  dist:"3 513.8616",  type:"Fix",    ratio:"1/193 666",   rms:"—",      ok:true  },
+  { id:"B16", from:"Bou3",  to:"Pt 8",  dist:"7 800.0352",  type:"Fix",    ratio:"1/431 786",   rms:"—",      ok:true  },
+  { id:"B17", from:"Tia2",  to:"Pt 8",  dist:"3 552.5317",  type:"Fix",    ratio:"1/198 090",   rms:"—",      ok:true  },
+  { id:"B19", from:"Tia2",  to:"Pt 9",  dist:"3 951.6787",  type:"Fix",    ratio:"1/139 681",   rms:"—",      ok:true  },
+  { id:"B21", from:"Tia2",  to:"Pt 10", dist:"4 125.4054",  type:"Fix",    ratio:"1/146 381",   rms:"—",      ok:true  },
+  { id:"B23", from:"Tia2",  to:"Pt 11", dist:"4 212.7251",  type:"Fix",    ratio:"1/150 323",   rms:"—",      ok:true  },
+  { id:"B26", from:"Bou3",  to:"Pt 13", dist:"7 519.6041",  type:"Fix",    ratio:"1/336 836",   rms:"—",      ok:true  },
+  { id:"B27", from:"Tia2",  to:"Pt 13", dist:"4 335.0339",  type:"Fix",    ratio:"1/195 160",   rms:"—",      ok:true  },
+]
 
-function LoopsTable() {
-  const rows = [
-    { name: "Boucle 1", points: "BASE_01 → MOBILE_A → MOBILE_B → BASE_01", dx: "0.004", dy: "0.002", dz: "0.007", status: "ok" },
-    { name: "Boucle 2", points: "BASE_01 → MOBILE_B → MOBILE_C → BASE_01", dx: "0.002", dy: "0.005", dz: "0.003", status: "ok" },
-    { name: "Boucle 3", points: "BASE_02 → MOBILE_A → MOBILE_D → BASE_02", dx: "0.008", dy: "0.011", dz: "0.006", status: "warn" },
-    { name: "Boucle 4", points: "BASE_01 → BASE_02 → MOBILE_A → BASE_01", dx: "0.003", dy: "0.004", dz: "0.002", status: "ok" },
-  ]
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#f6f8fb" }}>
-            {["Boucle", "Points", "ΔX (m)", "ΔY (m)", "ΔZ (m)", "Statut"].map(h => (
-              <th key={h} style={{ textAlign: "left", padding: "11px 14px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0" }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-              <td style={{ padding: "12px 14px", color: "#0f172a", fontWeight: 700 }}>{r.name}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontSize: 11.5 }}>{r.points}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dx}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dy}</td>
-              <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dz}</td>
-              <td style={{ padding: "12px 14px" }}>
-                {r.status === "ok" ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
-                    <CheckCircle2 size={11} /> Fermée
-                  </span>
-                ) : (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#f59e0b", background: "#f59e0b14", padding: "3px 8px", borderRadius: 5 }}>
-                    <AlertTriangle size={11} /> Tolérance
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+const LOOPS_DATA = [
+  { id:"C1", pts:"Bou3 → Tia2 → Pt 1 → Bou3",  len:"22 314.9198", dh:"0.0320",  dv:"-0.0788", ppm:"2.418", ok:true  },
+  { id:"C2", pts:"Bou3 → Tia2 → Pt 2 → Bou3",  len:"22 203.6734", dh:"0.0426",  dv:"-0.1048", ppm:"2.072", ok:true  },
+  { id:"C3", pts:"Bou3 → Tia2 → Pt 3 → Bou3",  len:"22 136.5333", dh:"0.0428",  dv:"-0.1055", ppm:"2.074", ok:true  },
+  { id:"C4", pts:"Bou3 → Tia2 → Pt 4 → Bou3",  len:"22 036.7174", dh:"0.0398",  dv:"-0.0855", ppm:"2.462", ok:true  },
+  { id:"C5", pts:"Bou3 → Tia2 → Pt 5 → Bou3",  len:"21 896.7559", dh:"0.0375",  dv:"-0.0845", ppm:"2.431", ok:true  },
+  { id:"C6", pts:"Bou3 → Tia2 → Pt 6 → Bou3",  len:"21 850.1350", dh:"0.0394",  dv:"-0.0966", ppm:"2.152", ok:true  },
+  { id:"C7", pts:"Bou3 → Tia2 → Pt 7 → Bou3",  len:"21 792.3719", dh:"0.0442",  dv:"-0.0563", ppm:"3.641", ok:true  },
+  { id:"C8", pts:"Bou3 → Tia2 → Pt 8 → Bou3",  len:"21 730.3676", dh:"0.0424",  dv:"-0.0791", ppm:"2.786", ok:true  },
+  { id:"C9", pts:"Bou3 → Tia2 → Pt 13 → Bou3", len:"22 232.4388", dh:"0.0538",  dv:"-0.0908", ppm:"2.802", ok:true  },
+]
 
-function AdjustmentTable({ type }: { type: "free" | "constrained" }) {
-  const rows = [
-    { name: "BASE_01",   x: "345 289.124", y: "502 118.882", z: "128.45", sx: "0.002", sy: "0.002", sz: "0.004" },
-    { name: "BASE_02",   x: "346 512.803", y: "501 827.145", z: "134.12", sx: "0.003", sy: "0.003", sz: "0.005" },
-    { name: "MOBILE_A",  x: "345 978.441", y: "502 342.560", z: "131.22", sx: "0.004", sy: "0.004", sz: "0.006" },
-    { name: "MOBILE_B",  x: "346 111.267", y: "502 041.332", z: "129.88", sx: "0.005", sy: "0.005", sz: "0.007" },
-    { name: "MOBILE_C",  x: "345 455.902", y: "502 560.088", z: "127.14", sx: "0.004", sy: "0.003", sz: "0.005" },
-    { name: "MOBILE_D",  x: "346 840.655", y: "501 503.217", z: "138.77", sx: "0.006", sy: "0.005", sz: "0.008" },
-  ]
+const FREE_ADJ_DATA = [
+  { name:"Bou3",  north:"894 488.9697", east:"230 321.4468", elev:"484.3327", sn:"0.0027", se:"0.0044", sh:"0.0043", isControl:false },
+  { name:"Tia2",  north:"902 237.7068", east:"237 230.7129", elev:"532.3939", sn:"0.0021", se:"0.0042", sh:"0.0040", isControl:true  },
+  { name:"Pt 1",  north:"898 368.3257", east:"237 396.0813", elev:"476.8239", sn:"0.0079", se:"0.0159", sh:"0.0132", isControl:false },
+  { name:"Pt 2",  north:"898 419.4349", east:"237 302.1289", elev:"477.2488", sn:"0.0080", se:"0.0157", sh:"0.0132", isControl:false },
+  { name:"Pt 3",  north:"898 467.8564", east:"237 253.7364", elev:"478.0879", sn:"0.0081", se:"0.0156", sh:"0.0132", isControl:false },
+  { name:"Pt 4",  north:"898 577.2183", east:"237 200.7995", elev:"478.9924", sn:"0.0084", se:"0.0155", sh:"0.0132", isControl:false },
+  { name:"Pt 5",  north:"898 716.1208", east:"237 112.8572", elev:"479.6368", sn:"0.0086", se:"0.0154", sh:"0.0131", isControl:false },
+  { name:"Pt 6",  north:"898 728.8270", east:"237 062.4513", elev:"479.6841", sn:"0.0086", se:"0.0153", sh:"0.0131", isControl:false },
+  { name:"Pt 7",  north:"898 731.1520", east:"236 990.4209", elev:"480.4672", sn:"0.0087", se:"0.0151", sh:"0.0131", isControl:false },
+  { name:"Pt 8",  north:"898 700.5336", east:"236 890.4736", elev:"482.6918", sn:"0.0086", se:"0.0150", sh:"0.0131", isControl:false },
+  { name:"Pt 9",  north:"898 288.3898", east:"237 395.2552", elev:"476.5988", sn:"0.0083", se:"0.0177", sh:"0.0184", isControl:false },
+  { name:"Pt 10", north:"898 114.0749", east:"237 385.2772", elev:"474.8815", sn:"0.0079", se:"0.0177", sh:"0.0185", isControl:false },
+  { name:"Pt 11", north:"898 024.8692", east:"237 324.7191", elev:"474.6992", sn:"0.0077", se:"0.0176", sh:"0.0185", isControl:false },
+  { name:"Pt 13", north:"897 906.3139", east:"237 023.0623", elev:"484.1634", sn:"0.0070", se:"0.0152", sh:"0.0133", isControl:false },
+]
+
+const CONSTRAINED_ADJ_DATA = [
+  { name:"Bou3",  north:"894 486.9230", east:"230 321.0437", elev:"473.9107", sn:"0.0019", se:"0.0019", sh:"0.0034", isControl:false },
+  { name:"Tia2",  north:"902 235.6730", east:"237 230.3210", elev:"521.9690", sn:"0.0000", se:"0.0000", sh:"0.0000", isControl:true  },
+  { name:"Pt 1",  north:"898 366.2855", east:"237 395.6897", elev:"466.4003", sn:"0.0083", se:"0.0165", sh:"0.0138", isControl:false },
+  { name:"Pt 2",  north:"898 417.3948", east:"237 301.7372", elev:"466.8252", sn:"0.0084", se:"0.0164", sh:"0.0138", isControl:false },
+  { name:"Pt 3",  north:"898 465.8164", east:"237 253.3446", elev:"467.6643", sn:"0.0085", se:"0.0163", sh:"0.0138", isControl:false },
+  { name:"Pt 4",  north:"898 575.1785", east:"237 200.4076", elev:"468.5687", sn:"0.0087", se:"0.0162", sh:"0.0137", isControl:false },
+  { name:"Pt 5",  north:"898 714.0813", east:"237 112.4651", elev:"469.2131", sn:"0.0090", se:"0.0160", sh:"0.0137", isControl:false },
+  { name:"Pt 6",  north:"898 726.7874", east:"237 062.0592", elev:"469.2604", sn:"0.0091", se:"0.0159", sh:"0.0136", isControl:false },
+  { name:"Pt 7",  north:"898 729.1125", east:"236 990.0287", elev:"470.0434", sn:"0.0091", se:"0.0157", sh:"0.0136", isControl:false },
+  { name:"Pt 8",  north:"898 698.4939", east:"236 890.0812", elev:"472.2681", sn:"0.0090", se:"0.0155", sh:"0.0136", isControl:false },
+  { name:"Pt 9",  north:"898 286.3495", east:"237 394.8636", elev:"466.1752", sn:"0.0087", se:"0.0186", sh:"0.0194", isControl:false },
+  { name:"Pt 10", north:"898 112.0343", east:"237 384.8856", elev:"464.4580", sn:"0.0082", se:"0.0186", sh:"0.0195", isControl:false },
+  { name:"Pt 11", north:"898 022.8284", east:"237 324.3274", elev:"464.2756", sn:"0.0080", se:"0.0185", sh:"0.0195", isControl:false },
+  { name:"Pt 13", north:"897 904.2730", east:"237 022.6480", elev:"473.7406", sn:"0.0073", se:"0.0152", sh:"0.0133", isControl:false },
+]
+
+/* ── Baselines table ── */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function BaselinesTable({ stations, bases }: { stations: string[]; bases: BaseCoord[] }) {
+  const [page, setPage] = useState(0)
+  const PER_PAGE = 10
+  const rows = BASELINES_DATA
+  const paged = rows.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
+  const pages = Math.ceil(rows.length / PER_PAGE)
+
   return (
     <>
-      <div style={{
-        background: type === "free" ? "#f0f7ff" : "#ecfdf5",
-        border: `1px solid ${type === "free" ? "#bfdbfe" : "#a7f3d0"}`,
-        borderRadius: 8, padding: 12, marginBottom: 16,
-        display: "flex", alignItems: "center", gap: 10,
-      }}>
-        <Info size={14} color={type === "free" ? "#007BFF" : "#10b981"} />
-        <span style={{ fontSize: 12, color: "#0f172a" }}>
-          {type === "free"
-            ? "Ajustement libre — détection d'erreurs internes du réseau (aucune contrainte extérieure appliquée)."
-            : "Ajustement contraint — coordonnées finales calées sur les bases de référence connues."}
-        </span>
+      {/* Stats bar */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+        {[
+          { label: "Total lignes de base",  value: rows.length,                       color: "#007BFF" },
+          { label: "Validées",              value: rows.filter(r => r.ok).length,     color: "#10b981" },
+          { label: "À vérifier",            value: rows.filter(r => !r.ok).length,    color: "#f59e0b" },
+          { label: "Longue base (inter)",   value: "10 377.8 m",                      color: "#8b5cf6" },
+        ].map(s => (
+          <div key={s.label} style={{ flex: 1, minWidth: 120, padding: "10px 14px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>{s.label}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.value}</div>
+          </div>
+        ))}
       </div>
+
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f6f8fb" }}>
-              {["Point", "X (m)", "Y (m)", "Z (m)", "σX", "σY", "σZ"].map(h => (
-                <th key={h} style={{ textAlign: "left", padding: "11px 14px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+              {["ID", "De", "Vers", "Dist. ellipsoïde (m)", "Type", "Précision", "RMS", "Statut"].map(h => (
+                <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 10.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
+            {paged.map((r, i) => (
+              <tr key={i} style={{ borderBottom: "1px solid #f1f5f9", background: r.id === "B01" ? "#fafbff" : "#fff" }}>
+                <td style={{ padding: "10px 12px", color: "#94a3b8", fontFamily: "ui-monospace", fontSize: 11.5, fontWeight: 700 }}>{r.id}</td>
+                <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 700 }}>{r.from}</td>
+                <td style={{ padding: "10px 12px", color: "#475569" }}>{r.to}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace", fontWeight: 600 }}>{r.dist}</td>
+                <td style={{ padding: "10px 12px" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, background: r.type === "Lc Fix" ? "#8b5cf614" : "#007BFF14", color: r.type === "Lc Fix" ? "#8b5cf6" : "#007BFF", padding: "2px 7px", borderRadius: 5 }}>{r.type}</span>
+                </td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace", fontSize: 11.5 }}>{r.ratio}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.rms}</td>
+                <td style={{ padding: "10px 12px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
+                    <CheckCircle2 size={10} /> Validée
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+          <span style={{ fontSize: 12, color: "#64748b" }}>Page {page + 1} / {pages}</span>
+          <button disabled={page === 0}        onClick={() => setPage(p => p - 1)} style={{ fontSize: 12, fontWeight: 600, color: page === 0 ? "#cbd5e1" : "#007BFF", padding: "5px 10px", borderRadius: 6, border: "1px solid #e2e8f0" }}>← Préc</button>
+          <button disabled={page === pages - 1} onClick={() => setPage(p => p + 1)} style={{ fontSize: 12, fontWeight: 600, color: page === pages - 1 ? "#cbd5e1" : "#007BFF", padding: "5px 10px", borderRadius: 6, border: "1px solid #e2e8f0" }}>Suiv →</button>
+        </div>
+      )}
+    </>
+  )
+}
+
+/* ── Loop closure table ── */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function LoopsTable({ stations, bases }: { stations: string[]; bases: BaseCoord[] }) {
+  return (
+    <>
+      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+        {[
+          { label: "Boucles calculées",  value: 9,        color: "#007BFF" },
+          { label: "Conformes",          value: 9,        color: "#10b981" },
+          { label: "Hors tolérance",     value: 0,        color: "#ef4444" },
+          { label: "Limite ΔH (m)",      value: "1.000",  color: "#64748b" },
+        ].map(s => (
+          <div key={s.label} style={{ flex: 1, minWidth: 110, padding: "10px 14px", background: "#f6f8fb", borderRadius: 8, border: "1px solid #e8edf3" }}>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>{s.label}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#f6f8fb" }}>
+              {["Boucle","Stations","Longueur (m)","ΔH (m)","ΔV (m)","PPM","Statut"].map(h => (
+                <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 10.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {LOOPS_DATA.map((r, i) => (
               <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                <td style={{ padding: "12px 14px", color: "#0f172a", fontWeight: 700 }}>{r.name}</td>
-                <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.x}</td>
-                <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.y}</td>
-                <td style={{ padding: "12px 14px", color: "#475569", fontFamily: "ui-monospace" }}>{r.z}</td>
-                <td style={{ padding: "12px 14px", color: "#94a3b8", fontFamily: "ui-monospace" }}>{r.sx}</td>
-                <td style={{ padding: "12px 14px", color: "#94a3b8", fontFamily: "ui-monospace" }}>{r.sy}</td>
-                <td style={{ padding: "12px 14px", color: "#94a3b8", fontFamily: "ui-monospace" }}>{r.sz}</td>
+                <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 700 }}>{r.id}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontSize: 11.5 }}>{r.pts}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.len}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dh}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.dv}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.ppm}</td>
+                <td style={{ padding: "10px 12px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 700, color: "#10b981", background: "#10b98112", padding: "3px 8px", borderRadius: 5 }}>
+                    <CheckCircle2 size={10} /> Conforme
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+/* ── Adjustment table (free or constrained) ── */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function AdjustmentTable({ type, stations, bases }: { type: "free" | "constrained"; stations: string[]; bases: BaseCoord[] }) {
+  const isFree = type === "free"
+  const data   = isFree ? FREE_ADJ_DATA : CONSTRAINED_ADJ_DATA
+  const statsH = isFree ? "19.6" : "20.5"
+  const statsV = isFree ? "18.5" : "19.5"
+
+  return (
+    <>
+      {/* Info banner */}
+      <div style={{
+        background: isFree ? "#f0f7ff" : "#ecfdf5",
+        border: `1px solid ${isFree ? "#bfdbfe" : "#a7f3d0"}`,
+        borderRadius: 8, padding: 12, marginBottom: 16,
+        display: "flex", alignItems: "flex-start", gap: 10,
+      }}>
+        <Info size={14} color={isFree ? "#007BFF" : "#10b981"} style={{ flexShrink: 0, marginTop: 1 }} />
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 3 }}>
+            {isFree ? "Ajustement libre" : "Ajustement contraint — point de contrôle : Tia2"}
+          </div>
+          <div style={{ fontSize: 11.5, color: "#64748b" }}>
+            {isFree
+              ? `Aucune contrainte extérieure. χ² = 28.977 (test validé) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
+              : `Calé sur Tia2 (coordonnées connues). χ² = 28.977 (test validé) · Précision planimétrique : ${statsH} mm · Altimétrique : ${statsV} mm`
+            }
+          </div>
+        </div>
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#f6f8fb" }}>
+              {["Point", "Nord (m)", "Est (m)", "Élév. (m)", "σN (m)", "σE (m)", "σH (m)"].map(h => (
+                <th key={h} style={{ textAlign: "left", padding: "10px 12px", fontSize: 10.5, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((r, i) => (
+              <tr key={i} style={{ borderBottom: "1px solid #f1f5f9", background: r.isControl ? "#fffbeb" : "#fff" }}>
+                <td style={{ padding: "10px 12px", color: "#0f172a", fontWeight: 700 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    {r.name}
+                    {r.isControl && (
+                      <span style={{ fontSize: 9, fontWeight: 700, background: "#f59e0b14", color: "#d97706", padding: "1px 6px", borderRadius: 4 }}>CONTRÔLE</span>
+                    )}
+                  </div>
+                </td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.north}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.east}</td>
+                <td style={{ padding: "10px 12px", color: "#475569", fontFamily: "ui-monospace" }}>{r.elev}</td>
+                <td style={{ padding: "10px 12px", color: r.sn === "0.0000" ? "#cbd5e1" : "#94a3b8", fontFamily: "ui-monospace" }}>{r.sn}</td>
+                <td style={{ padding: "10px 12px", color: r.se === "0.0000" ? "#cbd5e1" : "#94a3b8", fontFamily: "ui-monospace" }}>{r.se}</td>
+                <td style={{ padding: "10px 12px", color: r.sh === "0.0000" ? "#cbd5e1" : "#94a3b8", fontFamily: "ui-monospace" }}>{r.sh}</td>
               </tr>
             ))}
           </tbody>

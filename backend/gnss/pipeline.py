@@ -1063,31 +1063,31 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
     #   2. Kinematic-stop absolute ECEF captured during _kinematic_stops
     #   3. RINEX APPROX XYZ header value (~3 m accurate)
     #   4. (0,0,0) placeholder — map will filter these out
-    # Any station declared in base_marker_names is flagged is_control=True
-    # so the constrained adjustment has an anchor — even when the user
-    # didn't supply precise grid coords (APPROX XYZ is plenty to define
-    # the datum for a local-frame adjustment).
-    base_markers_lc = {m.lower() for m in pin.base_marker_names}
+    # Only mark a station as is_control=True when the user has supplied
+    # PRECISE coordinates for it (via control_stations JSON, or indirectly
+    # via base_coords_txt + crs_def_txt → parsed upstream into
+    # pin.control_stations). A base declared only by name (without
+    # precise coords) stays is_control=False because its RINEX APPROX XYZ
+    # is SPP-accurate to ~3 m — pinning it there in a constrained
+    # adjustment would pollute every other station's residuals. The free
+    # adjustment's pivot falls back to the first station if no controls
+    # exist, which is exactly what we want for an un-anchored network.
     station_map: dict[str, Station] = {}
     controls_by_name = {c.name: c for c in pin.control_stations}
     for bl in baselines:
         for name in (bl.start, bl.end):
             if name in station_map:
                 continue
-            is_ctl = name.lower() in base_markers_lc
             if name in controls_by_name:
-                s = controls_by_name[name]
-                # Respect existing flag; upgrade to True if this is a base
-                if is_ctl and not s.is_control:
-                    s = Station(name=s.name, x=s.x, y=s.y, z=s.z, is_control=True)
-                station_map[name] = s
+                # User-supplied precise coords → genuine control.
+                station_map[name] = controls_by_name[name]
             elif name in stop_positions:
                 x, y, z = stop_positions[name]
-                station_map[name] = Station(name=name, x=x, y=y, z=z, is_control=is_ctl)
+                station_map[name] = Station(name=name, x=x, y=y, z=z, is_control=False)
             else:
                 seed = next((s for s in sessions if s.station_point == name), None)
                 xyz = seed.approx_xyz if (seed and seed.approx_xyz) else (0.0, 0.0, 0.0)
-                station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2], is_control=is_ctl)
+                station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2], is_control=False)
 
     # Build tracking charts (one per unique observation file referenced by
     # the baselines). We do it here — inside compute_all_baselines — so the

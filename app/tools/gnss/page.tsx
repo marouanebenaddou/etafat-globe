@@ -312,31 +312,34 @@ export default function GnssPage() {
     }
     setObsFiles(prev    => [...prev, ...parsed])
     setObsFilesRaw(prev => [...prev, ...newRaw])
+    // NB: auto-populate of Étape 2 happens in a useEffect below that
+    // watches obsFiles. That way we work with the COMMITTED state, not
+    // whatever the closure captured — which matters when folder drops
+    // deliver 15+ files that go through multiple internal state commits.
+  }, [])
 
-    // Auto-populate Étape 2 only with LIKELY bases. Heuristic: a marker
-    // that appears in exactly ONE observation file is probably a static
-    // base (one continuous recording); a marker that appears in multiple
-    // files is probably a roving rover (different occupations during the
-    // day). The user can still add rover markers manually via + Ajouter.
-    //
-    // Apply across ALL known obs files (existing + new) so adding a 2nd
-    // file for the same marker auto-demotes it from the base list.
+  /* ── Auto-populate Étape 2 whenever the observation file list changes.
+         Runs AFTER state commit so we always see the committed obsFiles,
+         unlike the previous useCallback closure that captured stale state
+         on large folder drops. Heuristic: markers seen in exactly one
+         OBS file → likely static base. Markers seen in 2+ files → likely
+         roving rover, not added. User can still type bases manually.   */
+  useEffect(() => {
     setBaseCoords(prev => {
       const isPlaceholderRow = (b: BaseCoord) =>
         b.name === "BASE_01" && !b.north && !b.east && !b.elev
-      const allFiles = [...obsFiles, ...parsed]
       const counts = new Map<string, number>()
-      for (const f of allFiles) {
+      const originalCase = new Map<string, string>()   // lower → as-typed
+      for (const f of obsFiles) {
         const m = (f.markerName || "").trim()
         if (!m) continue
-        counts.set(m.toLowerCase(), (counts.get(m.toLowerCase()) || 0) + 1)
+        const k = m.toLowerCase()
+        counts.set(k, (counts.get(k) || 0) + 1)
+        if (!originalCase.has(k)) originalCase.set(k, m)
       }
-      // Likely bases = markers seen in exactly one file
       const bases = Array.from(counts.entries())
         .filter(([, n]) => n === 1)
-        .map(([name]) => allFiles.find(f => (f.markerName || "").trim().toLowerCase() === name)?.markerName?.trim())
-        .filter((s): s is string => Boolean(s))
-      // If the only existing row is the placeholder, start from empty
+        .map(([k]) => originalCase.get(k)!)
       const start = (prev.length === 1 && isPlaceholderRow(prev[0])) ? [] : prev
       const existingLower = new Set(start.map(b => b.name.trim().toLowerCase()))
       const next = [...start]
@@ -346,16 +349,24 @@ export default function GnssPage() {
           existingLower.add(name.toLowerCase())
         }
       }
-      // Auto-demote rows that have become rovers (marker now in 2+ files)
-      // but only if the user hadn't typed coords. We leave manually-edited
-      // rows alone.
-      return next.filter(b => {
-        const nameLower = b.name.trim().toLowerCase()
-        const count = counts.get(nameLower) || 0
-        const userHasEditedCoords = Boolean(b.north || b.east || b.elev)
-        if (count >= 2 && !userHasEditedCoords) return false
+      // Auto-demote rows whose marker now appears in 2+ files (rover).
+      // Preserve rows the user manually edited coords on.
+      const filtered = next.filter(b => {
+        const k = b.name.trim().toLowerCase()
+        const count = counts.get(k) || 0
+        const hasCoords = Boolean(b.north || b.east || b.elev)
+        if (count >= 2 && !hasCoords) return false
         return true
       })
+      // Avoid pointless state churn if nothing changed
+      if (filtered.length === prev.length &&
+          filtered.every((b, i) => b.name === prev[i]?.name &&
+                                   b.north === prev[i]?.north &&
+                                   b.east  === prev[i]?.east  &&
+                                   b.elev  === prev[i]?.elev)) {
+        return prev
+      }
+      return filtered
     })
   }, [obsFiles])
 

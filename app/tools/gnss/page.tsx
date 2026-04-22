@@ -726,8 +726,6 @@ export default function GnssPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
                 >
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                  {activeTab === "map"         && <NetworkMap result={apiResult as any} />}
                   {activeTab === "baselines"   && <BaselinesTable apiResult={apiResult} inputVectors={parsedVectors} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
                   {activeTab === "loops"       && <LoopsTable     apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
                   {activeTab === "free"        && <AdjustmentTable type="free"        apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}

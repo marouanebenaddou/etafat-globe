@@ -136,10 +136,16 @@ function MapAnimations() {
 export default function NetworkMap({ result }: { result: MapResult | null }) {
   const [hovered, setHovered] = useState<string | null>(null)
 
-  // Prefer constrained adjustment points (if present), otherwise free.
+  // Prefer whichever adjustment actually has points. `??` is the wrong
+  // operator here — an empty array isn't nullish, so it wouldn't fall
+  // through. We explicitly pick the non-empty one.
   const stationPoints = useMemo<Station[]>(() => {
     if (!result) return []
-    return result.constrained?.points ?? result.free?.points ?? []
+    const cons = result.constrained?.points ?? []
+    const free = result.free?.points ?? []
+    if (cons.length > 0) return cons
+    if (free.length > 0) return free
+    return []
   }, [result])
 
   // Build a { name → LLH } map once.

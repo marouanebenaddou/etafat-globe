@@ -320,7 +320,7 @@ async def pipeline_from_rinex(
     stop_cluster_radius_m:   float = Form(0.10, description="Max spatial scatter within one Fix-cluster (m)"),
     stop_min_cluster_size:   int   = Form(2,    description="Min Fix epochs to form a spatial-detected stop"),
     stop_max_time_span_s:    float = Form(600.0,description="Same-cluster time-span ceiling (splits revisits) (s)"),
-    stop_sigma_floor_m:      float = Form(0.03, description="2-epoch clusters must have σ ≤ this per axis (m)"),
+    stop_sigma_floor_m:      float = Form(0.05, description="2-epoch clusters must have σ ≤ this per axis (m)"),
 ):
     try:
         return await _pipeline_from_rinex_impl(

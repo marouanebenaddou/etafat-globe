@@ -314,7 +314,7 @@ class StopDetectorOpts:
     cluster_radius_m:   float = 0.10     # m, max spatial scatter within a cluster
     min_cluster_size:   int   = 2        # min Fix epochs per spatial cluster
     max_time_span_s:    float = 600.0    # s, split revisits older than this
-    sigma_floor_m:      float = 0.03     # m, 2-epoch clusters need σ ≤ this to pass
+    sigma_floor_m:      float = 0.05     # m, 2-epoch clusters need σ ≤ this to pass
 
 
 @dataclass
@@ -553,6 +553,10 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             "Need at least one mobile session, or two bases to form an inter-base baseline."
         )
 
+    # Accumulate diagnostic messages inline so both the mobile and base
+    # dedup passes below can append to it.
+    warnings: list[str] = []
+
     # Merge mobile sessions that belong to the same physical point (CHC does this).
     # For each resulting point, keep only ONE representative session so the network
     # doesn't end up with two parallel edges between the same pair of stations.
@@ -573,8 +577,37 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 representative[merged_name] = s
     mobiles = list(representative.values())
 
+    # Apply the same position-based deduplication to BASES so that a single
+    # physical base station recorded across multiple session files (e.g.
+    # Moyen2008J + Moyen2008J5 — receiver restarted mid-day) doesn't get
+    # treated as two separate bases, which would triple every kinematic
+    # baseline count and inflate loop closures.
+    #
+    # Bases have station_point == marker_name (no session suffix), so we
+    # cluster by position with 5 m tolerance, then pick the longest obs
+    # file per cluster.
+    base_point_map = _group_mobile_sessions_by_position(bases, merge_threshold_m=5.0)
+    base_representative: dict[str, "Session"] = {}
+    for s in bases:
+        merged = base_point_map.get(s.station_point, s.station_point)
+        s.station_point = merged
+        prev = base_representative.get(merged)
+        if prev is None:
+            base_representative[merged] = s
+        else:
+            import os as _o
+            if _o.path.getsize(s.obs_file) > _o.path.getsize(prev.obs_file):
+                base_representative[merged] = s
+    if len(base_representative) < len(bases):
+        dropped = len(bases) - len(base_representative)
+        bases = list(base_representative.values())
+        warnings.insert(0,
+            f"Merged {dropped} co-located base session{'s' if dropped > 1 else ''} "
+            f"into the longest recording per station.")
+    else:
+        bases = list(base_representative.values())
+
     baselines: list[Baseline] = []
-    warnings:  list[str] = []
     # Always emit the grouping for transparency
     grouping: dict[str, list[str]] = {}
     for k, v in point_map.items():
@@ -809,20 +842,37 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
 
     n = 0
     # Inter-base baselines (if ≥ 2 bases). Defensive: never pair two
-    # sessions with the same marker — they're the same physical receiver
-    # declared as a base twice (probably from the auto-detection not being
-    # pruned). Baselining a marker against itself produces meaningless
-    # cross-session "vectors" that pollute the report.
+    # sessions with the SAME station_point — that would be a receiver
+    # declared as a base across multiple session files, and baselining
+    # a station against itself is meaningless. Station_point is
+    # case-sensitive (bases preserve the RINEX MARKER NAME exactly), so
+    # two bases that differ only by case (e.g. "moyen2" vs "Moyen2") are
+    # treated as distinct — they usually are distinct physical receivers,
+    # and the coord file typically lists them both.
+    # Also skip if the two bases sit within 5 m — that's the same
+    # physical point with different marker spellings.
+    import math as _math
     for i, a in enumerate(bases):
         for b in bases[i+1:]:
-            if a.marker_name.strip().lower() == b.marker_name.strip().lower():
+            if a.station_point == b.station_point:
                 warnings.append(
-                    f"Skipping same-marker inter-base pair "
-                    f"{a.station_point} × {b.station_point} — probably "
-                    f"{a.marker_name} was declared as a base but has multiple "
-                    f"session files (it's more likely a rover)."
+                    f"Skipping same-station inter-base pair "
+                    f"{a.station_point} × {b.station_point} — same station_point "
+                    f"means the receiver was declared as a base but has "
+                    f"multiple session files."
                 )
                 continue
+            # Co-located check: if we have APPROX XYZ for both, see if
+            # they're effectively the same physical point.
+            if a.approx_xyz and b.approx_xyz:
+                d = _math.sqrt(sum((p-q)**2 for p, q in zip(a.approx_xyz, b.approx_xyz)))
+                if d < 5.0:
+                    warnings.append(
+                        f"Skipping co-located inter-base pair "
+                        f"{a.station_point} × {b.station_point} ({d:.2f} m apart) "
+                        f"— same physical point with different marker spelling."
+                    )
+                    continue
             n += 1
             bl = _bl(a, b, f"B{n:02d}", inter_base=True)
             if bl: baselines.append(bl)

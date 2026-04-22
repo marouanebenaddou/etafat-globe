@@ -877,13 +877,49 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             bl = _bl(a, b, f"B{n:02d}", inter_base=True)
             if bl: baselines.append(bl)
 
-    # Base-to-mobile baselines: every mobile session gets connected to every base
-    # Mobile sessions: static for short occupations, kinematic for long ones
-    # (stop-and-go PPK). For static sessions we run rnx2rtkp per (base, rover)
-    # pair. For kinematic sessions we run it ONCE against a primary base to
-    # establish absolute stop positions, then fan out to all bases via
-    # vector subtraction — ensuring every base sees the same stops with the
-    # same numbering.
+    # Derive each base's position in the PRIMARY base's reference frame
+    # from the inter-base baseline vectors. Critical for the secondary
+    # kinematic runs below: if we told rnx2rtkp the secondary base was at
+    # its APPROX XYZ (SPP-accurate to only ~3 m), every stop it computed
+    # would be off by that same 3 m — the primary and secondary positions
+    # wouldn't agree, and σ₀ in the LS adjustment would blow up. Feeding
+    # rnx2rtkp the inter-base-derived position (mm accuracy) puts both
+    # runs on the same absolute frame.
+    primary_base = bases[0] if bases else None
+    primary_anchor = None
+    if primary_base is not None:
+        primary_anchor = (
+            control_ecef.get(primary_base.station_point) or primary_base.approx_xyz
+        )
+    derived_base_anchor: dict[str, tuple[float, float, float]] = {}
+    if primary_base is not None and primary_anchor is not None:
+        derived_base_anchor[primary_base.station_point] = primary_anchor
+        for bl in baselines:
+            if bl.start == primary_base.station_point and bl.end not in derived_base_anchor:
+                derived_base_anchor[bl.end] = (
+                    primary_anchor[0] + bl.dx,
+                    primary_anchor[1] + bl.dy,
+                    primary_anchor[2] + bl.dz,
+                )
+            elif bl.end == primary_base.station_point and bl.start not in derived_base_anchor:
+                derived_base_anchor[bl.start] = (
+                    primary_anchor[0] - bl.dx,
+                    primary_anchor[1] - bl.dy,
+                    primary_anchor[2] - bl.dz,
+                )
+
+    # Base-to-mobile baselines: every mobile session gets connected to every base.
+    #
+    # For STATIC rovers we run rnx2rtkp per (base, rover) pair — each
+    # baseline is an independent rnx2rtkp solution.
+    #
+    # For KINEMATIC rovers (stop-and-go PPK) we need one rnx2rtkp run
+    # PER BASE so each stop has truly redundant observations. The primary
+    # run also drives stop detection (the position clustering logic); for
+    # secondary bases we re-use the primary's stop time windows and just
+    # average the secondary's fixed epochs within each window. This gives
+    # the LS adjustment real geometric redundancy (σ₀ ≈ 1) without
+    # running the stop-detector N times on slightly-different trajectories.
     for rover in mobiles:
         if _is_kinematic(rover):
             size_mb = os.path.getsize(rover.obs_file) / 1e6
@@ -891,18 +927,104 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                             f"(interval={rover.interval_s}s, file={size_mb:.1f} MB)")
             primary_base = bases[0]
             stops = _kinematic_stops(rover, primary_base)
+
+            # Run rnx2rtkp kinematic against each SECONDARY base too, so
+            # we have an independent trajectory per base. Averaging fixed
+            # epochs within each stop's time window gives each stop an
+            # independent rnx2rtkp-derived position per base.
+            secondary_trajectories: dict[str, list[dict]] = {}
+            nav_for_rover = pick_nav_files(rover.obs_file, pin.nav_files)
+            # Reuse the same decimated rover file the primary pass already
+            # computed (the primary pass calls _kinematic_stops which may
+            # pre-decimate the base). We just need the rover's untouched
+            # file here — it stays at native resolution to preserve AR.
+            for base in bases[1:]:
+                # Prefer the inter-base-derived position (mm-level) over
+                # RINEX APPROX XYZ (3 m SPP error would poison the
+                # adjustment).
+                sec_pos = (
+                    control_ecef.get(base.station_point)
+                    or derived_base_anchor.get(base.station_point)
+                    or base.approx_xyz
+                )
+                if sec_pos is None:
+                    continue
+                try:
+                    sol = _run_rnx2rtkp(
+                        base_obs=base.obs_file,
+                        rover_obs=rover.obs_file,
+                        nav_files=nav_for_rover,
+                        base_pos_xyz=sec_pos,
+                        kinematic=True,
+                    )
+                    eps = sol.get("epochs", [])
+                    secondary_trajectories[base.station_point] = eps
+                    n_fix = sum(1 for e in eps if e["Q"] == 1)
+                    warnings.append(
+                        f"Kinematic {base.station_point}→{rover.station_point}: "
+                        f"{len(eps)} epochs ({n_fix} Fix) from secondary base"
+                    )
+                except Exception as e:
+                    warnings.append(
+                        f"Secondary kinematic {base.station_point}→{rover.station_point} failed: {e}"
+                    )
+
             for i, st in enumerate(stops, start=1):
                 point_name = f"{rover.station_point}_S{i}"
-                # Absolute ECEF for the stop — needed later for station_map
-                # so the map tab can plot it without waiting on an adjustment.
+                # Absolute ECEF for the stop (from primary) — used by the
+                # map tab even when adjustment doesn't run.
                 stop_positions[point_name] = (st["x"], st["y"], st["z"])
+
                 for base in bases:
                     n += 1
-                    base_pos = control_ecef.get(base.station_point) or base.approx_xyz
+                    # Use the SAME anchor that was fed to rnx2rtkp above so
+                    # the baseline vector (stop - base) reflects a consistent
+                    # reference frame.
+                    base_pos = (
+                        control_ecef.get(base.station_point)
+                        or derived_base_anchor.get(base.station_point)
+                        or base.approx_xyz
+                    )
                     if base_pos is None:
                         continue
-                    # Quality label: 'Kine Fix' if most epochs were integer-fixed,
-                    # otherwise 'Kine Float' — surfaces stop quality to the UI.
+
+                    if base.station_point == primary_base.station_point:
+                        # Primary: use the stop position rnx2rtkp gave us
+                        stop_x, stop_y, stop_z = st["x"], st["y"], st["z"]
+                        stop_sx, stop_sy, stop_sz = st["sx"], st["sy"], st["sz"]
+                        n_used = st.get("n_epochs", 0)
+                    else:
+                        # Secondary: average the Fix epochs that fall inside
+                        # this stop's time window (from primary's detection).
+                        traj = secondary_trajectories.get(base.station_point, [])
+                        t0, t1 = st["t_start"], st["t_end"]
+                        window = [e for e in traj
+                                  if t0 <= e["t"] <= t1 and e["Q"] == 1]
+                        if len(window) < 2:
+                            # Fall back to all epochs if no Fix in the window
+                            window = [e for e in traj
+                                      if t0 <= e["t"] <= t1]
+                        if not window:
+                            # No secondary observation available — skip this
+                            # specific (secondary base, stop) pair rather than
+                            # fabricating a baseline from the primary's data.
+                            n -= 1
+                            continue
+                        stop_x = sum(e["x"] for e in window) / len(window)
+                        stop_y = sum(e["y"] for e in window) / len(window)
+                        stop_z = sum(e["z"] for e in window) / len(window)
+                        # σ: stdev of epoch positions in the window, with a
+                        # 3 mm floor to avoid overconfident weights.
+                        import statistics as _stats
+                        def _sd(vals, fallback):
+                            if len(vals) < 2:
+                                return fallback
+                            return max(_stats.stdev(vals), 0.003)
+                        stop_sx = _sd([e["x"] for e in window], st["sx"])
+                        stop_sy = _sd([e["y"] for e in window], st["sy"])
+                        stop_sz = _sd([e["z"] for e in window], st["sz"])
+                        n_used = len(window)
+
                     fix_ratio = st.get("fix_ratio", 0.0)
                     if fix_ratio >= 0.70:   sol_tag = "Kine Fix"
                     elif fix_ratio >= 0.20: sol_tag = "Kine Mixed"
@@ -911,15 +1033,15 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                         id=f"B{n:02d}",
                         start=base.station_point,
                         end=point_name,
-                        dx=st["x"] - base_pos[0],
-                        dy=st["y"] - base_pos[1],
-                        dz=st["z"] - base_pos[2],
-                        sdx=st["sx"], sdy=st["sy"], sdz=st["sz"],
+                        dx=stop_x - base_pos[0],
+                        dy=stop_y - base_pos[1],
+                        dz=stop_z - base_pos[2],
+                        sdx=stop_sx, sdy=stop_sy, sdz=stop_sz,
                         solution_type=sol_tag,
-                        rms=(st["sx"]**2 + st["sy"]**2 + st["sz"]**2) ** 0.5,
+                        rms=(stop_sx**2 + stop_sy**2 + stop_sz**2) ** 0.5,
                         ratio=st["ratio"],
                         duration_s=st.get("duration"),
-                        n_epochs=st.get("n_epochs"),
+                        n_epochs=n_used,
                         fix_ratio=st.get("fix_ratio"),
                         n_sat=st.get("ns"),
                     ))
@@ -935,21 +1057,31 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
     #   2. Kinematic-stop absolute ECEF captured during _kinematic_stops
     #   3. RINEX APPROX XYZ header value (~3 m accurate)
     #   4. (0,0,0) placeholder — map will filter these out
+    # Any station declared in base_marker_names is flagged is_control=True
+    # so the constrained adjustment has an anchor — even when the user
+    # didn't supply precise grid coords (APPROX XYZ is plenty to define
+    # the datum for a local-frame adjustment).
+    base_markers_lc = {m.lower() for m in pin.base_marker_names}
     station_map: dict[str, Station] = {}
     controls_by_name = {c.name: c for c in pin.control_stations}
     for bl in baselines:
         for name in (bl.start, bl.end):
             if name in station_map:
                 continue
+            is_ctl = name.lower() in base_markers_lc
             if name in controls_by_name:
-                station_map[name] = controls_by_name[name]
+                s = controls_by_name[name]
+                # Respect existing flag; upgrade to True if this is a base
+                if is_ctl and not s.is_control:
+                    s = Station(name=s.name, x=s.x, y=s.y, z=s.z, is_control=True)
+                station_map[name] = s
             elif name in stop_positions:
                 x, y, z = stop_positions[name]
-                station_map[name] = Station(name=name, x=x, y=y, z=z)
+                station_map[name] = Station(name=name, x=x, y=y, z=z, is_control=is_ctl)
             else:
                 seed = next((s for s in sessions if s.station_point == name), None)
                 xyz = seed.approx_xyz if (seed and seed.approx_xyz) else (0.0, 0.0, 0.0)
-                station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2])
+                station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2], is_control=is_ctl)
 
     # Build tracking charts (one per unique observation file referenced by
     # the baselines). We do it here — inside compute_all_baselines — so the

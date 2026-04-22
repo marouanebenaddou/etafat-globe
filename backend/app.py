@@ -174,17 +174,19 @@ def _run_pipeline_after_baselines(
     # Rover-to-base vectors (static OR kinematic) are independent direct
     # measurements; mixing them in would produce wild σ₀ because the
     # rover positions don't share network redundancy with each other.
-    # An "inter-base" baseline is one whose endpoints are both declared
-    # as control stations (is_control=True) — that matches what CHC does
-    # internally for its Free Adjustment report.
-    control_names = {s.name for s in stations if s.is_control}
-    static_baselines = [
-        b for b in baselines
-        if b.start in control_names and b.end in control_names
-        and not (b.solution_type or "").lower().startswith("kine")
-    ]
-    static_station_names = {s for b in static_baselines for s in (b.start, b.end)}
-    static_stations = [s for s in stations if s.name in static_station_names]
+    # Previous version excluded every kinematic baseline from the
+    # adjustment on the theory that stop-and-go PPK stops are isolated
+    # direct measurements, not redundant observations. That's only true
+    # when a stop is observed once. In practice the typical CHC-style
+    # campaign observes each stop from ≥ 2 bases simultaneously —
+    # that's redundancy the LS solver can use.
+    # New policy: every baseline feeds the adjustment, weighted by its
+    # published σ. Static Fix baselines get ~mm σ and dominate; kinematic
+    # stops get cm σ and contribute proportionally less. σ₀ near 1
+    # means the reported σ's were realistic.
+    adj_baselines = list(baselines)
+    adj_station_names = {s for b in adj_baselines for s in (b.start, b.end)}
+    adj_stations = [s for s in stations if s.name in adj_station_names]
 
     # Loop closures still work on the full set (kinematic stops form loops
     # too; they're informative for quality even if we don't adjust them).
@@ -233,10 +235,10 @@ def _run_pipeline_after_baselines(
         except Exception as e:
             return {"error": f"{label} adjustment failed: {type(e).__name__}: {e}"}
 
-    free_out = _safe_adjust(free_adjustment, static_stations, static_baselines, "free")
-    if any(s.is_control for s in static_stations):
-        constrained_out = _safe_adjust(constrained_adjustment, static_stations,
-                                        static_baselines, "constrained")
+    free_out = _safe_adjust(free_adjustment, adj_stations, adj_baselines, "free")
+    if any(s.is_control for s in adj_stations):
+        constrained_out = _safe_adjust(constrained_adjustment, adj_stations,
+                                        adj_baselines, "constrained")
 
     out = PipelineOut(
         n_baselines=len(baselines),

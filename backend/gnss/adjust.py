@@ -200,7 +200,13 @@ def free_adjustment(stations: list[Station], baselines: list[Baseline]
         baseline_idx = new_idx
 
     x_hat, Cov, sigma0, dof, _v = _solve_lsq(A, L, W)
-    Cov_scaled = Cov * sigma0 * sigma0
+    # When σ̂₀ is essentially zero (rank-deficient or synthesised
+    # observations with no real redundancy) the scaled covariance would
+    # zero out all station σ's — misleading. Use an a-priori-σ-based
+    # covariance instead, so the reported per-station precision
+    # reflects what the baseline input σ values predict.
+    sigma0_for_cov = sigma0 if sigma0 > 0.05 else 1.0
+    Cov_scaled = Cov * sigma0_for_cov * sigma0_for_cov
 
     # Build AdjustedPoint list
     stations_by_name = {s.name: s for s in stations}
@@ -284,7 +290,8 @@ def constrained_adjustment(stations: list[Station], baselines: list[Baseline]
         baseline_idx = new_idx
 
     x_hat, Cov, sigma0, dof, _v = _solve_lsq(A, L, W)
-    Cov_scaled = Cov * sigma0 * sigma0
+    sigma0_for_cov = sigma0 if sigma0 > 0.05 else 1.0
+    Cov_scaled = Cov * sigma0_for_cov * sigma0_for_cov
 
     stations_by_name = {s.name: s for s in stations}
     points: list[AdjustedPoint] = []

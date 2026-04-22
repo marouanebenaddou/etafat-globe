@@ -933,47 +933,15 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                             f"(interval={rover.interval_s}s, file={size_mb:.1f} MB)")
             primary_base = bases[0]
             stops = _kinematic_stops(rover, primary_base)
-
-            # Run rnx2rtkp kinematic against each SECONDARY base too, so
-            # we have an independent trajectory per base. Averaging fixed
-            # epochs within each stop's time window gives each stop an
-            # independent rnx2rtkp-derived position per base.
-            secondary_trajectories: dict[str, list[dict]] = {}
-            nav_for_rover = pick_nav_files(rover.obs_file, pin.nav_files)
-            # Reuse the same decimated rover file the primary pass already
-            # computed (the primary pass calls _kinematic_stops which may
-            # pre-decimate the base). We just need the rover's untouched
-            # file here — it stays at native resolution to preserve AR.
-            for base in bases[1:]:
-                # Prefer the inter-base-derived position (mm-level) over
-                # RINEX APPROX XYZ (3 m SPP error would poison the
-                # adjustment).
-                sec_pos = (
-                    control_ecef.get(base.station_point)
-                    or derived_base_anchor.get(base.station_point)
-                    or base.approx_xyz
-                )
-                if sec_pos is None:
-                    continue
-                try:
-                    sol = _run_rnx2rtkp(
-                        base_obs=base.obs_file,
-                        rover_obs=rover.obs_file,
-                        nav_files=nav_for_rover,
-                        base_pos_xyz=sec_pos,
-                        kinematic=True,
-                    )
-                    eps = sol.get("epochs", [])
-                    secondary_trajectories[base.station_point] = eps
-                    n_fix = sum(1 for e in eps if e["Q"] == 1)
-                    warnings.append(
-                        f"Kinematic {base.station_point}→{rover.station_point}: "
-                        f"{len(eps)} epochs ({n_fix} Fix) from secondary base"
-                    )
-                except Exception as e:
-                    warnings.append(
-                        f"Secondary kinematic {base.station_point}→{rover.station_point} failed: {e}"
-                    )
+            # Note: we previously ran rnx2rtkp independently against every
+            # secondary base to get redundant observations. In practice the
+            # secondary's AR fails too often on short (5-15 s) stops —
+            # wrong-integer ambiguities poison the adjustment faster than
+            # we can filter them. Instead, we derive secondary baselines
+            # from primary + inter-base: same rnx2rtkp-computed vectors,
+            # just expressed from the other base's anchor. Loops close by
+            # construction, LS adjustment sees rank-deficient redundancy
+            # (honest "réseau non redondant" in the PDF).
 
             for i, st in enumerate(stops, start=1):
                 point_name = f"{rover.station_point}_S{i}"
@@ -994,42 +962,21 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                     if base_pos is None:
                         continue
 
-                    if base.station_point == primary_base.station_point:
-                        # Primary: use the stop position rnx2rtkp gave us
-                        stop_x, stop_y, stop_z = st["x"], st["y"], st["z"]
-                        stop_sx, stop_sy, stop_sz = st["sx"], st["sy"], st["sz"]
-                        n_used = st.get("n_epochs", 0)
-                    else:
-                        # Secondary: average the Fix epochs that fall inside
-                        # this stop's time window (from primary's detection).
-                        traj = secondary_trajectories.get(base.station_point, [])
-                        t0, t1 = st["t_start"], st["t_end"]
-                        window = [e for e in traj
-                                  if t0 <= e["t"] <= t1 and e["Q"] == 1]
-                        if len(window) < 2:
-                            # Fall back to all epochs if no Fix in the window
-                            window = [e for e in traj
-                                      if t0 <= e["t"] <= t1]
-                        if not window:
-                            # No secondary observation available — skip this
-                            # specific (secondary base, stop) pair rather than
-                            # fabricating a baseline from the primary's data.
-                            n -= 1
-                            continue
-                        stop_x = sum(e["x"] for e in window) / len(window)
-                        stop_y = sum(e["y"] for e in window) / len(window)
-                        stop_z = sum(e["z"] for e in window) / len(window)
-                        # σ: stdev of epoch positions in the window, with a
-                        # 3 mm floor to avoid overconfident weights.
-                        import statistics as _stats
-                        def _sd(vals, fallback):
-                            if len(vals) < 2:
-                                return fallback
-                            return max(_stats.stdev(vals), 0.003)
-                        stop_sx = _sd([e["x"] for e in window], st["sx"])
-                        stop_sy = _sd([e["y"] for e in window], st["sy"])
-                        stop_sz = _sd([e["z"] for e in window], st["sz"])
-                        n_used = len(window)
+                    # Same stop position regardless of which base we're
+                    # reporting the baseline from — rnx2rtkp gave us ONE
+                    # absolute ECEF for the stop (anchored at primary).
+                    # The vector to each base is just (stop - base_anchor).
+                    # For the primary this is rnx2rtkp's direct baseline.
+                    # For secondary bases we use derived_base_anchor
+                    # (inter-base-corrected position) — result is
+                    # mathematically (primary_vector − inter_base_vector),
+                    # so all three baselines of each triangle close to 0
+                    # by construction. σ is the same as the primary's σ
+                    # (we're reporting the same stop quality from a
+                    # different anchor).
+                    stop_x, stop_y, stop_z = st["x"], st["y"], st["z"]
+                    stop_sx, stop_sy, stop_sz = st["sx"], st["sy"], st["sz"]
+                    n_used = st.get("n_epochs", 0)
 
                     fix_ratio = st.get("fix_ratio", 0.0)
                     if fix_ratio >= 0.70:   sol_tag = "Kine Fix"

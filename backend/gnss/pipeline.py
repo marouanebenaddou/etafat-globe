@@ -581,35 +581,37 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 representative[merged_name] = s
     mobiles = list(representative.values())
 
-    # Apply the same position-based deduplication to BASES so that a single
-    # physical base station recorded across multiple session files (e.g.
-    # Moyen2008J + Moyen2008J5 — receiver restarted mid-day) doesn't get
-    # treated as two separate bases, which would triple every kinematic
-    # baseline count and inflate loop closures.
+    # Deduplicate BASES by marker_name. A base is stationary by
+    # definition — two obs files with the same MARKER NAME header
+    # represent the same physical station, even if their APPROX XYZ
+    # differs by several metres (common when one session is very short
+    # and its SPP estimate hasn't converged). Position-based clustering
+    # with a 5 m threshold would miss the "Moyen2008J (21 epochs) +
+    # Moyen2008J5 (4967 epochs)" case because the 21-epoch APPROX XYZ
+    # can be 10-20 m off.
     #
-    # Bases have station_point == marker_name (no session suffix), so we
-    # cluster by position with 5 m tolerance, then pick the longest obs
-    # file per cluster.
-    base_point_map = _group_mobile_sessions_by_position(bases, merge_threshold_m=5.0)
-    base_representative: dict[str, "Session"] = {}
+    # Rule: same marker_name → same station. Keep the obs file with the
+    # most epochs (largest file is a good proxy) as the representative.
+    base_by_marker: dict[str, "Session"] = {}
     for s in bases:
-        merged = base_point_map.get(s.station_point, s.station_point)
-        s.station_point = merged
-        prev = base_representative.get(merged)
+        key = s.marker_name.strip()
+        prev = base_by_marker.get(key)
         if prev is None:
-            base_representative[merged] = s
+            base_by_marker[key] = s
         else:
             import os as _o
             if _o.path.getsize(s.obs_file) > _o.path.getsize(prev.obs_file):
-                base_representative[merged] = s
-    if len(base_representative) < len(bases):
-        dropped = len(bases) - len(base_representative)
-        bases = list(base_representative.values())
+                base_by_marker[key] = s
+    if len(base_by_marker) < len(bases):
+        dropped = len(bases) - len(base_by_marker)
         warnings.insert(0,
-            f"Merged {dropped} co-located base session{'s' if dropped > 1 else ''} "
-            f"into the longest recording per station.")
-    else:
-        bases = list(base_representative.values())
+            f"Merged {dropped} same-marker base session{'s' if dropped > 1 else ''} "
+            f"(kept the longest recording per station).")
+    # Normalise station_point on all base sessions (not just representatives)
+    # so subsequent references resolve consistently.
+    for s in bases:
+        s.station_point = s.marker_name.strip()
+    bases = list(base_by_marker.values())
 
     baselines: list[Baseline] = []
     # Always emit the grouping for transparency

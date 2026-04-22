@@ -152,7 +152,11 @@ def _default_opts_conf(kinematic: bool = False) -> str:
         "pos1-sateph        =brdc",
         "pos1-navsys        =63",
         "pos2-armode        =continuous",
-        "pos2-arthres       =1.8",
+        "pos2-arthres       =2.0",    # integer validation threshold (ratio test). rnx2rtkp
+                                       # default is 1.8 — produces many wrong-integer Fix on
+                                       # short kinematic stops that break the LS adjustment.
+                                       # 2.0 is a gentle tightening that keeps most stops as
+                                       # Fix while rejecting the most marginal ones.
         "pos2-gloarmode     =on",
         "out-solformat      =xyz",
         "out-outhead        =off",

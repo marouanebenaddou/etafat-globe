@@ -119,7 +119,7 @@ def _solve_lsq(A: np.ndarray, L: np.ndarray, W: np.ndarray
 
 def _outlier_reject_pass(A: np.ndarray, L: np.ndarray, W: np.ndarray,
                           baseline_idx: np.ndarray,
-                          sigma_threshold: float = 5.0
+                          sigma_threshold: float = 3.5
                           ) -> tuple[np.ndarray, int]:
     """One pass of Baarda-style data snooping.
 

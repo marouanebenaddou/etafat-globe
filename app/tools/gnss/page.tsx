@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import dynamic from "next/dynamic"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   ChevronRight, FileArchive, FileText, MapPin, Globe2,
   PlayCircle, CheckCircle2, AlertTriangle, XCircle,
@@ -8,6 +10,22 @@ import {
   Loader2, Info, Trash2, FileDown,
   Clock, Signal, Cpu, Database, Wifi, WifiOff, Calculator, Wand2,
 } from "lucide-react"
+import AnimatedNumber from "./AnimatedNumber"
+
+// Leaflet hits `window` on import so it must stay out of SSR.
+const NetworkMap = dynamic(() => import("./NetworkMap"), {
+  ssr: false,
+  loading: () => (
+    <div style={{
+      height: 520, borderRadius: 12, border: "1px solid #e8edf3",
+      background: "linear-gradient(180deg, #f6f8fb 0%, #fff 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      color: "#94a3b8", fontSize: 13,
+    }}>
+      Chargement de la carte…
+    </div>
+  ),
+})
 import {
   checkHealth, runPipeline, runPipelineFromRinex, downloadPdfReport,
   parseBaselinesCSV, stationsFromBaselines,
@@ -251,7 +269,7 @@ export default function GnssPage() {
   const [progress,   setProgress]   = useState(0)
   const [uploadPct,  setUploadPct]  = useState(0)
   const [done,       setDone]       = useState(false)
-  const [activeTab,  setActiveTab]  = useState<"baselines" | "loops" | "free" | "constrained">("baselines")
+  const [activeTab,  setActiveTab]  = useState<"map" | "baselines" | "loops" | "free" | "constrained">("map")
 
   /* ── Backend integration state ── */
   const [apiHealth, setApiHealth] = useState<"checking" | "online" | "offline">("checking")
@@ -578,6 +596,11 @@ export default function GnssPage() {
       {/* ── RESULTS VIEW ── */}
       {done && (
         <>
+          <motion.div
+            initial={{ opacity: 0, y: -14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0,   scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+          >
           <Card style={{ marginBottom: 20, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", border: "none", color: "#fff" }}>
             <div className="gnss-success" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ width: 52, height: 52, borderRadius: 12, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -593,9 +616,20 @@ export default function GnssPage() {
                   )}
                 </div>
                 <div style={{ fontSize: 13, opacity: 0.9 }}>
-                  {apiResult
-                    ? `${apiResult.n_baselines} lignes de base · ${apiResult.loops.length} boucles · σ₀ ajust. libre = ${apiResult.free.sigma0.toFixed(3)} · précision H/V = ${apiResult.free.horiz_accuracy_mm.toFixed(1)}/${apiResult.free.vert_accuracy_mm.toFixed(1)} mm (2σ)`
-                    : `${obsFiles.length} fichier${obsFiles.length > 1 ? "s" : ""} · ${baseCoords.filter(b => b.north && b.east).length} base${baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} · Tolérances respectées`}
+                  {apiResult ? (
+                    <span>
+                      <AnimatedNumber value={apiResult.n_baselines} /> lignes de base ·{" "}
+                      <AnimatedNumber value={apiResult.loops.length} /> boucles ·
+                      {" σ₀ ajust. libre = "}
+                      <AnimatedNumber value={apiResult.free.sigma0 || 0} decimals={3} /> ·
+                      {" précision H/V = "}
+                      <AnimatedNumber value={apiResult.free.horiz_accuracy_mm || 0} decimals={1} />
+                      {"/"}
+                      <AnimatedNumber value={apiResult.free.vert_accuracy_mm || 0} decimals={1} suffix=" mm (2σ)" />
+                    </span>
+                  ) : (
+                    `${obsFiles.length} fichier${obsFiles.length > 1 ? "s" : ""} · ${baseCoords.filter(b => b.north && b.east).length} base${baseCoords.filter(b=>b.north&&b.east).length > 1 ? "s" : ""} · Tolérances respectées`
+                  )}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -649,10 +683,12 @@ export default function GnssPage() {
               </div>
             </div>
           </Card>
+          </motion.div>
 
           <Card padding={0} style={{ overflow: "hidden" }}>
             <div className="gnss-tabs" style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
               {([
+                { id: "map",         label: "Carte",              Icon: MapPin,   count: apiResult ? (apiResult.free?.points?.length ?? apiResult.constrained?.points?.length ?? 0) : 0, isMap: true },
                 { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: apiResult?.n_baselines ?? 22 },
                 { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: apiResult?.loops.length ?? 9 },
                 { id: "free",        label: "Ajustement libre",   Icon: Target,   count: apiResult?.free.points.length ?? 14 },
@@ -665,6 +701,7 @@ export default function GnssPage() {
                     borderBottom: `2px solid ${activeTab === t.id ? "#007BFF" : "transparent"}`,
                     color: activeTab === t.id ? "#007BFF" : "#64748b",
                     fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+                    position: "relative",
                   }}>
                   <t.Icon size={14} strokeWidth={2} />
                   {t.label}
@@ -674,14 +711,36 @@ export default function GnssPage() {
                     color: activeTab === t.id ? "#007BFF" : "#64748b",
                     padding: "2px 7px", borderRadius: 10,
                   }}>{Math.round(t.count)}</span>
+                  {activeTab === t.id && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      style={{
+                        position: "absolute", bottom: -2, left: 0, right: 0, height: 2,
+                        background: "#007BFF",
+                      }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
                 </button>
               ))}
             </div>
-            <div style={{ padding: 24 }}>
-              {activeTab === "baselines"   && <BaselinesTable apiResult={apiResult} inputVectors={parsedVectors} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "loops"       && <LoopsTable     apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "free"        && <AdjustmentTable type="free"        apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
-              {activeTab === "constrained" && <AdjustmentTable type="constrained" apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+            <div style={{ padding: 24, minHeight: 400 }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                >
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {activeTab === "map"         && <NetworkMap result={apiResult as any} />}
+                  {activeTab === "baselines"   && <BaselinesTable apiResult={apiResult} inputVectors={parsedVectors} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+                  {activeTab === "loops"       && <LoopsTable     apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+                  {activeTab === "free"        && <AdjustmentTable type="free"        apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+                  {activeTab === "constrained" && <AdjustmentTable type="constrained" apiResult={apiResult} stations={stationNames} bases={baseCoords.filter(b=>b.north&&b.east)} />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </Card>
         </>

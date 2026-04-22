@@ -87,10 +87,11 @@ def _build_design(unknowns: list[str], baselines: Sequence[Baseline],
 
 
 def _solve_lsq(A: np.ndarray, L: np.ndarray, W: np.ndarray
-               ) -> tuple[np.ndarray, np.ndarray, float, int]:
-    """Weighted LS: returns (x̂, Cov, sigma0_hat, dof).
+               ) -> tuple[np.ndarray, np.ndarray, float, int, np.ndarray]:
+    """Weighted LS: returns (x̂, Cov, sigma0_hat, dof, v).
 
     Cov is the (AᵀPA)⁻¹ matrix, *not* yet scaled by σ₀². Caller decides.
+    v is the unweighted residual vector (observed − adjusted) per row.
     """
     # Clip weights so inf/huge values don't poison np.linalg.lstsq; in practice
     # anything above 1e16 is numerically "infinite" (σ ≈ 0) and hard-fixes the
@@ -103,6 +104,8 @@ def _solve_lsq(A: np.ndarray, L: np.ndarray, W: np.ndarray
     x_hat, *_ = np.linalg.lstsq(Aw, Lw, rcond=None)
     # Weighted residuals
     vw = Aw @ x_hat - Lw
+    # Unweighted residuals (observed − adjusted) for outlier diagnosis
+    v = A @ x_hat - L
     dof = A.shape[0] - A.shape[1]
     sigma0_sq = float((vw @ vw) / dof) if dof > 0 else 1.0
     # Covariance: (AᵀPA)⁻¹ — use pseudo-inverse for safety
@@ -111,7 +114,42 @@ def _solve_lsq(A: np.ndarray, L: np.ndarray, W: np.ndarray
         Cov = np.linalg.inv(N)
     except np.linalg.LinAlgError:
         Cov = np.linalg.pinv(N)
-    return x_hat, Cov, float(np.sqrt(max(sigma0_sq, 0.0))), dof
+    return x_hat, Cov, float(np.sqrt(max(sigma0_sq, 0.0))), dof, v
+
+
+def _outlier_reject_pass(A: np.ndarray, L: np.ndarray, W: np.ndarray,
+                          baseline_idx: np.ndarray,
+                          sigma_threshold: float = 5.0
+                          ) -> tuple[np.ndarray, int]:
+    """One pass of Baarda-style data snooping.
+
+    Solves the LS system, then flags each row's residual against its
+    DECLARED precision (|v| × √w = |v| / σ_declared), NOT against σ̂₀.
+    This is the right call here: if a baseline reports 10 mm precision
+    but leaves a 500 mm residual, |v|/σ = 50, clearly an outlier —
+    regardless of whether the global σ̂₀ is 1 or 100. Dividing by σ̂₀
+    (the classical Baarda statistic) hides outliers when σ̂₀ is itself
+    inflated by those same outliers.
+
+    Returns (keep_mask_over_rows, n_baselines_dropped). Drops only the
+    single worst baseline per pass so the geometry can't collapse.
+    """
+    x_hat, _Cov, sigma0, dof, v = _solve_lsq(A, L, W)
+    if dof <= 0:
+        return np.ones(A.shape[0], dtype=bool), 0
+    # Raw standardized residual (per row) vs its OWN declared σ
+    w_per_row = np.abs(v) * np.sqrt(W)
+    # Aggregate to baseline level: worst row wins
+    n_bl = int(baseline_idx.max()) + 1 if baseline_idx.size else 0
+    worst = np.zeros(n_bl, dtype=float)
+    for row, bidx in enumerate(baseline_idx):
+        if w_per_row[row] > worst[bidx]:
+            worst[bidx] = w_per_row[row]
+    if worst.size == 0 or worst.max() <= sigma_threshold:
+        return np.ones(A.shape[0], dtype=bool), 0
+    drop_bl = int(np.argmax(worst))
+    keep_rows = (baseline_idx != drop_bl)
+    return keep_rows, 1
 
 
 # ───────────────────────────── free ─────────────────────────────────────────
@@ -132,8 +170,36 @@ def free_adjustment(stations: list[Station], baselines: list[Baseline]
         pivot.name: (pivot.x, pivot.y, pivot.z)
     }
 
+    # Iterative outlier rejection (Baarda data snooping). Runs the LS,
+    # identifies the worst baseline by standardized residual, drops it if
+    # |w| > 3.5 σ, re-runs. Stops when no baseline exceeds the threshold
+    # or we've dropped half the network (safety floor).
     A, L, W = _build_design(unknowns, baselines, fixed_xyz)
-    x_hat, Cov, sigma0, dof = _solve_lsq(A, L, W)
+    baseline_idx = np.repeat(np.arange(len(baselines)), 3)   # row → baseline
+    active_bl = np.ones(len(baselines), dtype=bool)
+    rejected: list[int] = []
+    MAX_ITER = 20
+    for _ in range(MAX_ITER):
+        if active_bl.sum() < max(1, len(baselines) // 2):
+            break
+        keep_rows, n_drop = _outlier_reject_pass(A, L, W, baseline_idx)
+        if n_drop == 0:
+            break
+        # Translate row-drop back to baseline-drop
+        bad_bls = np.unique(baseline_idx[~keep_rows])
+        for b_idx in bad_bls:
+            # Map back to original index (before previous drops)
+            rejected.append(int(b_idx))
+        A = A[keep_rows]
+        L = L[keep_rows]
+        W = W[keep_rows]
+        baseline_idx = baseline_idx[keep_rows]
+        # Renumber baseline_idx contiguously (0..N-1) for the next pass
+        # — otherwise _outlier_reject_pass's bincount-like logic over-allocates.
+        _, new_idx = np.unique(baseline_idx, return_inverse=True)
+        baseline_idx = new_idx
+
+    x_hat, Cov, sigma0, dof, _v = _solve_lsq(A, L, W)
     Cov_scaled = Cov * sigma0 * sigma0
 
     # Build AdjustedPoint list
@@ -169,7 +235,7 @@ def free_adjustment(stations: list[Station], baselines: list[Baseline]
     else:
         h_mm = v_mm = 0.0
 
-    return AdjustmentReport(
+    rep = AdjustmentReport(
         type="free",
         points=points,
         chi2=chi2_val,
@@ -182,6 +248,11 @@ def free_adjustment(stations: list[Station], baselines: list[Baseline]
         n_unk=A.shape[1],
         dof=dof,
     )
+    # Attach diagnostic info about rejected baselines on the way out
+    rep_dict = rep.__dict__ if hasattr(rep, "__dict__") else {}
+    if rejected:
+        rep_dict.setdefault("rejected_baselines", rejected)
+    return rep
 
 
 # ───────────────────────────── constrained ──────────────────────────────────
@@ -199,8 +270,20 @@ def constrained_adjustment(stations: list[Station], baselines: list[Baseline]
         s.name: (s.x, s.y, s.z) for s in controls
     }
 
+    # Same iterative outlier rejection as free_adjustment.
     A, L, W = _build_design(unknowns, baselines, fixed_xyz)
-    x_hat, Cov, sigma0, dof = _solve_lsq(A, L, W)
+    baseline_idx = np.repeat(np.arange(len(baselines)), 3)
+    MAX_ITER = 20
+    for _ in range(MAX_ITER):
+        keep_rows, n_drop = _outlier_reject_pass(A, L, W, baseline_idx)
+        if n_drop == 0:
+            break
+        A = A[keep_rows]; L = L[keep_rows]; W = W[keep_rows]
+        baseline_idx = baseline_idx[keep_rows]
+        _, new_idx = np.unique(baseline_idx, return_inverse=True)
+        baseline_idx = new_idx
+
+    x_hat, Cov, sigma0, dof, _v = _solve_lsq(A, L, W)
     Cov_scaled = Cov * sigma0 * sigma0
 
     stations_by_name = {s.name: s for s in stations}

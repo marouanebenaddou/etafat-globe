@@ -492,6 +492,19 @@ async def _pipeline_from_rinex_impl(files, base_marker_names, control_stations,
             }
             for b in baselines
         ],
+        # Full station list with best-known ECEF positions — bases use
+        # their precise control coords (if any) or the RINEX APPROX XYZ,
+        # kinematic stops use the absolute position computed by rnx2rtkp.
+        # Lets the map tab plot points even when the adjustment didn't
+        # run (degenerate network / no control stations declared).
+        "stations_detail": [
+            {
+                "name":       s.name,
+                "x":          s.x,   "y":  s.y,   "z":  s.z,
+                "is_control": s.is_control,
+            }
+            for s in stations
+        ],
         "warnings": warnings,
         "tracking_charts": tracking_charts,
     }

@@ -49,6 +49,14 @@ type LoopOut = {
 export type MapResult = {
   baselines_detail?: BaselineDetail[]
   loops?:            LoopOut[]
+  /** Full station list surfaced directly by the pipeline (best-known
+      ECEF per station — bases' precise coords, stops' absolute positions,
+      or RINEX APPROX XYZ). Primary source for the map because it's
+      populated even when no adjustment ran. */
+  stations_detail?:  Station[]
+  /** Fallback: stations from the adjustment — only populated when there
+      were enough control points + redundancy for free/constrained to
+      actually run. */
   free?:             { points?: Station[] }
   constrained?:      { points?: Station[] }
 }
@@ -136,14 +144,18 @@ function MapAnimations() {
 export default function NetworkMap({ result }: { result: MapResult | null }) {
   const [hovered, setHovered] = useState<string | null>(null)
 
-  // Prefer whichever adjustment actually has points. `??` is the wrong
-  // operator here — an empty array isn't nullish, so it wouldn't fall
-  // through. We explicitly pick the non-empty one.
+  // Pick whichever source has usable station coordinates. Priority:
+  //   1. stations_detail — always populated for RINEX runs
+  //   2. constrained adjustment points — if control points declared
+  //   3. free adjustment points — if network was redundant
+  // `??` isn't enough because `[]` is not nullish; we check length.
   const stationPoints = useMemo<Station[]>(() => {
     if (!result) return []
+    const raw  = result.stations_detail ?? []
+    if (raw.length > 0)  return raw
     const cons = result.constrained?.points ?? []
-    const free = result.free?.points ?? []
     if (cons.length > 0) return cons
+    const free = result.free?.points ?? []
     if (free.length > 0) return free
     return []
   }, [result])

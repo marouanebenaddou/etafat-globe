@@ -801,6 +801,12 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             size_mb = 0
         return s.interval_s <= 1.01 and size_mb > 10.0
 
+    # Absolute ECEF positions we discover along the way — used to seed the
+    # station_map for kinematic stops (their marker has no APPROX XYZ in any
+    # RINEX header, so without this they'd land at (0,0,0) and the map tab
+    # would render empty).
+    stop_positions: dict[str, tuple[float, float, float]] = {}
+
     n = 0
     # Inter-base baselines (if ≥ 2 bases). Defensive: never pair two
     # sessions with the same marker — they're the same physical receiver
@@ -837,6 +843,9 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
             stops = _kinematic_stops(rover, primary_base)
             for i, st in enumerate(stops, start=1):
                 point_name = f"{rover.station_point}_S{i}"
+                # Absolute ECEF for the stop — needed later for station_map
+                # so the map tab can plot it without waiting on an adjustment.
+                stop_positions[point_name] = (st["x"], st["y"], st["z"])
                 for base in bases:
                     n += 1
                     base_pos = control_ecef.get(base.station_point) or base.approx_xyz
@@ -870,7 +879,12 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 bl = _bl(base, rover, f"B{n:02d}")
                 if bl: baselines.append(bl)
 
-    # Build station list: one per unique endpoint referenced in baselines
+    # Build station list: one per unique endpoint referenced in baselines.
+    # Priority order for the position seed:
+    #   1. User-supplied control point (precise grid → ECEF via pyproj)
+    #   2. Kinematic-stop absolute ECEF captured during _kinematic_stops
+    #   3. RINEX APPROX XYZ header value (~3 m accurate)
+    #   4. (0,0,0) placeholder — map will filter these out
     station_map: dict[str, Station] = {}
     controls_by_name = {c.name: c for c in pin.control_stations}
     for bl in baselines:
@@ -879,8 +893,10 @@ def compute_all_baselines(pin: PipelineInput) -> tuple[list[Baseline], list[Stat
                 continue
             if name in controls_by_name:
                 station_map[name] = controls_by_name[name]
+            elif name in stop_positions:
+                x, y, z = stop_positions[name]
+                station_map[name] = Station(name=name, x=x, y=y, z=z)
             else:
-                # Seed with RINEX APPROX XYZ if we have it, else zero
                 seed = next((s for s in sessions if s.station_point == name), None)
                 xyz = seed.approx_xyz if (seed and seed.approx_xyz) else (0.0, 0.0, 0.0)
                 station_map[name] = Station(name=name, x=xyz[0], y=xyz[1], z=xyz[2])

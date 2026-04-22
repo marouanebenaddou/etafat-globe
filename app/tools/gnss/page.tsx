@@ -688,7 +688,12 @@ export default function GnssPage() {
           <Card padding={0} style={{ overflow: "hidden" }}>
             <div className="gnss-tabs" style={{ display: "flex", borderBottom: "1px solid #e8edf3", padding: "0 6px", overflowX: "auto" }}>
               {([
-                { id: "map",         label: "Carte",              Icon: MapPin,   count: apiResult ? Math.max(apiResult.free?.points?.length ?? 0, apiResult.constrained?.points?.length ?? 0) : 0, isMap: true },
+                { id: "map",         label: "Carte",              Icon: MapPin,   count: apiResult ? Math.max(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ((apiResult as any).stations_detail?.length) ?? 0,
+                  apiResult.free?.points?.length ?? 0,
+                  apiResult.constrained?.points?.length ?? 0,
+                ) : 0, isMap: true },
                 { id: "baselines",   label: "Lignes de base",     Icon: Activity, count: apiResult?.n_baselines ?? 22 },
                 { id: "loops",       label: "Fermeture boucles",  Icon: Radio,    count: apiResult?.loops.length ?? 9 },
                 { id: "free",        label: "Ajustement libre",   Icon: Target,   count: apiResult?.free.points.length ?? 14 },

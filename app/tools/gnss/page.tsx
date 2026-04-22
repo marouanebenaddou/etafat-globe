@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import dynamic from "next/dynamic"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   ChevronRight, FileArchive, FileText, MapPin, Globe2,
@@ -12,20 +11,9 @@ import {
 } from "lucide-react"
 import AnimatedNumber from "./AnimatedNumber"
 
-// Leaflet hits `window` on import so it must stay out of SSR.
-const NetworkMap = dynamic(() => import("./NetworkMap"), {
-  ssr: false,
-  loading: () => (
-    <div style={{
-      height: 520, borderRadius: 12, border: "1px solid #e8edf3",
-      background: "linear-gradient(180deg, #f6f8fb 0%, #fff 100%)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      color: "#94a3b8", fontSize: 13,
-    }}>
-      Chargement de la carte…
-    </div>
-  ),
-})
+// Map feature temporarily disabled — user hit an error, we'll revisit.
+// The NetworkMap.tsx + lib/ecef.ts + Leaflet deps stay in the tree so
+// re-enabling is a one-line change.
 import {
   checkHealth, runPipeline, runPipelineFromRinex, downloadPdfReport,
   parseBaselinesCSV, stationsFromBaselines,

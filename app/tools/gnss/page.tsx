@@ -334,18 +334,51 @@ export default function GnssPage() {
     setBaseCoords(prev => {
       const isPlaceholderRow = (b: BaseCoord) =>
         b.name === "BASE_01" && !b.north && !b.east && !b.elev
+      // Count by the ORIGINAL MARKER NAME (case-sensitive) so two bases
+      // that only differ by case (moyen2 vs Moyen2) stay separated.
+      // A bare lowercase merge would collapse them into one rover.
       const counts = new Map<string, number>()
-      const originalCase = new Map<string, string>()   // lower → as-typed
       for (const f of obsFiles) {
         const m = (f.markerName || "").trim()
         if (!m) continue
-        const k = m.toLowerCase()
-        counts.set(k, (counts.get(k) || 0) + 1)
-        if (!originalCase.has(k)) originalCase.set(k, m)
+        counts.set(m, (counts.get(m) || 0) + 1)
       }
-      const bases = Array.from(counts.entries())
-        .filter(([, n]) => n === 1)
-        .map(([k]) => originalCase.get(k)!)
+      // Heuristic based on RINEX sampling interval. Bases are typically
+      // logged at 5-15 s cadence (low battery drain, compressed to
+      // fit on a micro-SD overnight). Rovers log at 1 Hz for smooth
+      // kinematic trajectories. The interval is parsed client-side
+      // from the RINEX header into ParsedHCNFile.interval.
+      //
+      //   interval >= 2.0 s  → very likely a base
+      //   interval <= 1.5 s  → very likely a rover
+      //   unknown / mixed    → fall back to file count (single file
+      //                        = base, multi-file = rover) which
+      //                        works on the 90 % case.
+      const bases: string[] = []
+      for (const [name, n] of counts.entries()) {
+        const files = obsFiles.filter(f =>
+          (f.markerName || "").trim() === name
+          && /\.\d\d[oO]$/.test(f.name)   // obs files only
+        )
+        const intervals = files
+          .map(f => f.interval)
+          .filter((v): v is number => typeof v === "number" && v > 0)
+        if (intervals.length > 0) {
+          const maxInt = Math.max(...intervals)
+          // A marker whose largest sampling interval is ≥ 2 s is a base
+          // (all its files are "slow enough" to be static recording).
+          if (maxInt >= 2.0) {
+            bases.push(name)
+            continue
+          }
+          // Explicit 1 Hz → rover. Skip.
+          if (maxInt <= 1.5) {
+            continue
+          }
+        }
+        // Fallback: file-count heuristic from the earlier version.
+        if (n === 1) bases.push(name)
+      }
       const start = (prev.length === 1 && isPlaceholderRow(prev[0])) ? [] : prev
       const existingLower = new Set(start.map(b => b.name.trim().toLowerCase()))
       const next = [...start]
@@ -355,14 +388,16 @@ export default function GnssPage() {
           existingLower.add(name.toLowerCase())
         }
       }
-      // Auto-demote rows whose marker now appears in 2+ files (rover).
-      // Preserve rows the user manually edited coords on.
+      // Auto-demote rows whose marker was classified as a rover by the
+      // heuristic above (not in the `bases` list). Preserves rows the
+      // user typed coords into manually.
+      const basesSet = new Set(bases.map(s => s.trim().toLowerCase()))
       const filtered = next.filter(b => {
         const k = b.name.trim().toLowerCase()
-        const count = counts.get(k) || 0
         const hasCoords = Boolean(b.north || b.east || b.elev)
-        if (count >= 2 && !hasCoords) return false
-        return true
+        if (hasCoords) return true                    // user-edited, keep
+        if (!counts.has(b.name.trim())) return true   // typed by user, unrelated to uploads
+        return basesSet.has(k)                         // auto-row → keep only if still a base
       })
       // Avoid pointless state churn if nothing changed
       if (filtered.length === prev.length &&
